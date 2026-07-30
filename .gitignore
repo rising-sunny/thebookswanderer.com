@@ -1,0 +1,14 @@
+server/.env
+server/data/*.db
+server/__pycache__/
+server/**/__pycache__/
+server/.venv/
+.cj_token_tmp
+.playwright-mcp/
+*.pyc
+
+# Local QA / temp dumps
+pdp-check.png
+pdp-mobile-fixed.png
+_live_product.js
+server/scripts/_tmp_*.py

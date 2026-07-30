@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>The Books Wanderer | Reading accessories for wandering souls</title>
+    <meta name="description" content="A literary boutique: Kindle sleeves, page holders, wooden stands, and cozy accessories that turn reading into a ritual.">
+    <meta name="theme-color" content="#f8f2e5">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The Books Wanderer | Literary boutique">
+    <meta property="og:description" content="Beautiful, functional accessories for people who love to read.">
+    <meta property="og:image" content="assets/logo.png">
+    <meta property="og:locale" content="en_US">
+
+    <link rel="icon" href="assets/logo.png" type="image/png">
+    <link rel="canonical" href="https://thebookswanderer.com/">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Structured data for search engines -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "The Books Wanderer",
+        "description": "Literary boutique for reading accessories.",
+        "image": "assets/logo.png",
+        "url": "https://thebookswanderer.com/",
+        "priceRange": "$15 - $60"
+    }
+    </script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Leaf icons, reused via <use> -->
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="i-leaf" viewBox="0 0 24 28">
+        <path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/>
+        <path d="M12 25.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-petal" viewBox="0 0 24 28">
+        <path d="M12 2l6 12-6 12-6-12 6-12Z" fill="currentColor"/>
+    </symbol>
+</svg>
+
+<!-- Falling leaves: decorative only -->
+<div class="leaves" aria-hidden="true">
+    <span class="leaf" style="left:4%;  --size:20px; --dur:24s; --delay:0s;   --spin:400deg; --tint:#c4501e; --max-opacity:.5"><svg><use href="#i-leaf"/></svg></span>
+    <span class="leaf" style="left:16%; --size:13px; --dur:19s; --delay:4s;   --spin:-520deg;--tint:#8b2f27; --max-opacity:.4"><svg><use href="#i-petal"/></svg></span>
+    <span class="leaf" style="left:29%; --size:22px; --dur:28s; --delay:9s;   --spin:340deg; --tint:#c1912f; --max-opacity:.45"><svg><use href="#i-leaf"/></svg></span>
+    <span class="leaf" style="left:41%; --size:11px; --dur:17s; --delay:2s;   --spin:600deg; --tint:#d9662f; --max-opacity:.35"><svg><use href="#i-petal"/></svg></span>
+    <span class="leaf" style="left:55%; --size:18px; --dur:22s; --delay:12s;  --spin:-380deg;--tint:#8b2f27; --max-opacity:.5"><svg><use href="#i-leaf"/></svg></span>
+    <span class="leaf" style="left:67%; --size:15px; --dur:26s; --delay:6s;   --spin:460deg; --tint:#c4501e; --max-opacity:.4"><svg><use href="#i-leaf"/></svg></span>
+    <span class="leaf" style="left:79%; --size:12px; --dur:20s; --delay:15s;  --spin:-540deg;--tint:#c1912f; --max-opacity:.35"><svg><use href="#i-petal"/></svg></span>
+    <span class="leaf" style="left:91%; --size:21px; --dur:30s; --delay:3s;   --spin:300deg; --tint:#1b3728; --max-opacity:.3"><svg><use href="#i-leaf"/></svg></span>
+</div>
+
+<!-- ====================== Announcement ====================== -->
+<div class="announcement" id="announcement">
+    <div class="container announcement__inner">
+        <span>Free shipping from <strong>USD 45</strong> · Gift-ready packaging on every order</span>
+        <button class="announcement__close" type="button" data-dismiss="announcement" aria-label="Dismiss announcement">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- ====================== Header ====================== -->
+<header class="header" id="header">
+    <div class="container header__inner">
+
+        <button class="icon-btn nav-toggle" type="button" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Open menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+
+        <a class="brand" href="/" aria-label="The Books Wanderer, home">
+            <!-- Emblem: logo cropped to a circle (illustration only) -->
+            <span class="brand__emblem" role="img" aria-hidden="true"></span>
+            <span class="brand__name">
+                The Books Wanderer
+                <span class="brand__tagline">Literary boutique</span>
+            </span>
+        </a>
+
+        <nav class="nav" id="nav" aria-label="Primary">
+            <a class="nav__link" href="#collections">Collections</a>
+            <a class="nav__link" href="#featured">Featured</a>
+            <a class="nav__link" href="#story">Our story</a>
+            <a class="nav__link" href="#newsletter">Newsletter</a>
+        </nav>
+
+        <div class="actions">
+            <button class="icon-btn" type="button" aria-label="Search products">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            </button>
+            <a class="icon-btn desktop-only" href="#" aria-label="My account">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+            </a>
+            <button class="icon-btn" type="button" id="cartBtn" aria-label="Shopping cart, 0 items">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+                <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main id="main">
+
+    <!-- ====================== Hero ====================== -->
+    <section class="hero">
+        <div class="container hero__grid">
+            <div class="hero__copy">
+                <p class="eyebrow">Fall 2026 · Limited edition</p>
+                <h1>For those who wander <em>between pages</em></h1>
+                <p class="hero__lead">
+                    Curated accessories — sleeves, page holders, wooden stands — that
+                    turn your reading hours into a ritual. Made to last,
+                    packed to gift.
+                </p>
+                <div class="hero__ctas">
+                    <a class="btn" href="#featured">
+                        Explore collection
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                    </a>
+                    <a class="btn btn--ghost" href="#story">Our story</a>
+                </div>
+                <p class="hero__meta">
+                    <span class="stars" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                    </span>
+                    4.9 / 5 · <strong>1,240</strong> readers chose us
+                </p>
+            </div>
+
+            <div class="hero__art">
+                <div class="medallion" role="img" aria-label="Illustration: person reading under an autumn tree"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Trust ====================== -->
+    <section class="trust" aria-label="Why shop with us">
+        <div class="container trust__grid">
+            <div class="trust__item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4-3 7.5-7 9-4-1.5-7-5-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                <div>
+                    <h3>Protected purchase</h3>
+                    <p>Secure checkout and a 30-day no-questions guarantee.</p>
+                </div>
+            </div>
+            <div class="trust__item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+                <div>
+                    <h3>Ships in 24–48 h</h3>
+                    <p>Express dispatch and tracking on every order.</p>
+                </div>
+            </div>
+            <div class="trust__item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 8H4v12h16V8Z"/><path d="M12 8v12M2 8h20l-2-4H4L2 8Z"/></svg>
+                <div>
+                    <h3>Gift ready</h3>
+                    <p>Kraft paper packaging and a handwritten note.</p>
+                </div>
+            </div>
+            <div class="trust__item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15V6a2 2 0 0 0-2-2H8L3 9v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z"/><path d="M8 4v5H3"/></svg>
+                <div>
+                    <h3>Easy returns</h3>
+                    <p>Free exchanges within the first 14 days.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Categories ====================== -->
+    <section class="section" id="collections">
+        <div class="container">
+            <div class="section__head reveal">
+                <div>
+                    <p class="eyebrow">Browse by</p>
+                    <h2>Collections</h2>
+                </div>
+                <a class="link-more" href="#">
+                    View all
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                </a>
+            </div>
+
+            <div class="categories reveal">
+                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #2b5240, #10241a)">
+                    <span class="category__count">18 products</span>
+                    <h3>Sleeves &amp; Kindle</h3>
+                    <p>Slim protection with autumn finishes.</p>
+                </a>
+                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #a63a2f, #6d221c)">
+                    <span class="category__count">12 products</span>
+                    <h3>Reading rituals</h3>
+                    <p>Page holders, bookmarks, and warm lights.</p>
+                </a>
+                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #c1912f, #8a5f16)">
+                    <span class="category__count">9 products</span>
+                    <h3>Cozy atmosphere</h3>
+                    <p>Wood, ceramic, and candles for your corner.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Products ====================== -->
+    <section class="section section--sunken" id="featured">
+        <div class="container">
+            <div class="section__head reveal">
+                <div>
+                    <p class="eyebrow">Most loved</p>
+                    <h2>Reader’s picks</h2>
+                </div>
+                <a class="link-more" href="#">
+                    Full catalog
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                </a>
+            </div>
+
+            <div class="products reveal" id="productGrid" data-catalog-source="api">
+                <p class="catalog-loading" id="catalogLoading">Loading products…</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Story ====================== -->
+    <section class="section" id="story">
+        <div class="container editorial">
+            <div class="editorial__art reveal" role="img" aria-label="Brand illustration: reader under a tree"></div>
+            <div class="editorial__copy reveal">
+                <p class="eyebrow">Our story</p>
+                <h2>It started with a book and an autumn afternoon</h2>
+                <p>
+                    The Books Wanderer grew from a simple obsession: objects should accompany
+                    reading, not interrupt it. We try every product for weeks before it lands
+                    in the shop — if we wouldn’t use it ourselves, it doesn’t make the catalog.
+                </p>
+                <blockquote>“A reader lives a thousand lives before he dies.”</blockquote>
+                <a class="link-more" href="#">
+                    Meet the process
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Reviews ====================== -->
+    <section class="section section--sunken">
+        <div class="container">
+            <div class="section__head section__head--center reveal">
+                <div>
+                    <p class="eyebrow">Social proof</p>
+                    <h2>What readers say</h2>
+                </div>
+            </div>
+
+            <div class="reviews reveal">
+                <article class="review">
+                    <span class="stars" aria-label="5 out of 5 stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                    </span>
+                    <p>The page holder changed my reading nights. It arrived in three days and the packaging felt like a gift from an old bookshop.</p>
+                    <footer>
+                        <span class="review__avatar" aria-hidden="true">M</span>
+                        <span class="review__who">Marina R. <span>Verified purchase</span></span>
+                    </footer>
+                </article>
+                <article class="review">
+                    <span class="stars" aria-label="5 out of 5 stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                    </span>
+                    <p>I bought the wooden stand for my reading corner and it fits perfectly. You can tell they choose materials with care.</p>
+                    <footer>
+                        <span class="review__avatar" aria-hidden="true">D</span>
+                        <span class="review__who">Diego A. <span>Verified purchase</span></span>
+                    </footer>
+                </article>
+                <article class="review">
+                    <span class="stars" aria-label="5 out of 5 stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.6 7 .8-5.2 4.7 1.4 7L12 17.7 5.8 21l1.4-7L2 9.4l7-.8L12 2Z"/></svg>
+                    </span>
+                    <p>I ordered a sleeve as a gift and it arrived with a handwritten note. Details like that make me come back.</p>
+                    <footer>
+                        <span class="review__avatar" aria-hidden="true">C</span>
+                        <span class="review__who">Camila T. <span>Verified purchase</span></span>
+                    </footer>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================== Newsletter ====================== -->
+    <section class="newsletter" id="newsletter">
+        <div class="container newsletter__inner">
+            <div>
+                <h2>One letter a month, nothing more</h2>
+                <p>New drops, reading picks, and 10% off your first order.</p>
+            </div>
+            <form id="newsletterForm" novalidate>
+                <label class="visually-hidden" for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@email.com" autocomplete="email" required>
+                <button class="btn" type="submit">Subscribe</button>
+            </form>
+            <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+            <small>No spam. Unsubscribe anytime with one click.</small>
+        </div>
+    </section>
+
+</main>
+
+<!-- ====================== Footer ====================== -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div class="footer__brand">
+                <a class="brand" href="/">
+                    <span class="brand__emblem" aria-hidden="true"></span>
+                    <span class="brand__name">The Books Wanderer</span>
+                </a>
+                <p>A boutique of accessories for readers. We curate little, but we curate well.</p>
+                <div class="socials">
+                    <a href="#" aria-label="Instagram">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1.2" fill="currentColor" stroke="none"/></svg>
+                    </a>
+                    <a href="#" aria-label="TikTok">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M15 4c.4 2.4 2 3.8 4.4 4v3c-1.7 0-3.2-.5-4.4-1.4V15a5.5 5.5 0 1 1-5.5-5.5c.4 0 .8 0 1.1.1v3.1a2.5 2.5 0 1 0 1.9 2.4V4H15Z"/></svg>
+                    </a>
+                    <a href="#" aria-label="Pinterest">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 21l2.2-8M9.5 11c0-2 1.4-3.4 3.2-3.4 1.7 0 2.9 1.1 2.9 2.8 0 2.3-1.3 4.1-3 4.1-1 0-1.7-.7-1.5-1.6"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h3>Shop</h3>
+                <ul>
+                    <li><a href="#collections">Collections</a></li>
+                    <li><a href="#featured">New arrivals</a></li>
+                    <li><a href="#featured">Best sellers</a></li>
+                    <li><a href="#">Gift cards</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3>Help</h3>
+                <ul>
+                    <li><a href="#">Shipping &amp; delivery</a></li>
+                    <li><a href="#">Returns &amp; exchanges</a></li>
+                    <li><a href="#">Order tracking</a></li>
+                    <li><a href="#">FAQ</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3>About</h3>
+                <ul>
+                    <li><a href="#story">Our story</a></li>
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">Terms &amp; conditions</a></li>
+                    <li><a href="#">Privacy</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer__bottom">
+            <p class="footer__quote">“For those who wander between pages.”</p>
+            <div class="payments" aria-label="Accepted payment methods">
+                <span>VISA</span><span>MASTERCARD</span><span>PAYPAL</span><span>APPLE PAY</span>
+            </div>
+            <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+        </div>
+    </div>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>
