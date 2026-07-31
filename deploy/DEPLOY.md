@@ -70,3 +70,20 @@ Do **not** bulk-import; only products you choose.
 ```bash
 journalctl -u thebookswanderer -n 80 --no-pager
 ```
+
+---
+
+## CJ Dropshipping API (local clone)
+
+Client + offline cheatsheet ship with the repo (no network required to read):
+
+| | |
+|---|---|
+| **Client** | `server/services/cj.py` |
+| **Docs** | `server/docs/cj-api/README.md` |
+| **Endpoints** | `server/docs/cj-api/endpoints.md` |
+| **Smoke test** | `cd server && .venv/…/python scripts/cj_api_smoke.py <SPU>` |
+
+Official online docs: https://developers.cjdropshipping.com/
+
+On a new PC: clone → `pip install -r server/requirements.txt` → copy `server/.env.example` to `server/.env` → set `CJ_API_KEY`.

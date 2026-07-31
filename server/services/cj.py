@@ -1,8 +1,10 @@
 """
 CJ Dropshipping API client (api2.0).
 
-Docs: https://developers.cjdropshipping.com/
+Local docs:  server/docs/cj-api/README.md
+Official:    https://developers.cjdropshipping.com/
 Auth header: CJ-Access-Token
+Base:        https://developers.cjdropshipping.com/api2.0/v1
 """
 from __future__ import annotations
 
@@ -32,7 +34,12 @@ def _api_key() -> str:
     return key
 
 
+def is_configured() -> bool:
+    return bool(os.getenv("CJ_API_KEY", "").strip())
+
+
 async def get_access_token(force: bool = False) -> str:
+    """POST /authentication/getAccessToken (or refresh)."""
     global _token, _token_expiry_ts, _refresh_token
 
     now = time.time()
@@ -126,9 +133,10 @@ async def _request(
         except Exception as exc:
             raise CJError(f"Invalid JSON from CJ ({resp.status_code})", resp.text) from exc
 
-    if data.get("code") not in (200, None) and not data.get("success"):
-        # Some endpoints only set code=200
-        if data.get("code") != 200:
+    # code 0 is used by some video endpoints
+    code = data.get("code")
+    if code not in (200, 0, None) and not data.get("success"):
+        if code != 200:
             raise CJError(data.get("message") or "CJ API error", data)
     return data.get("data")
 
@@ -138,8 +146,16 @@ async def get_product_details(
     pid: str | None = None,
     product_sku: str | None = None,
     variant_sku: str | None = None,
+    features: list[str] | None = None,
+    country_code: str | None = None,
 ) -> dict:
-    params: dict[str, str] = {}
+    """
+    GET /product/query
+
+    features examples: ["enable_video", "enable_combine"]
+    When enable_video is set, data.productVideo may list video ids.
+    """
+    params: dict[str, Any] = {}
     if pid:
         params["pid"] = pid
     elif product_sku:
@@ -148,19 +164,71 @@ async def get_product_details(
         params["variantSku"] = variant_sku
     else:
         raise CJError("pid, product_sku or variant_sku required")
+    if features:
+        # CJ accepts features as repeated query params or comma form; send first + list
+        params["features"] = features
+    if country_code:
+        params["countryCode"] = country_code.upper()
     data = await _request("GET", "/product/query", params=params)
     return data or {}
 
 
-async def search_products(keyword: str, page: int = 1, size: int = 20) -> dict:
-    return (
-        await _request(
-            "GET",
-            "/product/listV2",
-            params={"keyWord": keyword, "page": page, "size": size},
-        )
-        or {}
+async def search_products(
+    keyword: str,
+    page: int = 1,
+    size: int = 20,
+    *,
+    features: list[str] | None = None,
+    **extra: Any,
+) -> dict:
+    """GET /product/listV2 — elasticsearch product search."""
+    params: dict[str, Any] = {
+        "keyWord": keyword,
+        "page": page,
+        "size": size,
+    }
+    if features:
+        params["features"] = features
+    params.update({k: v for k, v in extra.items() if v is not None})
+    return (await _request("GET", "/product/listV2", params=params)) or {}
+
+
+async def list_products(
+    *,
+    page_num: int = 1,
+    page_size: int = 20,
+    product_sku: str | None = None,
+    pid: str | None = None,
+    **extra: Any,
+) -> dict:
+    """GET /product/list — legacy list (max 200/page)."""
+    params: dict[str, Any] = {"pageNum": page_num, "pageSize": page_size}
+    if product_sku:
+        params["productSku"] = product_sku
+    if pid:
+        params["pid"] = pid
+    params.update({k: v for k, v in extra.items() if v is not None})
+    return (await _request("GET", "/product/list", params=params)) or {}
+
+
+async def get_categories() -> list:
+    """GET /product/getCategory"""
+    data = await _request("GET", "/product/getCategory")
+    return data or []
+
+
+async def query_videos_by_product_id(product_id: str) -> list[dict]:
+    """
+    POST /product/queryVideosByProductId
+    Body: { "productId": "<pid>" }
+    Returns list of video objects (videoNumber, videoUrl, coverURL, …).
+    """
+    data = await _request(
+        "POST",
+        "/product/queryVideosByProductId",
+        json_body={"productId": str(product_id)},
     )
+    return data or []
 
 
 async def freight_calculate(
@@ -171,6 +239,8 @@ async def freight_calculate(
     zip_code: str | None = None,
 ) -> list[dict]:
     """
+    POST /logistic/freightCalculate
+
     products: [{ "vid": "...", "quantity": 1 }, ...]
     Returns list of logistics options with price + aging.
     """
@@ -187,7 +257,8 @@ async def freight_calculate(
 
 async def create_order(payload: dict) -> dict:
     """
-    Create order on CJ (createOrderV2).
+    POST /shopping/order/createOrderV2
+
     payType: 1=page pay, 2=balance, 3=create only (no charge).
     """
     data = await _request("POST", "/shopping/order/createOrderV2", json_body=payload)
