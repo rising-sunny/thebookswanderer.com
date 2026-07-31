@@ -146,13 +146,16 @@
         document.title = `${title} | The Books Wanderer`;
         if (crumb) crumb.textContent = title;
 
+        const manyOpts = variants.length > 8;
+        const pickerTitle = manyOpts ? "Choose color & size" : "Choose your design";
+        const pickerAria = manyOpts ? "Choose color and size" : "Choose design";
         const variantPicker =
             variants.length > 1
                 ? `
 <div class="pdp__variants">
-  <h2 class="pdp__variants-title">Choose your design</h2>
+  <h2 class="pdp__variants-title">${pickerTitle}</h2>
   <p class="pdp__variants-label">Selected: <strong id="pdpVariantName">${escapeHtml(v?.name || "")}</strong></p>
-  <div class="pdp__variant-grid" role="listbox" aria-label="Choose design">
+  <div class="pdp__variant-grid${manyOpts ? " pdp__variant-grid--dense" : ""}" role="listbox" aria-label="${pickerAria}">
     ${variants
         .map(
             (opt) => `
@@ -385,15 +388,20 @@
             btn.textContent = "Added ✓";
             btn.classList.add("is-added");
             try {
-                const cart = JSON.parse(localStorage.getItem("tbw:cart") || "[]");
                 const pid = Number(btn.getAttribute("data-product-id"));
-                const vid = Number(btn.getAttribute("data-variant-id")) || null;
-                const existing = cart.find(
-                    (x) => x.product_id === pid && x.variant_id === vid
-                );
-                if (existing) existing.quantity += 1;
-                else cart.push({ product_id: pid, variant_id: vid, quantity: 1 });
-                localStorage.setItem("tbw:cart", JSON.stringify(cart));
+                const vidRaw = btn.getAttribute("data-variant-id");
+                const vid = vidRaw ? Number(vidRaw) : null;
+                if (window.TBWCart) {
+                    window.TBWCart.add(pid, vid, 1);
+                } else {
+                    const cart = JSON.parse(localStorage.getItem("tbw:cart") || "[]");
+                    const existing = cart.find(
+                        (x) => x.product_id === pid && x.variant_id === vid
+                    );
+                    if (existing) existing.quantity += 1;
+                    else cart.push({ product_id: pid, variant_id: vid, quantity: 1 });
+                    localStorage.setItem("tbw:cart", JSON.stringify(cart));
+                }
                 if (selectedCountry) {
                     localStorage.setItem("tbw:ship_country", selectedCountry);
                 }

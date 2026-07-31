@@ -11,7 +11,17 @@ Write-Host "==> Directories" -ForegroundColor Cyan
 ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets $RemotePath/server/services $RemotePath/server/data $RemotePath/deploy"
 
 Write-Host "==> Static" -ForegroundColor Cyan
-scp -o BatchMode=yes "$Root\index.html" "$Root\styles.css" "$Root\app.js" "$Root\product.html" "$Root\product.js" "${HostName}:${RemotePath}/"
+scp -o BatchMode=yes `
+    "$Root\index.html" `
+    "$Root\styles.css" `
+    "$Root\app.js" `
+    "$Root\product.html" `
+    "$Root\product.js" `
+    "$Root\cart.html" `
+    "$Root\cart.js" `
+    "$Root\checkout.html" `
+    "$Root\checkout.js" `
+    "${HostName}:${RemotePath}/"
 scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
 if (Test-Path "$Root\assets\products") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets/products"
@@ -31,6 +41,7 @@ scp -o BatchMode=yes `
     "$Root\server\services\cj.py" `
     "$Root\server\services\paypal.py" `
     "$Root\server\services\pricing.py" `
+    "$Root\server\services\categories.py" `
     "${HostName}:${RemotePath}/server/services/"
 if (Test-Path "$Root\server\scripts") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/scripts"

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart | The Books Wanderer</title>
+    <meta name="description" content="Your cart — The Books Wanderer">
+    <meta name="theme-color" content="#f8f2e5">
+    <link rel="icon" href="assets/logo.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=17">
+</head>
+<body class="page-cart">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header is-stuck" id="header">
+    <div class="container header__inner">
+        <a class="brand" href="/" aria-label="The Books Wanderer, home">
+            <span class="brand__emblem" aria-hidden="true"></span>
+            <span class="brand__name">
+                The Books Wanderer
+                <span class="brand__tagline">Literary boutique</span>
+            </span>
+        </a>
+        <nav class="nav" id="nav" aria-label="Primary" style="display:none"></nav>
+        <div class="actions">
+            <a class="icon-btn" href="/#featured" aria-label="Back to shop">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
+            </a>
+            <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+                <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main id="main" class="cart-page">
+    <div class="container">
+        <p class="pdp__crumb"><a href="/">Home</a> · <span>Cart</span></p>
+        <div id="cartRoot" aria-live="polite"></div>
+    </div>
+</main>
+
+<footer class="footer" style="margin-top:var(--sp-8)">
+    <div class="container footer__bottom" style="border:0;padding-top:var(--sp-5)">
+        <p class="footer__quote">“For those who wander between pages.”</p>
+        <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+    </div>
+</footer>
+
+<script src="cart.js?v=1" defer></script>
+</body>
+</html>

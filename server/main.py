@@ -19,6 +19,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from database import get_db, init_db  # noqa: E402
 from models import Order, OrderItem, Product, ProductVariant  # noqa: E402
+from services import categories as cat_service  # noqa: E402
 from services import cj as cj_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
@@ -163,15 +164,55 @@ def pricing_preview(cost_usd: float = Query(..., ge=0)):
     return pricing_service.breakdown(cost_usd).as_dict()
 
 
+@app.get("/api/categories")
+def list_categories(db: Session = Depends(get_db)):
+    """Canonical categories with live product counts."""
+    rows = db.query(Product).filter(Product.active.is_(True)).all()
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        slug = cat_service.normalize_category(p.category)
+        counts[slug] = counts.get(slug, 0) + 1
+    categories = []
+    for c in cat_service.all_categories():
+        categories.append(
+            {
+                "slug": c["slug"],
+                "name": c["name"],
+                "description": c["description"],
+                "tile": c.get("tile") or "",
+                "product_count": counts.get(c["slug"], 0),
+            }
+        )
+    return {"categories": categories, "count": len(categories)}
+
+
 @app.get("/api/products")
-def list_products(db: Session = Depends(get_db)):
+def list_products(
+    category: str | None = Query(None, description="Category slug filter"),
+    db: Session = Depends(get_db),
+):
     rows = (
         db.query(Product)
         .filter(Product.active.is_(True))
         .order_by(Product.id.desc())
         .all()
     )
-    return {"products": [p.to_public() for p in rows], "count": len(rows)}
+    filter_slug = None
+    if category and category.strip():
+        raw = category.strip().lower()
+        known = {c["slug"] for c in cat_service.all_categories()}
+        filter_slug = raw if raw in known else cat_service.normalize_category(raw)
+        rows = [
+            p
+            for p in rows
+            if cat_service.normalize_category(p.category) == filter_slug
+        ]
+
+    return {
+        "products": [p.to_public() for p in rows],
+        "count": len(rows),
+        "category": filter_slug,
+    }
 
 
 @app.get("/api/products/by-slug/{slug}")
@@ -426,6 +467,80 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
 # ── Checkout → PayPal ─────────────────────────────────────────────────
 
 
+class CartPreviewIn(BaseModel):
+    items: list[CartItemIn]
+
+
+@app.post("/api/cart/preview")
+def cart_preview(body: CartPreviewIn, db: Session = Depends(get_db)):
+    """Hydrate cart lines with titles, images, prices for the storefront cart UI."""
+    if not body.items:
+        return {"items": [], "product_total": 0.0, "count": 0}
+
+    lines_out: list[dict] = []
+    product_total = 0.0
+    for line in body.items:
+        p = db.get(Product, line.product_id)
+        if not p or not p.active:
+            lines_out.append(
+                {
+                    "product_id": line.product_id,
+                    "variant_id": line.variant_id,
+                    "quantity": line.quantity,
+                    "available": False,
+                    "error": "Product unavailable",
+                }
+            )
+            continue
+        try:
+            v = _resolve_variant(db, p, line.variant_id)
+        except HTTPException:
+            lines_out.append(
+                {
+                    "product_id": line.product_id,
+                    "variant_id": line.variant_id,
+                    "quantity": line.quantity,
+                    "available": False,
+                    "error": "Variant unavailable",
+                    "title": p.title,
+                    "slug": p.slug,
+                }
+            )
+            continue
+        unit = float(v.price_usd if v else p.price_usd)
+        qty = max(1, min(20, int(line.quantity)))
+        line_total = round(unit * qty, 2)
+        product_total += line_total
+        img = (v.image_url if v and v.image_url else p.image_url) or ""
+        name = (v.name if v and v.name else "") or ""
+        title = p.title
+        if name:
+            title = f"{p.title} — {name}"
+        lines_out.append(
+            {
+                "product_id": p.id,
+                "variant_id": v.id if v else None,
+                "quantity": qty,
+                "available": True,
+                "slug": p.slug,
+                "title": title,
+                "product_title": p.title,
+                "variant_name": name,
+                "image_url": img,
+                "unit_price": round(unit, 2),
+                "line_total": line_total,
+                "category": p.to_public().get("category") or "",
+                "cj_sku": (v.cj_sku if v else p.cj_sku) or "",
+            }
+        )
+
+    return {
+        "items": lines_out,
+        "product_total": round(product_total, 2),
+        "count": sum(i["quantity"] for i in lines_out if i.get("available")),
+    }
+
+
 @app.post("/api/checkout")
 async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     if not paypal_service.configured():
@@ -496,7 +611,7 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
             amount_usd=grand_total,
             description=desc,
             return_url=f"{PUBLIC_BASE}/api/checkout/return?order_id={order.id}",
-            cancel_url=f"{PUBLIC_BASE}/?checkout=cancel",
+            cancel_url=f"{PUBLIC_BASE}/checkout.html?status=cancel&order_id={order.id}",
         )
     except paypal_service.PayPalError as exc:
         order.status = "failed"
@@ -515,6 +630,12 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     }
 
 
+def _checkout_redirect(status: str, order_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        f"{PUBLIC_BASE}/checkout.html?status={status}&order_id={order_id}"
+    )
+
+
 @app.get("/api/checkout/return")
 async def checkout_return(
     order_id: int = Query(...),
@@ -530,14 +651,14 @@ async def checkout_return(
         raise HTTPException(400, "Missing PayPal token")
 
     if order.status in ("paid", "cj_submitted", "fulfilled"):
-        return RedirectResponse(f"{PUBLIC_BASE}/?checkout=already_paid&order_id={order.id}")
+        return _checkout_redirect("already_paid", order.id)
 
     try:
         capture = await paypal_service.capture_order(paypal_id)
     except paypal_service.PayPalError as exc:
         order.notes = f"capture failed: {exc}"[:500]
         db.commit()
-        return RedirectResponse(f"{PUBLIC_BASE}/?checkout=payment_error&order_id={order.id}")
+        return _checkout_redirect("payment_error", order.id)
 
     status = (capture.get("status") or "").upper()
     if status not in ("COMPLETED", "APPROVED"):
@@ -548,9 +669,7 @@ async def checkout_return(
         if cap_status.upper() != "COMPLETED" and status != "COMPLETED":
             order.notes = f"PayPal status={status}"
             db.commit()
-            return RedirectResponse(
-                f"{PUBLIC_BASE}/?checkout=payment_incomplete&order_id={order.id}"
-            )
+            return _checkout_redirect("payment_incomplete", order.id)
 
     order.status = "paid"
     order.paypal_order_id = paypal_id
@@ -563,11 +682,9 @@ async def checkout_return(
         order.notes = f"paid but CJ submit failed: {exc}"[:800]
         order.status = "paid"  # keep paid; manual retry later
         db.commit()
-        return RedirectResponse(
-            f"{PUBLIC_BASE}/?checkout=paid_cj_pending&order_id={order.id}"
-        )
+        return _checkout_redirect("paid_cj_pending", order.id)
 
-    return RedirectResponse(f"{PUBLIC_BASE}/?checkout=success&order_id={order.id}")
+    return _checkout_redirect("success", order.id)
 
 
 async def _submit_to_cj(order: Order, db: Session) -> None:

@@ -75,8 +75,15 @@
         });
     }
 
-    /* ---------- Catalog from API ---------- */
+    /* ---------- Catalog + categories from API ---------- */
     const productGrid = document.getElementById("productGrid");
+    const categoryTiles = document.getElementById("categoryTiles");
+    const catalogFilters = document.getElementById("catalogFilters");
+    const catalogEyebrow = document.getElementById("catalogEyebrow");
+    const catalogTitle = document.getElementById("catalogTitle");
+    let activeCategory = "";
+    let categoriesCache = [];
+
     const escapeHtml = (s) =>
         String(s)
             .replace(/&/g, "&amp;")
@@ -87,6 +94,30 @@
     function productUrl(p) {
         const slug = encodeURIComponent(p.slug || "");
         return slug ? `/product.html?slug=${slug}` : `/product.html?id=${p.id}`;
+    }
+
+    function readCategoryFromUrl() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            return (params.get("category") || "").trim().toLowerCase();
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function setCategoryInUrl(slug) {
+        try {
+            const url = new URL(window.location.href);
+            if (slug) url.searchParams.set("category", slug);
+            else url.searchParams.delete("category");
+            // Keep #featured when filtering
+            if (slug || window.location.hash === "#featured") {
+                url.hash = "featured";
+            }
+            history.replaceState({}, "", url.pathname + url.search + url.hash);
+        } catch (_) {
+            /* ignore */
+        }
     }
 
     function renderProduct(p, index) {
@@ -103,7 +134,6 @@
                 : index === 0
                   ? '<span class="badge">New</span>'
                   : "";
-        // Cache-bust: replace existing v= or append
         let imgSrc = img;
         if (imgSrc) {
             imgSrc = imgSrc.replace(/([?&])v=[^&]*/, "$1v=" + id);
@@ -117,7 +147,7 @@
         const cta = nVar > 1 ? "Choose design" : "View details";
 
         return `
-<article class="product" data-product-id="${id}">
+<article class="product" data-product-id="${id}" data-category="${escapeHtml(p.category_slug || "")}">
   <a class="product__link" href="${href}" aria-label="View ${title}">
     <div class="product__media">
       ${badge}
@@ -136,46 +166,186 @@
 </article>`;
     }
 
+    function renderCategoryTiles(cats) {
+        if (!categoryTiles) return;
+        if (!cats.length) {
+            categoryTiles.innerHTML = "";
+            categoryTiles.removeAttribute("aria-busy");
+            return;
+        }
+        categoryTiles.innerHTML = cats
+            .map((c) => {
+                const n = Number(c.product_count || 0);
+                const countLabel =
+                    n === 0 ? "Coming soon" : n === 1 ? "1 product" : `${n} products`;
+                const tile = escapeHtml(c.tile || "linear-gradient(150deg, #2b5240, #10241a)");
+                return `
+<a class="category${activeCategory === c.slug ? " is-active" : ""}"
+   href="#featured"
+   data-category="${escapeHtml(c.slug)}"
+   style="--tile: ${tile}">
+  <span class="category__count">${escapeHtml(countLabel)}</span>
+  <h3>${escapeHtml(c.name)}</h3>
+  <p>${escapeHtml(c.description || "")}</p>
+</a>`;
+            })
+            .join("");
+        categoryTiles.removeAttribute("aria-busy");
+    }
+
+    function renderFilters(cats) {
+        if (!catalogFilters) return;
+        const total = cats.reduce((s, c) => s + Number(c.product_count || 0), 0);
+        const chips = [
+            {
+                slug: "",
+                name: "All",
+                count: total,
+            },
+            ...cats,
+        ];
+        catalogFilters.innerHTML = chips
+            .map((c) => {
+                const slug = c.slug || "";
+                const selected = activeCategory === slug;
+                const n = Number(c.product_count != null ? c.product_count : c.count || 0);
+                return `
+<button type="button" role="tab"
+  class="catalog-filter${selected ? " is-active" : ""}"
+  data-category="${escapeHtml(slug)}"
+  aria-selected="${selected ? "true" : "false"}">
+  ${escapeHtml(c.name)}${n ? ` <span class="catalog-filter__n">${n}</span>` : ""}
+</button>`;
+            })
+            .join("");
+    }
+
+    function updateCatalogHead() {
+        const cat = categoriesCache.find((c) => c.slug === activeCategory);
+        if (catalogEyebrow) {
+            catalogEyebrow.textContent = activeCategory ? "Collection" : "Most loved";
+        }
+        if (catalogTitle) {
+            catalogTitle.textContent = cat ? cat.name : "Reader’s picks";
+        }
+    }
+
+    async function loadCategories() {
+        try {
+            const res = await fetch("/api/categories", {
+                headers: { Accept: "application/json" },
+            });
+            if (!res.ok) throw new Error("categories " + res.status);
+            const data = await res.json();
+            categoriesCache = data.categories || [];
+        } catch (err) {
+            console.warn("categories load failed", err);
+            categoriesCache = [
+                {
+                    slug: "book-accessories",
+                    name: "Book accessories",
+                    description: "Page holders, bookmarks, clips for physical books.",
+                    tile: "linear-gradient(150deg, #2b5240, #10241a)",
+                    product_count: 0,
+                },
+                {
+                    slug: "decor",
+                    name: "Decor",
+                    description: "Desk ornaments for the reading corner.",
+                    tile: "linear-gradient(150deg, #c1912f, #8a5f16)",
+                    product_count: 0,
+                },
+                {
+                    slug: "ereader-accessories",
+                    name: "E-reader accessories",
+                    description: "Gear for Kindle and other e-readers.",
+                    tile: "linear-gradient(150deg, #a63a2f, #6d221c)",
+                    product_count: 0,
+                },
+            ];
+        }
+        renderCategoryTiles(categoriesCache);
+        renderFilters(categoriesCache);
+        updateCatalogHead();
+    }
+
     async function loadCatalog() {
         if (!productGrid) return;
+        productGrid.setAttribute("aria-busy", "true");
         try {
-            const res = await fetch("/api/products", { headers: { Accept: "application/json" } });
+            const q = activeCategory
+                ? `?category=${encodeURIComponent(activeCategory)}`
+                : "";
+            const res = await fetch(`/api/products${q}`, {
+                headers: { Accept: "application/json" },
+            });
             if (!res.ok) throw new Error("catalog " + res.status);
             const data = await res.json();
             const products = data.products || [];
             if (!products.length) {
-                productGrid.innerHTML =
-                    '<p class="catalog-empty">New pieces are being curated — check back soon.</p>';
-                return;
+                productGrid.innerHTML = activeCategory
+                    ? `<p class="catalog-empty">Nothing in this collection yet — <a href="#featured" data-category-clear>view all pieces</a>.</p>`
+                    : '<p class="catalog-empty">New pieces are being curated — check back soon.</p>';
+            } else {
+                productGrid.innerHTML = products.map(renderProduct).join("");
             }
-            productGrid.innerHTML = products.map(renderProduct).join("");
             productGrid.classList.add("is-visible");
         } catch (err) {
             console.warn("catalog load failed", err);
             productGrid.innerHTML =
                 '<p class="catalog-empty">Could not load products. Please refresh.</p>';
         }
+        productGrid.removeAttribute("aria-busy");
+        renderCategoryTiles(categoriesCache);
+        renderFilters(categoriesCache);
+        updateCatalogHead();
     }
 
-    loadCatalog();
+    function setActiveCategory(slug, { scroll } = { scroll: false }) {
+        activeCategory = (slug || "").trim().toLowerCase();
+        setCategoryInUrl(activeCategory);
+        loadCatalog();
+        if (scroll) {
+            const el = document.getElementById("featured");
+            if (el) el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        }
+    }
 
-    /* ---------- Cart (demo: counter only; checkout UI next) ---------- */
-    const cartCount = document.getElementById("cartCount");
-    const cartBtn = document.getElementById("cartBtn");
-    let count = 0;
+    document.addEventListener("click", (e) => {
+        const clear = e.target.closest("[data-category-clear]");
+        if (clear) {
+            e.preventDefault();
+            setActiveCategory("", { scroll: true });
+            return;
+        }
+        const catBtn = e.target.closest("[data-category]");
+        if (!catBtn) return;
+        // Only handle filter chips / category tiles, not product cards
+        if (
+            !catBtn.classList.contains("category") &&
+            !catBtn.classList.contains("catalog-filter")
+        ) {
+            return;
+        }
+        e.preventDefault();
+        const slug = catBtn.getAttribute("data-category") || "";
+        setActiveCategory(slug, { scroll: true });
+    });
+
+    activeCategory = readCategoryFromUrl();
+    loadCategories().then(loadCatalog);
+
+    /* ---------- Cart badge (shared via cart.js) ---------- */
+    if (window.TBWCart) window.TBWCart.paintBadge();
 
     document.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-add-to-cart]");
-        if (!btn || !cartCount) return;
-
-        count += 1;
-        cartCount.textContent = String(count);
-        cartCount.dataset.count = String(count);
-        if (cartBtn) {
-            const itemWord = count === 1 ? "item" : "items";
-            cartBtn.setAttribute("aria-label", `Shopping cart, ${count} ${itemWord}`);
+        if (!btn) return;
+        const pid = Number(btn.getAttribute("data-product-id"));
+        const vid = btn.getAttribute("data-variant-id");
+        if (window.TBWCart && pid) {
+            window.TBWCart.add(pid, vid || null, 1);
         }
-
         const original = btn.textContent;
         btn.textContent = "Added ✓";
         btn.classList.add("is-added");

@@ -61,8 +61,19 @@ def pricing_config() -> dict:
         "PAYPAL_FIXED": _f("PAYPAL_FEE_FIXED", 0.49),
         # Small per-item ops buffer (packaging time, returns, FX, CJ quirks)
         "OPS_FIXED": _f("PRICE_OPS_FIXED", 0.35),
-        # Floor so tiny CJ items are not sold too cheap to look “cheap brand”
+        # Absolute floor (last resort; cost bands usually set higher)
         "MIN_PRICE": _f("PRICE_MIN_USD", 6.99),
+        # Cost-band retail floors so low-CJ items don't all collapse to MIN_PRICE
+        # Band 1: cost < T1  → at least BAND1
+        # Band 2: T1 ≤ cost < T2 → at least BAND2
+        # Band 3: T2 ≤ cost < T3 → at least BAND3
+        # Band 4: cost ≥ T3 → formula only (still floored by MIN_PRICE)
+        "BAND_T1": _f("PRICE_BAND_T1", 1.00),
+        "BAND_T2": _f("PRICE_BAND_T2", 2.00),
+        "BAND_T3": _f("PRICE_BAND_T3", 4.00),
+        "BAND1": _f("PRICE_BAND1_USD", 7.99),
+        "BAND2": _f("PRICE_BAND2_USD", 8.99),
+        "BAND3": _f("PRICE_BAND3_USD", 9.99),
         # Legacy fallback multiplier if denominator invalid
         "MARKUP_MULTIPLIER": _f("MARKUP_MULTIPLIER", 2.4),
     }
@@ -80,8 +91,27 @@ def round_price_psych(amount: float) -> float:
     return round(candidate, 2)
 
 
+def cost_band_floor(cost_usd: float) -> float:
+    """Boutique retail floor from CJ unit cost band."""
+    cfg = pricing_config()
+    cost = max(0.0, float(cost_usd or 0))
+    if cost < cfg["BAND_T1"]:
+        return cfg["BAND1"]
+    if cost < cfg["BAND_T2"]:
+        return cfg["BAND2"]
+    if cost < cfg["BAND_T3"]:
+        return cfg["BAND3"]
+    return cfg["MIN_PRICE"]
+
+
 def retail_from_cost(cost_usd: float) -> float:
-    """Compute list price from unit CJ cost."""
+    """
+    List price from unit CJ cost.
+
+    1) Formula: cover PayPal + ops + target margin
+    2) Round up to .99
+    3) Raise to the cost-band floor so low-cost SKUs don't all share one price
+    """
     cfg = pricing_config()
     cost = max(0.0, float(cost_usd or 0))
     denom = 1.0 - cfg["PAYPAL_PCT"] - cfg["MARGIN_PCT"]
@@ -90,8 +120,9 @@ def retail_from_cost(cost_usd: float) -> float:
         raw = cost * cfg["MARKUP_MULTIPLIER"] + cfg["PAYPAL_FIXED"] + cfg["OPS_FIXED"]
     else:
         raw = (cost + cfg["PAYPAL_FIXED"] + cfg["OPS_FIXED"]) / denom
-    price = max(cfg["MIN_PRICE"], round_price_psych(raw))
-    return price
+    formula_price = round_price_psych(raw)
+    band = cost_band_floor(cost)
+    return max(cfg["MIN_PRICE"], formula_price, band)
 
 
 def breakdown(cost_usd: float, price_usd: float | None = None) -> PriceBreakdown:

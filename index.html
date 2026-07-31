@@ -22,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=17">
 
     <!-- Structured data for search engines -->
     <script type="application/ld+json">
@@ -105,10 +105,10 @@
             <a class="icon-btn desktop-only" href="#" aria-label="My account">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
             </a>
-            <button class="icon-btn" type="button" id="cartBtn" aria-label="Shopping cart, 0 items">
+            <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
                 <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
-            </button>
+            </a>
         </div>
     </div>
 </header>
@@ -193,28 +193,14 @@
                     <p class="eyebrow">Browse by</p>
                     <h2>Collections</h2>
                 </div>
-                <a class="link-more" href="#">
+                <a class="link-more" href="#featured" data-category-clear>
                     View all
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
                 </a>
             </div>
 
-            <div class="categories reveal">
-                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #2b5240, #10241a)">
-                    <span class="category__count">18 products</span>
-                    <h3>Sleeves &amp; Kindle</h3>
-                    <p>Slim protection with autumn finishes.</p>
-                </a>
-                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #a63a2f, #6d221c)">
-                    <span class="category__count">12 products</span>
-                    <h3>Reading rituals</h3>
-                    <p>Page holders, bookmarks, and warm lights.</p>
-                </a>
-                <a class="category" href="#featured" style="--tile: linear-gradient(150deg, #c1912f, #8a5f16)">
-                    <span class="category__count">9 products</span>
-                    <h3>Cozy atmosphere</h3>
-                    <p>Wood, ceramic, and candles for your corner.</p>
-                </a>
+            <div class="categories reveal" id="categoryTiles" aria-busy="true">
+                <!-- Filled from /api/categories -->
             </div>
         </div>
     </section>
@@ -224,13 +210,16 @@
         <div class="container">
             <div class="section__head reveal">
                 <div>
-                    <p class="eyebrow">Most loved</p>
-                    <h2>Reader’s picks</h2>
+                    <p class="eyebrow" id="catalogEyebrow">Most loved</p>
+                    <h2 id="catalogTitle">Reader’s picks</h2>
                 </div>
-                <a class="link-more" href="#">
+                <a class="link-more" href="#featured" data-category-clear>
                     Full catalog
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
                 </a>
+            </div>
+            <div class="catalog-filters reveal" id="catalogFilters" role="tablist" aria-label="Filter by category">
+                <!-- Filled from /api/categories -->
             </div>
 
             <div class="products reveal" id="productGrid" data-catalog-source="api">
@@ -400,6 +389,7 @@
     </div>
 </footer>
 
-<script src="app.js" defer></script>
+<script src="cart.js?v=1" defer></script>
+<script src="app.js?v=17" defer></script>
 </body>
 </html>

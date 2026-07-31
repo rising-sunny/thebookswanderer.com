@@ -65,19 +65,23 @@ class Product(Base):
         return act[0] if act else None
 
     def to_public(self) -> dict:
+        from services import categories as cat_service
+
         variants = self.active_variants()
         prices = [v.price_usd for v in variants] or [self.price_usd]
         # Prefer product hero image when set; else first variant
         img = self.image_url
         if not img and variants and variants[0].image_url:
             img = variants[0].image_url
+        cat_meta = cat_service.public_meta(self.category)
         return {
             "id": self.id,
             "slug": self.slug,
             "title": self.title,
             "description": self.description,
             "image_url": img,
-            "category": self.category,
+            "category": cat_meta["category"],
+            "category_slug": cat_meta["category_slug"],
             "price_usd": round(min(prices), 2),
             "price_max_usd": round(max(prices), 2),
             "from_country": self.from_country,
