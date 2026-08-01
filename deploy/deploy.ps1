@@ -35,6 +35,10 @@ scp -o BatchMode=yes `
     "$Root\affiliate-data.js" `
     "$Root\pick.html" `
     "$Root\pick.js" `
+    "$Root\about.html" `
+    "$Root\contact.html" `
+    "$Root\privacy.html" `
+    "$Root\shipping-returns.html" `
     "$Root\robots.txt" `
     "$Root\sitemap.xml" `
     "$Root\affiliate-products.json" `

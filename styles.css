@@ -2832,3 +2832,167 @@ a.add-to-cart {
         display: none;
     }
 }
+
+/* ====================== Consent banner ====================== */
+/* Injected by track.js. Gates the Meta Pixel only — first-party
+   tracking is essential and runs regardless (see privacy.html). */
+
+.consent {
+    position: fixed;
+    inset-inline: var(--sp-3);
+    bottom: var(--sp-3);
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3) var(--sp-5);
+    max-width: 62rem;
+    margin-inline: auto;
+    padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--bg-raised);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.consent__text {
+    flex: 1 1 22rem;
+    margin: 0;
+    font-size: var(--t-sm);
+    color: var(--ink-muted);
+}
+
+.consent__text a {
+    color: var(--brand-strong);
+    text-decoration: underline;
+}
+
+.consent__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+@media (max-width: 32rem) {
+    .consent__actions {
+        width: 100%;
+    }
+
+    .consent__actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
+/* ====================== Legal / content pages ====================== */
+
+.legal {
+    padding-block: var(--sp-7) var(--sp-8);
+}
+
+.legal__inner {
+    max-width: 46rem;
+    margin-inline: auto;
+}
+
+.legal h1 {
+    font-family: var(--font-display);
+    font-size: var(--t-h2);
+    margin-bottom: var(--sp-2);
+}
+
+.legal__updated {
+    color: var(--ink-muted);
+    font-size: var(--t-sm);
+    margin-bottom: var(--sp-6);
+}
+
+.legal h2 {
+    font-family: var(--font-display);
+    font-size: var(--t-h3);
+    margin-top: var(--sp-6);
+    margin-bottom: var(--sp-2);
+}
+
+.legal p,
+.legal li {
+    color: var(--ink-muted);
+    line-height: 1.75;
+}
+
+.legal p {
+    margin-bottom: var(--sp-3);
+}
+
+.legal ul {
+    margin: 0 0 var(--sp-3) var(--sp-5);
+    list-style: disc;
+}
+
+.legal li {
+    margin-bottom: var(--sp-2);
+}
+
+.legal a {
+    color: var(--brand-strong);
+    text-decoration: underline;
+}
+
+.legal table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: var(--sp-4);
+    font-size: var(--t-sm);
+}
+
+.legal th,
+.legal td {
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.legal th {
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* Honest empty state where reviews will go once there are real ones. */
+.reviews-empty {
+    max-width: 34rem;
+    margin-inline: auto;
+    padding: var(--sp-6);
+    border: 1px dashed var(--line-strong);
+    border-radius: 14px;
+    text-align: center;
+    color: var(--ink-muted);
+}
+
+.reviews-empty p {
+    margin-bottom: var(--sp-2);
+}
+
+.reviews-empty p:last-child {
+    margin-bottom: 0;
+}
+
+/* Policy links row shared by every sub-page footer. */
+.footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sp-2) var(--sp-5);
+    padding-bottom: var(--sp-4);
+    font-size: var(--t-sm);
+}
+
+.footer__links a {
+    color: inherit;
+    opacity: 0.85;
+}
+
+.footer__links a:hover {
+    opacity: 1;
+    text-decoration: underline;
+}

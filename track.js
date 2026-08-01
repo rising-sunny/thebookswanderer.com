@@ -90,10 +90,30 @@
         }
         window.tbwAttr = attr;
 
+        // --- Consent -------------------------------------------------------
+        // The self-hosted funnel above is first-party and stays on: it is what
+        // /admin/live runs on and it never leaves this domain. The Meta Pixel
+        // below is a third party, so under UK/EU rules it may not load until
+        // the visitor opts in. See privacy.html.
+        var CONSENT_KEY = "tbw_consent";
+
+        function consent() {
+            try {
+                return localStorage.getItem(CONSENT_KEY);
+            } catch (_) {
+                return null;
+            }
+        }
+
         // --- Meta Pixel ---------------------------------------------------
         var META_PIXEL_ID = "907494619068513";
+        var metaLoaded = false;
 
-        if (!window.fbq) {
+        function loadMetaPixel() {
+            if (metaLoaded || window.fbq) {
+                metaLoaded = true;
+                return;
+            }
             (function (f, b, e, v, n, t, s) {
                 n = f.fbq = function () {
                     n.callMethod
@@ -114,6 +134,11 @@
             // No fbq("track", "PageView") here on purpose: the pageview at the
             // bottom of this file drives it, so both systems fire from one call.
             window.fbq("init", META_PIXEL_ID);
+            metaLoaded = true;
+        }
+
+        if (consent() === "granted") {
+            loadMetaPixel();
         }
 
         // tbwTrack type -> Meta standard event. Types missing from this map stay
@@ -129,6 +154,7 @@
 
         function fireMeta(type, data) {
             try {
+                if (consent() !== "granted") return;
                 var name = META_EVENTS[type];
                 if (!name || !window.fbq) return;
                 var params = {};
@@ -201,6 +227,53 @@
 
         // Auto pageview (skip pure success shells that re-track purchase below)
         window.tbwTrack("pageview");
+
+        // --- Consent banner -------------------------------------------------
+        function decide(value) {
+            try {
+                localStorage.setItem(CONSENT_KEY, value);
+            } catch (_) {
+                /* private mode: the choice just won't persist */
+            }
+            var el = document.getElementById("tbw-consent");
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+            if (value === "granted") {
+                loadMetaPixel();
+                // The pageview above was suppressed for Meta, so replay it now
+                // that we are allowed to.
+                fireMeta("pageview", null);
+            }
+        }
+        window.tbwSetConsent = decide;
+
+        function showBanner() {
+            if (consent() || document.getElementById("tbw-consent")) return;
+            var bar = document.createElement("div");
+            bar.id = "tbw-consent";
+            bar.className = "consent";
+            bar.setAttribute("role", "dialog");
+            bar.setAttribute("aria-label", "Cookie choices");
+            bar.innerHTML =
+                '<p class="consent__text">We use our own cookies to run the shop. ' +
+                'With your consent we also use Meta cookies to measure our ads. ' +
+                'You can change your mind any time — see our ' +
+                '<a href="/privacy.html">privacy policy</a>.</p>' +
+                '<div class="consent__actions">' +
+                '<button type="button" class="btn btn--ghost btn--sm" data-consent="denied">Only essential</button>' +
+                '<button type="button" class="btn btn--sm" data-consent="granted">Accept all</button>' +
+                "</div>";
+            bar.addEventListener("click", function (ev) {
+                var btn = ev.target.closest("[data-consent]");
+                if (btn) decide(btn.getAttribute("data-consent"));
+            });
+            document.body.appendChild(bar);
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", showBanner);
+        } else {
+            showBanner();
+        }
     } catch (e) {
         /* fail silent */
     }

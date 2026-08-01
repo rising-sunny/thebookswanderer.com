@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=17">
+    <link rel="stylesheet" href="styles.css?v=23">
 </head>
 <body class="page-checkout">
 
@@ -44,13 +44,21 @@
 </main>
 
 <footer class="footer" style="margin-top:var(--sp-8)">
-    <div class="container footer__bottom" style="border:0;padding-top:var(--sp-5)">
-        <p class="footer__quote">“For those who wander between pages.”</p>
-        <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+    <div class="container">
+        <nav class="footer__links" aria-label="Footer">
+            <a href="/about.html">About</a>
+            <a href="/shipping-returns.html">Shipping &amp; returns</a>
+            <a href="/contact.html">Contact</a>
+            <a href="/privacy.html">Privacy &amp; cookies</a>
+        </nav>
+        <div class="footer__bottom" style="border:0;padding-top:var(--sp-5)">
+            <p class="footer__quote">“For those who wander between pages.”</p>
+            <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+        </div>
     </div>
 </footer>
 
-<script src="track.js?v=3" defer></script>
+<script src="track.js?v=4" defer></script>
 <script src="cart.js?v=2" defer></script>
 <script src="checkout.js?v=1" defer></script>
 </body>
