@@ -1,6 +1,10 @@
 /**
- * Self-hosted live tracking for /admin/live (The Books Wanderer).
- * No third-party scripts. Fail-silent if API is down.
+ * Live tracking for /admin/live (The Books Wanderer) + Meta Pixel bridge.
+ * Fail-silent if the API is down or the pixel fails to load.
+ *
+ * The self-hosted funnel is the source of truth: Meta standard events are
+ * derived from the same tbwTrack() calls, so a new event only has to be
+ * added in one place (see META_EVENTS below).
  */
 (function () {
     "use strict";
@@ -86,7 +90,70 @@
         }
         window.tbwAttr = attr;
 
+        // --- Meta Pixel ---------------------------------------------------
+        var META_PIXEL_ID = "907494619068513";
+
+        if (!window.fbq) {
+            (function (f, b, e, v, n, t, s) {
+                n = f.fbq = function () {
+                    n.callMethod
+                        ? n.callMethod.apply(n, arguments)
+                        : n.queue.push(arguments);
+                };
+                if (!f._fbq) f._fbq = n;
+                n.push = n;
+                n.loaded = true;
+                n.version = "2.0";
+                n.queue = [];
+                t = b.createElement(e);
+                t.async = true;
+                t.src = v;
+                s = b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t, s);
+            })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+            // No fbq("track", "PageView") here on purpose: the pageview at the
+            // bottom of this file drives it, so both systems fire from one call.
+            window.fbq("init", META_PIXEL_ID);
+        }
+
+        // tbwTrack type -> Meta standard event. Types missing from this map stay
+        // self-hosted only (cart_view has no sensible Meta standard equivalent).
+        var META_EVENTS = {
+            pageview: "PageView",
+            product_view: "ViewContent",
+            add_to_cart: "AddToCart",
+            checkout_start: "InitiateCheckout",
+            payment_redirect: "AddPaymentInfo",
+            purchase: "Purchase",
+        };
+
+        function fireMeta(type, data) {
+            try {
+                var name = META_EVENTS[type];
+                if (!name || !window.fbq) return;
+                var params = {};
+                if (data) {
+                    if (data.value != null) {
+                        params.value = data.value;
+                        params.currency = "USD";
+                    }
+                    if (data.product_slug) {
+                        params.content_ids = [data.product_slug];
+                        params.content_type = "product";
+                    }
+                    if (data.extra && data.extra.lines != null) {
+                        params.num_items = data.extra.lines;
+                    }
+                }
+                window.fbq("track", name, params);
+            } catch (_) {
+                /* pixel must never break the self-hosted funnel */
+            }
+        }
+
         window.tbwTrack = function (type, data) {
+            fireMeta(type, data);
+
             var body = {
                 type: type,
                 session_id: sid,

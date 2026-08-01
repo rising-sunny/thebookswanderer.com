@@ -230,10 +230,21 @@ Catálogo: productos CJ + picks Amazon afiliados; checkout PayPal; tracking prop
 ### Rellenar cuando se complete
 
 ```text
-META_PAGE_ID_TBW=
-META_AD_ACCOUNT_ID_TBW=
-META_PIXEL_ID_TBW=
-BM_ID=
+META_PAGE_ID_TBW=1200587819810293   # confirmado 2026-08-01, Esteban = Full access
+META_AD_ACCOUNT_ID_TBW=           # SIN RESOLVER — ver bloqueo abajo
+# Candidata era 1636887674121801 ("Stunning Revelations 3"), pero el 2026-08-01 se
+# comprobó que las TRES cuentas del BM estan DESACTIVADAS por método de pago:
+#   Stunning Revelations, Stunning Revelations 2, Stunning Revelations 3
+#   Banner: "We couldn't charge this ad account's payment method."
+# => No se puede publicar nada hasta arreglar facturación. Lectura vía MCP sí funciona.
+# => NO crear una 4ª cuenta antes de resolver el pago: heredaría la causa raíz.
+META_PIXEL_ID_TBW=907494619068513   # dataset "The Books Wanderer", creado 2026-08-01
+                                    # CAPI habilitado a nivel BM al crearlo (afecta tambien
+                                    # a los datasets existentes de stunning.revelations)
+BM_ID=                              # pendiente (sacar de la URL de business.facebook.com/settings)
+                                    # BM elegido por el dueño: "stunning.revelations" (decisión 2026-08-01).
+                                    # No se reutiliza el BM de MathRelaxing: TBW queda aislado,
+                                    # lo que además mantiene la atribución separada (ver §6).
 APP_ID_REUSED=
 MCP_CLIENT=          # grok | claude | cursor | other
 OAUTH_DONE_AT=
@@ -280,6 +291,32 @@ Al terminar, rellena la sección “Rellenar cuando se complete” del .md.
 
 Cuando exista Pixel TBW, un siguiente proyecto natural es: eventos Purchase desde el flujo PayPal (`server/main.py` checkout return) vía Conversions API, alineado con el pixel.
 
+### Implementación del píxel (2026-08-01)
+
+El píxel **no** se pegó en el `<head>` de cada página. Va dentro de `track.js`, que ya se carga
+en las 5 páginas HTML y en las dos plantillas SSR de `server/ssr.py`. Los eventos estándar de
+Meta se derivan de las llamadas `tbwTrack()` que el funnel self-hosted ya emitía, vía el mapa
+`META_EVENTS`. Añadir o renombrar un evento se hace en un solo sitio.
+
+| `tbwTrack()` | Evento Meta |
+|---|---|
+| `pageview` | `PageView` |
+| `product_view` | `ViewContent` |
+| `add_to_cart` | `AddToCart` |
+| `checkout_start` | `InitiateCheckout` |
+| `payment_redirect` | `AddPaymentInfo` |
+| `purchase` | `Purchase` |
+| `cart_view` | *(ninguno — no hay estándar equivalente)* |
+
+**Limitación conocida:** `purchase` se dispara en el retorno de PayPal (`checkout.js`) y ahí solo
+hay `order_id` y `status`, **no el importe**. Por tanto `Purchase` llega a Meta **sin `value`**:
+Meta registra la conversión pero no puede calcular ROAS. La solución correcta no es parchear el
+cliente, es el **Purchase server-side vía CAPI** descrito arriba, donde el importe real sí está
+disponible. Hasta entonces, optimizar por conversiones funciona; por valor, no.
+
+Nota: `track.js` decía "No third-party scripts" en su cabecera. Dejó de ser cierto con el píxel;
+el comentario se actualizó.
+
 ---
 
 ## 10. Contacto operativo
@@ -301,6 +338,14 @@ Cuando exista Pixel TBW, un siguiente proyecto natural es: eventos Purchase desd
   - Claude Code **no** tenía el MCP configurado → se añadió `.mcp.json` (project scope) en esta revisión.
   - `docs/` estaba sin commitear → se commitea en esta revisión.
   - Sección 7 (IDs reales) sigue vacía: nada de la parte 4.A (Business Manager) está hecho todavía.
+- **2026-08-01 — sesión guiada con el dueño.** Avances:
+  - Página TBW ya reclamada en el BM `stunning.revelations`, dueño con Full access. ✔
+  - Píxel/dataset `907494619068513` creado e **instalado en el sitio** vía `track.js` (ver §9).
+  - **Bloqueo encontrado:** las 3 cuentas de anuncios del BM estaban desactivadas por método de
+    pago. El dueño reporta haberlo solucionado; **falta confirmar** que la etiqueta roja
+    desapareció y que la cuenta admite publicar.
+  - Pendiente: OAuth del MCP (§4.B), BM ID, moneda de la cuenta, y conectar el dataset a la
+    cuenta de anuncios una vez esté activa.
 
 ---
 
