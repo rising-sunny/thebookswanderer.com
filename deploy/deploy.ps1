@@ -7,8 +7,19 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 
+# $ErrorActionPreference does not apply to native executables: a failing ssh or
+# scp sets $LASTEXITCODE but does not stop the script, so the deploy used to
+# print "Deploy done" in green even when the remote setup had failed and the
+# service was never restarted. Check after every native call instead.
+function Assert-Ok([string]$What) {
+    if ($LASTEXITCODE -ne 0) {
+        throw "$What failed (exit code $LASTEXITCODE)"
+    }
+}
+
 Write-Host "==> Directories" -ForegroundColor Cyan
 ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets $RemotePath/server/services $RemotePath/server/data $RemotePath/deploy"
+Assert-Ok "mkdir on remote"
 
 Write-Host "==> Static" -ForegroundColor Cyan
 scp -o BatchMode=yes `
@@ -29,17 +40,23 @@ scp -o BatchMode=yes `
     "$Root\affiliate-products.json" `
     "$Root\track.js" `
     "${HostName}:${RemotePath}/"
+Assert-Ok "static upload"
 # Google Search Console HTML verification (keep name stable)
 if (Test-Path "$Root\googleca903f9ea8fb8e9e.html") {
     scp -o BatchMode=yes "$Root\googleca903f9ea8fb8e9e.html" "${HostName}:${RemotePath}/"
+    Assert-Ok "search console file upload"
 }
 scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
+Assert-Ok "logo upload"
 if (Test-Path "$Root\assets\logo-email.png") {
     scp -o BatchMode=yes "$Root\assets\logo-email.png" "${HostName}:${RemotePath}/assets/"
+    Assert-Ok "email logo upload"
 }
 if (Test-Path "$Root\assets\products") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets/products"
+    Assert-Ok "mkdir assets/products"
     scp -o BatchMode=yes -r "$Root\assets\products\*" "${HostName}:${RemotePath}/assets/products/"
+    Assert-Ok "product images upload"
 }
 
 Write-Host "==> Server" -ForegroundColor Cyan
@@ -50,6 +67,7 @@ scp -o BatchMode=yes `
     "$Root\server\requirements.txt" `
     "$Root\server\.env.example" `
     "${HostName}:${RemotePath}/server/"
+Assert-Ok "server upload"
 scp -o BatchMode=yes `
     "$Root\server\services\__init__.py" `
     "$Root\server\services\cj.py" `
@@ -58,32 +76,46 @@ scp -o BatchMode=yes `
     "$Root\server\services\categories.py" `
     "$Root\server\services\email.py" `
     "${HostName}:${RemotePath}/server/services/"
+Assert-Ok "services upload"
 if (Test-Path "$Root\server\ssr.py") {
     scp -o BatchMode=yes "$Root\server\ssr.py" "${HostName}:${RemotePath}/server/"
+    Assert-Ok "ssr.py upload"
 }
 if (Test-Path "$Root\server\live.py") {
     scp -o BatchMode=yes "$Root\server\live.py" "${HostName}:${RemotePath}/server/"
+    Assert-Ok "live.py upload"
 }
 if (Test-Path "$Root\server\templates") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/templates"
+    Assert-Ok "mkdir server/templates"
     scp -o BatchMode=yes "$Root\server\templates\*.html" "${HostName}:${RemotePath}/server/templates/"
+    Assert-Ok "templates upload"
 }
 if (Test-Path "$Root\server\services\geo.py") {
     scp -o BatchMode=yes "$Root\server\services\geo.py" "${HostName}:${RemotePath}/server/services/"
+    Assert-Ok "geo.py upload"
 }
 if (Test-Path "$Root\server\services\live_events.py") {
     scp -o BatchMode=yes "$Root\server\services\live_events.py" "${HostName}:${RemotePath}/server/services/"
+    Assert-Ok "live_events.py upload"
 }
 if (Test-Path "$Root\server\scripts") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/scripts"
+    Assert-Ok "mkdir server/scripts"
     scp -o BatchMode=yes "$Root\server\scripts\*.py" "${HostName}:${RemotePath}/server/scripts/"
+    Assert-Ok "scripts upload"
 }
 
 scp -o BatchMode=yes "$PSScriptRoot\thebookswanderer.service" "${HostName}:/etc/systemd/system/thebookswanderer.service"
+Assert-Ok "systemd unit upload"
 scp -o BatchMode=yes "$PSScriptRoot\remote-setup.sh" "${HostName}:${RemotePath}/deploy/remote-setup.sh"
+Assert-Ok "remote-setup.sh upload"
 
 Write-Host "==> Setup on VPS" -ForegroundColor Cyan
-ssh -o BatchMode=yes $HostName "chmod +x $RemotePath/deploy/remote-setup.sh; bash $RemotePath/deploy/remote-setup.sh"
+# sed guards against a CRLF checkout reaching the VPS: bash rejects a shebang
+# ending in \r. .gitattributes pins these files to LF, this is the belt.
+ssh -o BatchMode=yes $HostName "sed -i 's/\r`$//' $RemotePath/deploy/remote-setup.sh; chmod +x $RemotePath/deploy/remote-setup.sh; bash $RemotePath/deploy/remote-setup.sh"
+Assert-Ok "remote setup"
 
 Write-Host ""
 Write-Host "Deploy done. Health: https://thebookswanderer.com/api/health" -ForegroundColor Green
