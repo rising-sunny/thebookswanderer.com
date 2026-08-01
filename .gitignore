@@ -13,3 +13,6 @@ pdp-check.png
 pdp-mobile-fixed.png
 _live_product.js
 server/scripts/_tmp_*.py
+
+# Claude Code local settings (per-machine, not shared)
+.claude/settings.local.json
