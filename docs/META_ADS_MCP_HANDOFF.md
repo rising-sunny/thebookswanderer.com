@@ -232,15 +232,14 @@ Catálogo: productos CJ + picks Amazon afiliados; checkout PayPal; tracking prop
 
 ```text
 META_PAGE_ID_TBW=1200587819810293   # confirmado 2026-08-01, Esteban = Full access
-META_AD_ACCOUNT_ID_TBW=1636887674121801       # usar como act_1636887674121801
+META_AD_ACCOUNT_ID_TBW=1636887674121801       # "Stunning Revelations 3", usar como
+                                              # act_1636887674121801
 META_AD_ACCOUNT_ID_TBW_ALT=120243021519890256 # mismo activo, formato de ID nuevo que
                                               # muestra el History del dataset
-# Candidata era 1636887674121801 ("Stunning Revelations 3"), pero el 2026-08-01 se
-# comprobó que las TRES cuentas del BM estan DESACTIVADAS por método de pago:
-#   Stunning Revelations, Stunning Revelations 2, Stunning Revelations 3
-#   Banner: "We couldn't charge this ad account's payment method."
-# => No se puede publicar nada hasta arreglar facturación. Lectura vía MCP sí funciona.
-# => NO crear una 4ª cuenta antes de resolver el pago: heredaría la causa raíz.
+# Cuenta REUTILIZADA, no dedicada a TBW. Durante esta sesión las tres cuentas
+# "Stunning Revelations" estaban desactivadas por método de pago; el dueño lo resolvió y
+# el MCP confirma que la 3 está ACTIVE. Separación frente a las otras marcas: píxel propio
+# + prefijo "TBW | " en los nombres de campaña.
 META_PIXEL_ID_TBW=907494619068513   # dataset "The Books Wanderer", creado 2026-08-01
                                     # CAPI habilitado a nivel BM al crearlo (afecta tambien
                                     # a los datasets existentes de stunning.revelations)
@@ -254,10 +253,12 @@ BM_ID=614062214558484               # business portfolio "stunning.revelations"
                                     # BM elegido por el dueño (decisión 2026-08-01).
                                     # No se reutiliza el BM de MathRelaxing: TBW queda aislado,
                                     # lo que además mantiene la atribución separada (ver §6).
-APP_ID_REUSED=
-MCP_CLIENT=          # grok | claude | cursor | other
-OAUTH_DONE_AT=
-NOTES=
+APP_ID_REUSED=n/a                   # no hizo falta app propia: se usó el MCP oficial de
+                                    # Meta con su flujo OAuth, sin META_APP_SECRET local.
+NOTES=Píxel verificado de punta a punta (tr/ -> HTTP 200). Purchase llega SIN value hasta
+      que se implemente CAPI server-side. Cuenta en CLP y tienda en USD: el ROAS pasa por
+      conversión. 7 de 10 cuentas del portfolio en UNSETTLED. Grok quedó sin autenticar:
+      el OAuth se hizo en el CLI de Claude instalado por npm.
 ```
 
 ---

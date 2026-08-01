@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "meta-ads"
+  ],
+  "enableAllProjectMcpServers": true
+}
