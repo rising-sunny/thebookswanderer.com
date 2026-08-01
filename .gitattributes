@@ -1,0 +1,8 @@
+# core.autocrlf=true on Windows checkouts would give these CRLF endings, and
+# they are copied verbatim to the Linux VPS by deploy/deploy.ps1. bash rejects
+# a shebang line ending in \r ("set: - invalid option"), so pin them to LF.
+* text=auto
+
+*.sh text eol=lf
+*.service text eol=lf
+*.conf text eol=lf
