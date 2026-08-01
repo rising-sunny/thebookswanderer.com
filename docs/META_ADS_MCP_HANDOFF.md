@@ -226,7 +226,7 @@ Catálogo: productos CJ + picks Amazon afiliados; checkout PayPal; tracking prop
 - [x] Pixel TBW creado, instalado en el sitio y enlazado a la cuenta de anuncios.
       Ad account: reutilizada (`Stunning Revelations 3`), no dedicada — decisión consciente.
 - [x] Prueba de lectura OK: 10 ad accounts y 1 página listadas sin modificar nada.
-- [x] Documento actualizado con IDs reales (falta solo `BM_ID`).
+- [x] Documento actualizado con IDs reales. **Handoff completo.**
 
 ### Rellenar cuando se complete
 
@@ -250,8 +250,8 @@ MCP_CLIENT=claude                   # CLI de npm (%APPDATA%\npm\claude.cmd), NO 
                                     # escritorio: son instalaciones distintas y el token
                                     # OAuth vive solo en la de npm.
 OAUTH_DONE_AT=2026-08-01            # scope concedido: solo la Pagina The Books Wanderer
-BM_ID=                              # pendiente (sacar de la URL de business.facebook.com/settings)
-                                    # BM elegido por el dueño: "stunning.revelations" (decisión 2026-08-01).
+BM_ID=614062214558484               # business portfolio "stunning.revelations"
+                                    # BM elegido por el dueño (decisión 2026-08-01).
                                     # No se reutiliza el BM de MathRelaxing: TBW queda aislado,
                                     # lo que además mantiene la atribución separada (ver §6).
 APP_ID_REUSED=
