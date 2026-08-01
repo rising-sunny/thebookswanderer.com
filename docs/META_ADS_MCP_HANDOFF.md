@@ -231,7 +231,9 @@ Catálogo: productos CJ + picks Amazon afiliados; checkout PayPal; tracking prop
 
 ```text
 META_PAGE_ID_TBW=1200587819810293   # confirmado 2026-08-01, Esteban = Full access
-META_AD_ACCOUNT_ID_TBW=           # SIN RESOLVER — ver bloqueo abajo
+META_AD_ACCOUNT_ID_TBW=1636887674121801       # usar como act_1636887674121801
+META_AD_ACCOUNT_ID_TBW_ALT=120243021519890256 # mismo activo, formato de ID nuevo que
+                                              # muestra el History del dataset
 # Candidata era 1636887674121801 ("Stunning Revelations 3"), pero el 2026-08-01 se
 # comprobó que las TRES cuentas del BM estan DESACTIVADAS por método de pago:
 #   Stunning Revelations, Stunning Revelations 2, Stunning Revelations 3
@@ -344,8 +346,18 @@ el comentario se actualizó.
   - **Bloqueo encontrado:** las 3 cuentas de anuncios del BM estaban desactivadas por método de
     pago. El dueño reporta haberlo solucionado; **falta confirmar** que la etiqueta roja
     desapareció y que la cuenta admite publicar.
-  - Pendiente: OAuth del MCP (§4.B), BM ID, moneda de la cuenta, y conectar el dataset a la
-    cuenta de anuncios una vez esté activa.
+  - Pendiente: OAuth del MCP (§4.B), BM ID, moneda de la cuenta.
+  - Píxel **desplegado a producción** y verificado en la web en vivo: `fbevents.js` carga,
+    `fbq` inicializa y Meta devuelve la config de `signals/config/907494619068513`. El envío
+    del beacon a `facebook.com/tr` no se pudo observar porque el navegador de la sesión
+    bloquea ese endpoint; falta confirmarlo en **Test events** (no en Overview, que va con
+    hasta 30 min de retraso, ni en History, que solo registra cambios de configuración).
+  - Dataset **ya asignado** a la cuenta `Stunning Revelations 3`. ✔
+  - Se generó un **token de Conversions API** + system user. El token NO se guarda en este
+    repo ni en el chat: va a `server/.env` del VPS (gitignoreado) cuando se implemente CAPI.
+  - ⚠️ **"Automatic page and product detail" quedó activado** en el dataset. Puede duplicar o
+    inferir eventos que ya se emiten explícitamente desde `track.js`, con `content_ids` que
+    no coincidan con los slugs propios. Revisar en Test events y desactivar si estorba.
 
 ---
 
