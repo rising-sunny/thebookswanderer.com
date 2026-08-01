@@ -1,0 +1,11 @@
+# https://thebookswanderer.com
+User-agent: *
+Allow: /
+
+# Storefront only — API/admin are not for SEO
+Disallow: /api/
+Disallow: /admin/
+Disallow: /checkout.html
+Disallow: /cart.html
+
+Sitemap: https://thebookswanderer.com/sitemap.xml

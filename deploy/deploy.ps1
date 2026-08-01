@@ -24,8 +24,19 @@ scp -o BatchMode=yes `
     "$Root\affiliate-data.js" `
     "$Root\pick.html" `
     "$Root\pick.js" `
+    "$Root\robots.txt" `
+    "$Root\sitemap.xml" `
+    "$Root\affiliate-products.json" `
+    "$Root\track.js" `
     "${HostName}:${RemotePath}/"
+# Google Search Console HTML verification (keep name stable)
+if (Test-Path "$Root\googleca903f9ea8fb8e9e.html") {
+    scp -o BatchMode=yes "$Root\googleca903f9ea8fb8e9e.html" "${HostName}:${RemotePath}/"
+}
 scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
+if (Test-Path "$Root\assets\logo-email.png") {
+    scp -o BatchMode=yes "$Root\assets\logo-email.png" "${HostName}:${RemotePath}/assets/"
+}
 if (Test-Path "$Root\assets\products") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets/products"
     scp -o BatchMode=yes -r "$Root\assets\products\*" "${HostName}:${RemotePath}/assets/products/"
@@ -45,7 +56,24 @@ scp -o BatchMode=yes `
     "$Root\server\services\paypal.py" `
     "$Root\server\services\pricing.py" `
     "$Root\server\services\categories.py" `
+    "$Root\server\services\email.py" `
     "${HostName}:${RemotePath}/server/services/"
+if (Test-Path "$Root\server\ssr.py") {
+    scp -o BatchMode=yes "$Root\server\ssr.py" "${HostName}:${RemotePath}/server/"
+}
+if (Test-Path "$Root\server\live.py") {
+    scp -o BatchMode=yes "$Root\server\live.py" "${HostName}:${RemotePath}/server/"
+}
+if (Test-Path "$Root\server\templates") {
+    ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/templates"
+    scp -o BatchMode=yes "$Root\server\templates\*.html" "${HostName}:${RemotePath}/server/templates/"
+}
+if (Test-Path "$Root\server\services\geo.py") {
+    scp -o BatchMode=yes "$Root\server\services\geo.py" "${HostName}:${RemotePath}/server/services/"
+}
+if (Test-Path "$Root\server\services\live_events.py") {
+    scp -o BatchMode=yes "$Root\server\services\live_events.py" "${HostName}:${RemotePath}/server/services/"
+}
 if (Test-Path "$Root\server\scripts") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/scripts"
     scp -o BatchMode=yes "$Root\server\scripts\*.py" "${HostName}:${RemotePath}/server/scripts/"

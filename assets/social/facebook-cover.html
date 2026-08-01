@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FB Cover · The Books Wanderer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1640px;
+    height: 624px;
+    overflow: hidden;
+    background: #f0e8d6;
+  }
+  .cover {
+    width: 1640px;
+    height: 624px;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 70% 90% at 88% 55%, rgba(43, 82, 64, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 80% at 12% 40%, rgba(193, 145, 47, 0.10) 0%, transparent 50%),
+      linear-gradient(135deg, #fdfaf3 0%, #f8f2e5 42%, #efe6d0 72%, #e8dfc8 100%);
+    font-family: Georgia, "Times New Roman", "Palatino Linotype", serif;
+    color: #1b3728;
+  }
+
+  /* subtle paper grain via layered noise-ish dots (pure CSS) */
+  .cover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(27,55,40,0.03) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 70% 60%, rgba(27,55,40,0.025) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 40% 80%, rgba(169,124,34,0.04) 0 1px, transparent 1.5px);
+    background-size: 18px 18px, 22px 22px, 16px 16px;
+  }
+
+  .gold-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #a97c22 0%, #e2c47c 45%, #c1912f 55%, #a97c22 100%);
+    z-index: 5;
+  }
+
+  /* decorative leaf shapes (right side) */
+  .leaves {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 48%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .leaf {
+    position: absolute;
+    width: 28px; height: 42px;
+    border-radius: 0 80% 0 80%;
+    transform-origin: center;
+    opacity: 0.85;
+  }
+  .leaf.l1 { background: #c4501e; right: 18%; top: 14%; transform: rotate(28deg); }
+  .leaf.l2 { background: #a97c22; right: 28%; top: 22%; width: 22px; height: 34px; transform: rotate(-18deg); opacity: 0.7; }
+  .leaf.l3 { background: #8b2f27; right: 12%; top: 38%; width: 24px; height: 36px; transform: rotate(52deg); opacity: 0.75; }
+  .leaf.l4 { background: #2b5240; right: 22%; top: 48%; width: 20px; height: 30px; transform: rotate(-40deg); opacity: 0.55; }
+  .leaf.l5 { background: #d9662f; right: 34%; top: 58%; width: 26px; height: 38px; transform: rotate(12deg); opacity: 0.7; }
+  .leaf.l6 { background: #c1912f; right: 8%; top: 62%; width: 18px; height: 28px; transform: rotate(-55deg); opacity: 0.65; }
+  .leaf.l7 { background: #1b3728; right: 26%; top: 72%; width: 22px; height: 32px; transform: rotate(35deg); opacity: 0.5; }
+  .leaf.l8 { background: #a63a2f; right: 40%; top: 18%; width: 16px; height: 24px; transform: rotate(-25deg); opacity: 0.55; }
+
+  /* soft green panel accent on the right */
+  .panel-right {
+    position: absolute;
+    right: -80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 40%, rgba(226, 196, 124, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 55% 55%, #2b5240 0%, #1b3728 55%, #10241a 100%);
+    opacity: 0.92;
+    z-index: 0;
+  }
+  .panel-right::after {
+    content: "";
+    position: absolute;
+    inset: 28px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(226, 196, 124, 0.35);
+  }
+
+  /* open book silhouette (CSS shapes) on the green orb */
+  .book {
+    position: absolute;
+    right: 120px;
+    top: 50%;
+    transform: translateY(-46%);
+    width: 280px;
+    height: 180px;
+    z-index: 2;
+  }
+  .book .page {
+    position: absolute;
+    bottom: 0;
+    width: 48%;
+    height: 100%;
+    background: linear-gradient(180deg, #fdfaf3 0%, #f0e8d6 100%);
+    border: 1px solid rgba(27, 55, 40, 0.12);
+    box-shadow: 0 8px 20px rgba(16, 36, 26, 0.18);
+  }
+  .book .page.left {
+    left: 0;
+    border-radius: 8px 0 0 10px;
+    transform: perspective(400px) rotateY(12deg);
+    transform-origin: right center;
+  }
+  .book .page.right {
+    right: 0;
+    border-radius: 0 8px 10px 0;
+    transform: perspective(400px) rotateY(-12deg);
+    transform-origin: left center;
+  }
+  .book .spine {
+    position: absolute;
+    left: 50%;
+    top: 6%;
+    bottom: 0;
+    width: 10px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, #5c4030, #8b6914, #5c4030);
+    border-radius: 2px;
+    z-index: 2;
+  }
+  .book .line {
+    position: absolute;
+    left: 14%;
+    right: 14%;
+    height: 2px;
+    background: rgba(27, 55, 40, 0.08);
+    border-radius: 1px;
+  }
+  .book .page.left .line:nth-child(1) { top: 28%; }
+  .book .page.left .line:nth-child(2) { top: 40%; }
+  .book .page.left .line:nth-child(3) { top: 52%; }
+  .book .page.left .line:nth-child(4) { top: 64%; width: 55%; }
+  .book .page.right .line:nth-child(1) { top: 28%; }
+  .book .page.right .line:nth-child(2) { top: 40%; }
+  .book .page.right .line:nth-child(3) { top: 52%; }
+  .book .page.right .line:nth-child(4) { top: 64%; width: 50%; }
+
+  .glow {
+    position: absolute;
+    right: 160px;
+    top: 70px;
+    width: 220px;
+    height: 160px;
+    background: radial-gradient(ellipse at center, rgba(226, 196, 124, 0.55) 0%, transparent 70%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* left brand block */
+  .brand {
+    position: absolute;
+    left: 72px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    z-index: 4;
+    max-width: 920px;
+  }
+  .logo-wrap {
+    flex-shrink: 0;
+    width: 196px;
+    height: 196px;
+    border-radius: 50%;
+    background: #fffdf8;
+    border: 3px solid #c1912f;
+    box-shadow:
+      0 0 0 6px rgba(248, 242, 229, 0.9),
+      0 0 0 8px rgba(43, 82, 64, 0.25),
+      0 14px 32px rgba(27, 55, 40, 0.12);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-wrap img {
+    width: 188px;
+    height: 188px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+  }
+  .copy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .eyebrow {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #a97c22;
+  }
+  h1 {
+    font-size: 58px;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: 0.01em;
+    color: #1b3728;
+  }
+  .rule {
+    width: 96px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #c1912f, #e2c47c);
+    margin: 4px 0 2px;
+  }
+  .tag {
+    font-size: 22px;
+    font-style: italic;
+    color: #2b5240;
+    line-height: 1.35;
+    max-width: 520px;
+  }
+  .url {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #5c6157;
+    margin-top: 6px;
+  }
+
+  .corner {
+    position: absolute;
+    left: 28px;
+    bottom: 22px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(92, 97, 87, 0.55);
+    z-index: 4;
+  }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <div class="gold-bar"></div>
+    <div class="panel-right"></div>
+    <div class="glow"></div>
+    <div class="leaves">
+      <span class="leaf l1"></span>
+      <span class="leaf l2"></span>
+      <span class="leaf l3"></span>
+      <span class="leaf l4"></span>
+      <span class="leaf l5"></span>
+      <span class="leaf l6"></span>
+      <span class="leaf l7"></span>
+      <span class="leaf l8"></span>
+    </div>
+    <div class="book" aria-hidden="true">
+      <div class="page left">
+        <span class="line"></span>
+        <span class="line"></span>
+        <span class="line"></span>
+        <span class="line"></span>
+      </div>
+      <div class="spine"></div>
+      <div class="page right">
+        <span class="line"></span>
+        <span class="line"></span>
+        <span class="line"></span>
+        <span class="line"></span>
+      </div>
+    </div>
+
+    <div class="brand">
+      <div class="logo-wrap">
+        <img src="../logo.png" alt="The Books Wanderer" width="188" height="188">
+      </div>
+      <div class="copy">
+        <div class="eyebrow">Literary boutique</div>
+        <h1>The Books Wanderer</h1>
+        <div class="rule"></div>
+        <p class="tag">For those who wander between pages.</p>
+        <p class="url">thebookswanderer.com</p>
+      </div>
+    </div>
+    <div class="corner">Reading accessories · worldwide</div>
+  </div>
+</body>
+</html>

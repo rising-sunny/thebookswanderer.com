@@ -161,8 +161,13 @@
 
     function boot() {
         const A = window.TBW_AFFILIATE;
-        if (!A) {
-            paintEmpty("Affiliate catalog failed to load.");
+        if (!A || !A.ready) {
+            // Wait for async affiliate-products.json (or SSR embed)
+            window.addEventListener("tbw-affiliate-ready", boot, { once: true });
+            // If SSR already painted full content, keep it until hydrate
+            if (root && root.querySelector("[data-ssr]")) {
+                return;
+            }
             return;
         }
         if (footerAff) footerAff.textContent = A.SITE_DISCLOSURE;
@@ -171,12 +176,16 @@
 
         const slug = querySlug();
         if (!slug) {
-            paintEmpty("Missing product. Browse our e-reader picks on the home page.");
+            if (!root.querySelector("[data-ssr]")) {
+                paintEmpty("Missing product. Browse our e-reader picks on the home page.");
+            }
             return;
         }
         const p = A.bySlug(slug);
         if (!p) {
-            paintEmpty("We could not find that pick.");
+            if (!root.querySelector("[data-ssr]")) {
+                paintEmpty("We could not find that pick.");
+            }
             return;
         }
         render(p, A);

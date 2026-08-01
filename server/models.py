@@ -190,3 +190,27 @@ class OrderItem(Base):
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
 
     order: Mapped["Order"] = relationship(back_populates="items")
+
+
+class LiveEvent(Base):
+    """Self-hosted analytics event for /admin/live dashboard."""
+
+    __tablename__ = "live_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    referrer_domain: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    country_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    ua_class: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    product_slug: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    value_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)
+    medium: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    campaign: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    payload: Mapped[str | None] = mapped_column(Text, nullable=True)

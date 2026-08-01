@@ -431,6 +431,16 @@
                 throw new Error(msg);
             }
             if (!data.checkout_url) throw new Error("No PayPal URL returned");
+            try {
+                if (window.tbwTrack) {
+                    window.tbwTrack("payment_redirect", {
+                        value: Number(data.grand_total || quote?.grand_total) || undefined,
+                        extra: { order_id: data.order_id },
+                    });
+                }
+            } catch (_) {
+                /* ignore */
+            }
             window.location.href = data.checkout_url;
         } catch (err) {
             console.warn(err);
@@ -448,6 +458,20 @@
         if (status && STATUS_COPY[status]) {
             root.innerHTML = bannerHtml();
             Cart.paintBadge();
+            try {
+                if (
+                    window.tbwTrack &&
+                    (status === "success" ||
+                        status === "already_paid" ||
+                        status === "paid_cj_pending")
+                ) {
+                    window.tbwTrack("purchase", {
+                        extra: { order_id: orderId || null, status },
+                    });
+                }
+            } catch (_) {
+                /* ignore */
+            }
             return;
         }
 
@@ -456,6 +480,16 @@
             await Promise.all([loadDestinations(), loadPreview()]);
             renderForm();
             Cart.paintBadge();
+            try {
+                if (window.tbwTrack) {
+                    window.tbwTrack("checkout_start", {
+                        value: Number(preview?.product_total) || 0,
+                        extra: { lines: (preview?.items || []).length },
+                    });
+                }
+            } catch (_) {
+                /* ignore */
+            }
         } catch (err) {
             console.warn(err);
             root.innerHTML = `<p class="catalog-empty">Could not load checkout. <a href="/cart.html">Back to cart</a></p>`;

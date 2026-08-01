@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>History · The Books Wanderer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-900: #10241a;
+    --green-800: #1b3728;
+    --green-700: #2b5240;
+    --gold-600: #a97c22;
+    --gold-500: #c1912f;
+    --gold-300: #e2c47c;
+    --cream-50: #fdfaf3;
+    --cream-100: #f8f2e5;
+    --cream-200: #f0e8d6;
+    --border: #e0d4b8;
+    --text: #24291f;
+    --muted: #5c6157;
+    --good: #2b5240;
+    --bad: #a63a2f;
+    --panel: #fffdf8;
+    --panel-2: #fdfaf3;
+    --font-display: "Playfair Display", Georgia, serif;
+    --font-body: "Karla", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: linear-gradient(180deg, #f8f2e5 0%, #efe6d0 100%);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px; line-height: 1.45; min-height: 100vh;
+  }
+  a { color: var(--green-700); text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; color: var(--green-900); }
+  .top-gold {
+    height: 4px;
+    background: linear-gradient(90deg, #c1912f, #e8c56a, #c1912f);
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header .brand img {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid #e8dfc8; background: var(--cream-100);
+  }
+  header h1 {
+    font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; color: var(--green-800);
+  }
+  header .nav { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--muted); }
+  header .nav a { color: var(--muted); }
+  header .nav a.active { color: var(--gold-600); }
+
+  .range-bar {
+    display: flex; gap: 8px; padding: 14px 24px; background: var(--cream-50);
+    border-bottom: 1px solid var(--border); align-items: center; flex-wrap: wrap;
+  }
+  .range-bar .label {
+    color: var(--gold-600); font-size: 10px; margin-right: 8px;
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;
+  }
+  .range-bar button {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px;
+    font-family: inherit; font-weight: 600;
+  }
+  .range-bar button:hover { border-color: var(--gold-500); }
+  .range-bar button.active {
+    background: var(--green-700); color: #f8f2e5; border-color: var(--green-700); font-weight: 700;
+  }
+
+  main {
+    display: grid; gap: 14px; padding: 16px 16px 28px;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    max-width: 1280px; margin: 0 auto;
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; box-shadow: 0 6px 18px rgba(27, 55, 40, 0.04);
+  }
+  .kpi .label {
+    color: var(--gold-600); font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.12em; font-weight: 700;
+  }
+  .kpi .value {
+    font-family: var(--font-display); font-size: 1.75rem; font-weight: 600;
+    margin-top: 6px; color: var(--green-800);
+  }
+  .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .kpi .delta {
+    display: inline-block; padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; margin-left: 4px;
+  }
+  .kpi .delta.up { background: #dfece3; color: var(--green-700); }
+  .kpi .delta.down { background: #f8e8e6; color: var(--bad); }
+  .kpi .delta.flat { background: var(--cream-200); color: var(--muted); }
+
+  section {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 6px 18px rgba(27, 55, 40, 0.04);
+  }
+  section h2 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--gold-600); padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--panel-2); font-weight: 700;
+  }
+  .chart-wrap { padding: 16px; height: 320px; position: relative; }
+  .chart-wrap.small { height: 220px; }
+  .stretch-2 { grid-column: span 2; }
+  .stretch-4 { grid-column: 1 / -1; }
+
+  ul.simple { list-style: none; max-height: 360px; overflow-y: auto; }
+  ul.simple li {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 9px 16px; border-bottom: 1px solid #efe6d0; font-size: 13px;
+  }
+  ul.simple li:last-child { border-bottom: none; }
+  ul.simple li .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.simple li .count {
+    color: var(--green-800); font-variant-numeric: tabular-nums; flex-shrink: 0; font-weight: 700;
+  }
+  ul.simple .flag { display: inline-block; margin-right: 4px; }
+
+  table.products { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.products th {
+    color: var(--gold-600); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left;
+    background: var(--panel-2); font-weight: 700;
+  }
+  table.products td { padding: 10px 16px; border-bottom: 1px solid #efe6d0; }
+  table.products td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.products tr:last-child td { border-bottom: none; }
+  table.products code {
+    font-size: 12px; background: var(--cream-100); padding: 2px 6px;
+    border-radius: 4px; border: 1px solid var(--border); color: var(--green-800);
+  }
+
+  .empty, .loading {
+    padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13px;
+    font-style: italic; font-family: var(--font-display);
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr 1fr; }
+    .stretch-2, .stretch-4 { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    main { grid-template-columns: 1fr; }
+    .stretch-2, .stretch-4 { grid-column: 1 / -1; }
+    .chart-wrap { height: 220px; }
+    header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="top-gold"></div>
+<header>
+  <div class="brand">
+    <img src="/assets/logo-email.png" alt="" width="40" height="40">
+    <h1>History · The Books Wanderer</h1>
+  </div>
+  <div class="nav">
+    <a href="/admin/live">← Live view</a>
+    <a href="/admin/live/history" class="active">History</a>
+    <a href="/admin/live/logout">Logout</a>
+  </div>
+</header>
+
+<div class="range-bar">
+  <span class="label">Range</span>
+  <button data-days="7">7 days</button>
+  <button data-days="30" class="active">30 days</button>
+  <button data-days="90">90 days</button>
+  <button data-days="365">1 year</button>
+  <span style="margin-left:auto; color: var(--muted); font-size: 12px;">
+    <span id="period-label">—</span> · <span id="status">loading…</span>
+  </span>
+</div>
+
+<main>
+  <div class="kpi"><div class="label">Pageviews</div><div class="value" id="kpi-pv">—</div><div class="sub"><span class="delta" id="dl-pv">—</span> vs previous</div></div>
+  <div class="kpi"><div class="label">Sessions</div><div class="value" id="kpi-ses">—</div><div class="sub"><span class="delta" id="dl-ses">—</span> vs previous</div></div>
+  <div class="kpi"><div class="label">Purchases</div><div class="value" id="kpi-pur">—</div><div class="sub"><span class="delta" id="dl-pur">—</span> vs previous</div></div>
+  <div class="kpi"><div class="label">Revenue</div><div class="value" id="kpi-rev">—</div><div class="sub"><span class="delta" id="dl-rev">—</span> vs previous</div></div>
+
+  <section class="stretch-4">
+    <h2>Traffic per day</h2>
+    <div class="chart-wrap"><canvas id="chart-traffic"></canvas></div>
+  </section>
+
+  <section class="stretch-2">
+    <h2>Revenue per day</h2>
+    <div class="chart-wrap small"><canvas id="chart-revenue"></canvas></div>
+  </section>
+  <section class="stretch-2">
+    <h2>Activity by hour (last 24h)</h2>
+    <div class="chart-wrap small"><canvas id="chart-hourly"></canvas></div>
+  </section>
+
+  <section class="stretch-2">
+    <h2>Top sources</h2>
+    <ul class="simple" id="top-sources"><li class="loading">—</li></ul>
+  </section>
+  <section class="stretch-2">
+    <h2>Top campaigns</h2>
+    <ul class="simple" id="top-campaigns"><li class="loading">—</li></ul>
+  </section>
+
+  <section class="stretch-2">
+    <h2>Top pages</h2>
+    <ul class="simple" id="top-pages"><li class="loading">—</li></ul>
+  </section>
+  <section class="stretch-2">
+    <h2>Top countries</h2>
+    <ul class="simple" id="top-countries"><li class="loading">—</li></ul>
+  </section>
+
+  <section class="stretch-4">
+    <h2>Top products</h2>
+    <table class="products">
+      <thead><tr>
+        <th>Product</th>
+        <th class="num">Views</th>
+        <th class="num">Add to cart</th>
+        <th class="num">Sales</th>
+        <th class="num">Revenue</th>
+      </tr></thead>
+      <tbody id="top-products"><tr><td colspan="5" class="loading">—</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v) => Number(v).toLocaleString();
+  const fmtMoney = (v) => v == null ? '—' : '$' + Number(v).toFixed(2);
+
+  Chart.defaults.color = '#5c6157';
+  Chart.defaults.borderColor = '#e0d4b8';
+  Chart.defaults.font.family = 'Karla, system-ui, sans-serif';
+
+  let charts = {};
+
+  function buildCharts(data) {
+    const labels = data.daily.map(d => d.date.slice(5));
+    const grid = 'rgba(224, 212, 184, 0.55)';
+
+    if (charts.traffic) charts.traffic.destroy();
+    charts.traffic = new Chart($('chart-traffic').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: 'bar', label: 'Pageviews',
+            data: data.daily.map(d => d.pageviews),
+            backgroundColor: 'rgba(43, 82, 64, 0.28)',
+            borderColor: '#2b5240', borderWidth: 1,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line', label: 'Sessions',
+            data: data.daily.map(d => d.sessions),
+            borderColor: '#c1912f', backgroundColor: 'rgba(193, 145, 47, 0.12)',
+            tension: 0.25, pointRadius: 3, pointHoverRadius: 5, fill: true,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line', label: 'Purchases',
+            data: data.daily.map(d => d.purchases),
+            borderColor: '#1b3728', backgroundColor: '#1b3728',
+            tension: 0.2, pointRadius: 4, pointHoverRadius: 6, showLine: false,
+            yAxisID: 'y',
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: grid } },
+          x: { grid: { display: false } },
+        },
+        interaction: { mode: 'index', intersect: false },
+      },
+    });
+
+    if (charts.revenue) charts.revenue.destroy();
+    charts.revenue = new Chart($('chart-revenue').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Revenue (USD)',
+          data: data.daily.map(d => d.revenue),
+          backgroundColor: 'rgba(193, 145, 47, 0.45)',
+          borderColor: '#a97c22', borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => '$' + Number(ctx.parsed.y).toFixed(2) } },
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: grid },
+               ticks: { callback: (v) => '$' + v } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+
+    if (charts.hourly) charts.hourly.destroy();
+    charts.hourly = new Chart($('chart-hourly').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: data.hourly.map(h => h.hour + 'h'),
+        datasets: [{
+          label: 'Pageviews',
+          data: data.hourly.map(h => h.pageviews),
+          backgroundColor: 'rgba(27, 55, 40, 0.35)',
+          borderColor: '#1b3728', borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: grid } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  function setKPI(id, value, delta) {
+    $(id).textContent = value;
+    const dEl = $('dl-' + id.split('-')[1]);
+    if (!dEl) return;
+    if (delta == null || delta.pct == null) {
+      dEl.textContent = '—'; dEl.className = 'delta flat'; return;
+    }
+    const sign = delta.pct > 0 ? '↑' : (delta.pct < 0 ? '↓' : '·');
+    dEl.textContent = sign + ' ' + Math.abs(delta.pct).toFixed(1) + '%';
+    dEl.className = 'delta ' + delta.dir;
+  }
+
+  function renderList(targetId, items, labelKey, emptyMsg) {
+    const ul = $(targetId);
+    if (!items || !items.length) { ul.innerHTML = '<li class="empty">' + emptyMsg + '</li>'; return; }
+    ul.innerHTML = items.map(it => {
+      const prefix = it.emoji ? '<span class="flag">' + it.emoji + '</span>'
+                   : it.flag  ? '<span class="flag">' + it.flag + '</span>'
+                   : '';
+      const lbl = it[labelKey] || '—';
+      return '<li><span class="name">' + prefix + lbl + '</span><span class="count">' + fmt(it.count) + '</span></li>';
+    }).join('');
+  }
+
+  function renderProducts(items) {
+    const tbody = $('top-products');
+    if (!items || !items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No product activity in this period</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map(p => `
+      <tr>
+        <td><code>${p.slug}</code></td>
+        <td class="num">${fmt(p.views)}</td>
+        <td class="num">${fmt(p.carts)}</td>
+        <td class="num">${fmt(p.sales)}</td>
+        <td class="num">${fmtMoney(p.revenue)}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function load(days) {
+    $('status').textContent = 'loading…';
+    document.querySelectorAll('.range-bar button').forEach(b =>
+      b.classList.toggle('active', Number(b.dataset.days) === days));
+    try {
+      const r = await fetch('/admin/live/history/data?days=' + days);
+      const d = await r.json();
+      $('period-label').textContent = d.start.slice(0, 10) + ' → ' + d.end.slice(0, 10);
+      setKPI('kpi-pv',  fmt(d.current.pageviews), d.delta.pageviews);
+      setKPI('kpi-ses', fmt(d.current.sessions),  d.delta.sessions);
+      setKPI('kpi-pur', fmt(d.current.purchases), d.delta.purchases);
+      setKPI('kpi-rev', fmtMoney(d.current.revenue), d.delta.revenue);
+      buildCharts(d);
+      renderList('top-sources',   d.top_sources,   'src',  'No traffic in this period');
+      renderList('top-campaigns', d.top_campaigns, 'name', 'No tagged campaigns');
+      renderList('top-pages',     d.top_pages,     'path', 'No pageviews');
+      renderList('top-countries', d.top_countries, 'name', 'No country data');
+      renderProducts(d.top_products);
+      $('status').textContent = 'loaded ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      $('status').textContent = 'error: ' + e.message;
+    }
+  }
+
+  document.querySelectorAll('.range-bar button').forEach(b =>
+    b.addEventListener('click', () => load(Number(b.dataset.days))));
+  load({{ default_days }});
+</script>
+</body>
+</html>

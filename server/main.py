@@ -21,14 +21,26 @@ from database import get_db, init_db  # noqa: E402
 from models import Order, OrderItem, Product, ProductVariant  # noqa: E402
 from services import categories as cat_service  # noqa: E402
 from services import cj as cj_service  # noqa: E402
+from services import email as email_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
+from ssr import (  # noqa: E402
+    affiliate_by_slug,
+    inject_home_seo,
+    load_affiliate_catalog,
+    render_pick_not_found,
+    render_pick_page,
+    render_product_not_found,
+    render_product_page,
+)
+from live import router as live_router  # noqa: E402
 
 PUBLIC_BASE = os.getenv("PUBLIC_BASE_URL", "https://thebookswanderer.com").rstrip("/")
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
 
 app = FastAPI(title="The Books Wanderer API", version="0.1.0")
+app.include_router(live_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -94,6 +106,26 @@ class AddProductIn(BaseModel):
     admin_key: str
 
 
+class ShipOrderIn(BaseModel):
+    """Admin: mark order shipped and email the customer with tracking."""
+
+    admin_key: str
+    order_id: int
+    tracking_number: str = ""
+    tracking_url: str = ""
+    carrier: str = ""
+    send_email: bool = True
+
+
+class CartReminderIn(BaseModel):
+    """Optional abandoned-cart email (you supply the address + line summary)."""
+
+    admin_key: str
+    email: EmailStr
+    customer_name: str = ""
+    lines: list[dict] = Field(default_factory=list)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
@@ -154,6 +186,7 @@ async def health():
         "ok": True,
         "paypal": paypal_service.configured(),
         "cj_key_set": bool(os.getenv("CJ_API_KEY")),
+        "email": email_service.configured(),
         "pricing": pricing_service.pricing_config(),
     }
 
@@ -222,6 +255,84 @@ async def get_product_by_slug(slug: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Product not found")
     await _ensure_product_media(p, db)
     return p.to_detail()
+
+
+# ── SEO: server-rendered product HTML (not the empty static JS shell) ──
+
+
+@app.api_route("/product.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def product_page_ssr(
+    slug: str | None = Query(None),
+    id: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    HTML for /product.html?slug=… with real title, description, and body text.
+    Required for Google Search Console: the static file only says “Loading product…”.
+    """
+    p: Product | None = None
+    if slug and slug.strip():
+        p = (
+            db.query(Product)
+            .filter(Product.slug == slug.strip(), Product.active.is_(True))
+            .first()
+        )
+    elif id:
+        cand = db.get(Product, id)
+        if cand and cand.active:
+            p = cand
+    if not p:
+        return HTMLResponse(render_product_not_found(slug or ""), status_code=404)
+    await _ensure_product_media(p, db)
+    detail = p.to_detail()
+    canonical = f"{PUBLIC_BASE}/product.html?slug={p.slug}"
+    return HTMLResponse(render_product_page(detail, canonical=canonical))
+
+
+@app.get("/products/{slug}", response_class=HTMLResponse)
+async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
+    """Cleaner SEO path; same content as product.html?slug=."""
+    p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
+    if not p:
+        return HTMLResponse(render_product_not_found(slug), status_code=404)
+    await _ensure_product_media(p, db)
+    detail = p.to_detail()
+    # Prefer query URL already in sitemap; pretty URL sets canonical to that for consistency
+    canonical = f"{PUBLIC_BASE}/product.html?slug={p.slug}"
+    return HTMLResponse(render_product_page(detail, canonical=canonical))
+
+
+@app.api_route("/pick.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def pick_page_ssr(slug: str | None = Query(None)):
+    """SSR Amazon affiliate pick — static pick.html is a JS shell (Soft 404 risk)."""
+    if not slug or not slug.strip():
+        return HTMLResponse(render_pick_not_found(""), status_code=404)
+    pick = affiliate_by_slug(slug.strip())
+    if not pick:
+        return HTMLResponse(render_pick_not_found(slug), status_code=404)
+    canonical = f"{PUBLIC_BASE}/pick.html?slug={pick['slug']}"
+    return HTMLResponse(render_pick_page(pick, canonical=canonical))
+
+
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+@app.api_route("/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def home_page_ssr(db: Session = Depends(get_db)):
+    """Home with crawlable product + affiliate cards in the HTML."""
+    template_path = Path(__file__).resolve().parent.parent / "index.html"
+    try:
+        raw = template_path.read_text(encoding="utf-8")
+    except OSError:
+        return HTMLResponse("<h1>Home template missing</h1>", status_code=500)
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.id.desc())
+        .all()
+    )
+    products = [p.to_public() for p in rows]
+    aff = load_affiliate_catalog()
+    html_out = inject_home_seo(raw, products=products, affiliate=aff)
+    return HTMLResponse(html_out)
 
 
 @app.get("/api/products/{product_id}")
@@ -675,6 +786,35 @@ async def checkout_return(
     order.paypal_order_id = paypal_id
     db.commit()
 
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    try:
+        from services.live_events import record_purchase
+
+        first_slug = None
+        if items:
+            p0 = db.get(Product, items[0].product_id)
+            first_slug = p0.slug if p0 else None
+        record_purchase(
+            label="paypal",
+            uniq_key=order.id,
+            value=float(order.grand_total or 0),
+            product_slug=first_slug,
+            customer_email=order.email,
+            extra={
+                "order_id": order.id,
+                "country": order.shipping_country_code,
+                "customer_name": order.customer_name,
+            },
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        await email_service.send_order_paid(order, items)
+    except Exception:  # noqa: BLE001
+        # Never block checkout on mail
+        pass
+
     # Push to CJ Dropshipping
     try:
         await _submit_to_cj(order, db)
@@ -747,6 +887,11 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
     order.cj_order_number = str(result.get("orderNumber") or payload["orderNumber"])
     order.status = "cj_submitted"
     db.commit()
+
+    try:
+        await email_service.send_order_fulfillment_started(order, items)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ── Admin: add product when you pick one from CJ ──────────────────────
@@ -864,6 +1009,91 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
         "product": product.to_detail(),
         "variants": len(product.active_variants()),
     }
+
+
+@app.post("/api/admin/orders/ship")
+async def admin_ship_order(body: ShipOrderIn, db: Session = Depends(get_db)):
+    """Mark order as shipped and optionally email tracking to the customer."""
+    if not _admin_ok(body.admin_key):
+        raise HTTPException(403, "Invalid admin key")
+    order = db.get(Order, body.order_id)
+    if not order:
+        raise HTTPException(404, "Order not found")
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    bits = []
+    if body.carrier:
+        bits.append(body.carrier)
+    if body.tracking_number:
+        bits.append(body.tracking_number)
+    if body.tracking_url:
+        bits.append(body.tracking_url)
+    note = "Shipped" + (": " + " | ".join(bits) if bits else "")
+    prev = (order.notes or "").strip()
+    order.notes = (prev + "\n" + note).strip()[:2000] if prev else note[:2000]
+    order.status = "shipped"
+    db.commit()
+
+    mailed = False
+    if body.send_email and order.email:
+        try:
+            mailed = await email_service.send_order_shipped(
+                order,
+                items,
+                tracking_number=body.tracking_number,
+                tracking_url=body.tracking_url,
+                carrier=body.carrier,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(502, f"Order marked shipped but email failed: {exc}") from exc
+
+    return {
+        "ok": True,
+        "order_id": order.id,
+        "status": order.status,
+        "email_sent": mailed,
+        "email_configured": email_service.configured(),
+    }
+
+
+@app.post("/api/admin/email/cart-reminder")
+async def admin_cart_reminder(body: CartReminderIn):
+    """Send a 'cart waiting' email (abandoned cart). Cart is browser-only; you pass the payload."""
+    if not _admin_ok(body.admin_key):
+        raise HTTPException(403, "Invalid admin key")
+    if not email_service.configured():
+        raise HTTPException(503, "SMTP not configured")
+    ok = await email_service.send_cart_reminder(
+        email=str(body.email),
+        customer_name=body.customer_name,
+        lines=body.lines,
+    )
+    return {"ok": ok, "to": str(body.email)}
+
+
+@app.post("/api/admin/email/test")
+async def admin_email_test(admin_key: str = Query(...), to: EmailStr | None = None):
+    """Send a one-line test message to verify SMTP."""
+    if not _admin_ok(admin_key):
+        raise HTTPException(403, "Invalid admin key")
+    if not email_service.configured():
+        raise HTTPException(
+            503,
+            "SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD, MAIL_FROM in server/.env",
+        )
+    dest = str(to) if to else (email_service._notify_owner()[0] if email_service._notify_owner() else "")
+    if not dest:
+        raise HTTPException(400, "No recipient (pass ?to= or set MAIL_NOTIFY_TO)")
+    ok = await email_service.send_email(
+        to=dest,
+        subject=f"Test email — {email_service._shop_name()}",
+        text=(
+            f"This is a test from The Books Wanderer API.\n\n"
+            f"If you received this, SMTP is working.\n"
+            f"Shop: {email_service._public_base()}\n"
+        ),
+        html=None,
+    )
+    return {"ok": ok, "to": dest, "configured": True}
 
 
 @app.get("/api/admin/orders")

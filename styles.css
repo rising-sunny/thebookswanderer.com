@@ -1143,6 +1143,100 @@ a.add-to-cart {
     border-color: var(--green-800);
 }
 
+/* Multi-variant cart controls on PDP */
+.pdp__cart-panel {
+    margin: 0 0 var(--sp-5);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--green-900, #1b3728) 4%, #fff);
+}
+
+.pdp__cart-panel[hidden] {
+    display: none !important;
+}
+
+.pdp__cart-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    margin-top: var(--sp-3);
+}
+
+.pdp__cart-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--bg-raised, #fff);
+}
+
+.pdp__cart-line__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.pdp__cart-line__meta {
+    font-size: var(--t-sm);
+    color: var(--ink-muted);
+}
+
+.pdp__cart-line__acts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.pdp__mini-qty__n {
+    min-width: 1.75rem;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pdp__cart-panel__foot {
+    margin: var(--sp-3) 0 0;
+}
+
+.pdp__actions--cart {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+    margin: 0 0 var(--sp-5);
+}
+
+.pdp__add-hint {
+    margin: 0;
+    font-size: var(--t-sm);
+    color: var(--ink-muted);
+    line-height: 1.45;
+}
+
+.pdp__add-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.pdp__add-row .btn {
+    flex: 1 1 12rem;
+}
+
+.pdp__add-status {
+    margin: 0;
+    font-size: var(--t-sm);
+    color: var(--green-900);
+}
+
 .pdp__video {
     margin-top: var(--sp-4);
 }
@@ -1677,6 +1771,29 @@ a.add-to-cart {
 }
 
 .cart-line__remove {
+    border: 1px solid color-mix(in srgb, var(--red-700, #a63a2f) 35%, var(--line));
+    background: color-mix(in srgb, var(--red-700, #a63a2f) 8%, #fff);
+    font: inherit;
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--red-700, #a63a2f);
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--r-pill, 999px);
+}
+
+.cart-line__remove:hover {
+    background: color-mix(in srgb, var(--red-700, #a63a2f) 16%, #fff);
+    color: var(--red-800, #6d221c);
+}
+
+.cart-clear-wrap {
+    margin: var(--sp-4) 0 0;
+    text-align: left;
+}
+
+.cart-clear {
     border: 0;
     background: none;
     font: inherit;
@@ -1687,8 +1804,8 @@ a.add-to-cart {
     padding: 0;
 }
 
-.cart-line__remove:hover {
-    color: var(--red-700);
+.cart-clear:hover {
+    color: var(--red-700, #a63a2f);
 }
 
 .cart-line__total {

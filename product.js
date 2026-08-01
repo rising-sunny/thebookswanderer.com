@@ -14,6 +14,7 @@
 
     let product = null;
     let selectedVariantId = null;
+    let addQty = 1; // qty to add for the currently selected variant
     let destinations = [];
     let selectedCountry = "";
     let shippingQuote = null;
@@ -27,9 +28,118 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
 
+    function normVid(v) {
+        if (v == null || v === "" || v === "null") return null;
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
     function selectedVariant() {
         const variants = product?.variants || [];
         return variants.find((v) => v.id === selectedVariantId) || variants[0] || null;
+    }
+
+    /** Cart lines for this product (one row per variant). */
+    function cartLinesForProduct() {
+        if (!product || !window.TBWCart) return [];
+        const pid = Number(product.id);
+        return (window.TBWCart.read() || []).filter(
+            (x) => Number(x.product_id) === pid
+        );
+    }
+
+    function qtyInCartForVariant(variantId) {
+        const vid = normVid(variantId);
+        const line = cartLinesForProduct().find(
+            (x) => normVid(x.variant_id) === vid
+        );
+        return line ? Number(line.quantity) || 0 : 0;
+    }
+
+    function variantNameById(variantId) {
+        const vid = normVid(variantId);
+        const variants = product?.variants || [];
+        const v = variants.find((x) => Number(x.id) === vid);
+        return v?.name || (vid ? `Option ${vid}` : "Standard");
+    }
+
+    function cartPanelHtml() {
+        const lines = cartLinesForProduct();
+        if (!lines.length) {
+            return `
+<div class="pdp__cart-panel" id="pdpCartPanel" hidden>
+  <h2 class="pdp__variants-title">In your cart</h2>
+  <p class="pdp__variants-label">No options of this product yet. Choose a design and quantity below.</p>
+</div>`;
+        }
+        const rows = lines
+            .map((line) => {
+                const vid = normVid(line.variant_id);
+                const name = escapeHtml(variantNameById(vid));
+                const q = Number(line.quantity) || 1;
+                return `
+<div class="pdp__cart-line" data-cart-pid="${product.id}" data-cart-vid="${vid ?? ""}">
+  <div class="pdp__cart-line__info">
+    <strong>${name}</strong>
+    <span class="pdp__cart-line__meta">${q} in cart</span>
+  </div>
+  <div class="pdp__cart-line__acts">
+    <div class="cart-qty pdp__mini-qty">
+      <button type="button" class="cart-qty__btn" data-cart-act="dec" aria-label="Decrease ${name}">−</button>
+      <span class="pdp__mini-qty__n" aria-live="polite">${q}</span>
+      <button type="button" class="cart-qty__btn" data-cart-act="inc" aria-label="Increase ${name}">+</button>
+    </div>
+    <button type="button" class="cart-line__remove pdp__cart-remove" data-cart-act="remove">Remove</button>
+  </div>
+</div>`;
+            })
+            .join("");
+        const totalUnits = lines.reduce((n, l) => n + (Number(l.quantity) || 0), 0);
+        return `
+<div class="pdp__cart-panel" id="pdpCartPanel">
+  <h2 class="pdp__variants-title">In your cart</h2>
+  <p class="pdp__variants-label">
+    ${lines.length} option${lines.length === 1 ? "" : "s"} · ${totalUnits} item${totalUnits === 1 ? "" : "s"}.
+    Each design is a separate line — change qty or remove below.
+  </p>
+  <div class="pdp__cart-lines">${rows}</div>
+  <p class="pdp__cart-panel__foot">
+    <a class="link-more" href="/cart.html">View full cart</a>
+  </p>
+</div>`;
+    }
+
+    function addBarHtml() {
+        const v = selectedVariant();
+        const inCart = qtyInCartForVariant(v?.id);
+        const multi = (product.variants || []).length > 1;
+        return `
+<div class="pdp__actions pdp__actions--cart">
+  ${
+      multi
+          ? `<p class="pdp__add-hint">You can add several options of this product. Each color/size is its own cart line with its own quantity.</p>`
+          : ""
+  }
+  <div class="pdp__add-row">
+    <label class="cart-qty pdp__add-qty" for="pdpAddQty">
+      <span class="visually-hidden">Quantity to add</span>
+      <button type="button" class="cart-qty__btn" data-add-act="dec" aria-label="Decrease quantity to add">−</button>
+      <input id="pdpAddQty" type="number" min="1" max="20" value="${addQty}" data-add-qty inputmode="numeric" aria-label="Quantity to add">
+      <button type="button" class="cart-qty__btn" data-add-act="inc" aria-label="Increase quantity to add">+</button>
+    </label>
+    <button class="btn" type="button" data-add-to-cart
+      data-product-id="${product.id}"
+      data-variant-id="${v?.id || ""}">
+      ${inCart > 0 ? `Add ${addQty} more` : `Add ${addQty} to cart`}
+    </button>
+  </div>
+  ${
+      inCart > 0
+          ? `<p class="pdp__add-status" id="pdpAddStatus"><strong>${escapeHtml(v?.name || "This option")}</strong> — ${inCart} already in cart</p>`
+          : `<p class="pdp__add-status" id="pdpAddStatus" hidden></p>`
+  }
+  <a class="btn btn--ghost" href="/#featured">Continue shopping</a>
+</div>`;
     }
 
     function stageMain() {
@@ -143,7 +253,33 @@
         const variants = product.variants || [];
         const lifestyle = lifestyleImages();
 
-        document.title = `${title} | The Books Wanderer`;
+        const pageTitle = `${title} | The Books Wanderer`;
+        document.title = pageTitle;
+        const rawDesc = String(product.description || "")
+            .replace(/[\u2018\u2019]/g, "'")
+            .replace(/[\u201c\u201d]/g, '"')
+            .replace(/\s+/g, " ")
+            .trim();
+        let meta = rawDesc;
+        if (meta.length > 155) {
+            meta = meta.slice(0, 154).replace(/\s+\S*$/, "").replace(/[,.;:\-]+$/, "") + "...";
+        }
+        const setMeta = (sel, attr, val) => {
+            const el = document.querySelector(sel);
+            if (el && val) el.setAttribute(attr, val);
+        };
+        if (meta) {
+            setMeta('meta[name="description"]', "content", meta);
+            setMeta('meta[property="og:description"]', "content", meta);
+            setMeta('meta[name="twitter:description"]', "content", meta);
+        }
+        setMeta('meta[property="og:title"]', "content", pageTitle);
+        setMeta('meta[name="twitter:title"]', "content", pageTitle);
+        const img = stageMain() || product.image_url || "";
+        if (img) {
+            setMeta('meta[property="og:image"]', "content", img);
+            setMeta('meta[name="twitter:image"]', "content", img);
+        }
         if (crumb) crumb.textContent = title;
 
         const manyOpts = variants.length > 8;
@@ -226,17 +362,11 @@
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
   ${desc ? `<p class="pdp__lead">${desc}</p>` : ""}
   ${variantPicker}
+  ${cartPanelHtml()}
+  ${addBarHtml()}
   ${videoBox}
   ${lifestyleBox}
   ${shippingBlockHtml()}
-  <div class="pdp__actions">
-    <button class="btn" type="button" data-add-to-cart
-      data-product-id="${product.id}"
-      data-variant-id="${v?.id || ""}">
-      Add to cart
-    </button>
-    <a class="btn btn--ghost" href="/#featured">Continue shopping</a>
-  </div>
   <ul class="pdp__meta">
     <li>Secure checkout with PayPal</li>
     <li>Gift-ready packaging</li>
@@ -252,6 +382,30 @@
 
         root.removeAttribute("aria-busy");
         bindUi();
+    }
+
+    /** Refresh only cart panel + add bar without full re-render (keeps shipping select). */
+    function refreshCartUi() {
+        const panel = document.getElementById("pdpCartPanel");
+        const wrap = document.createElement("div");
+        wrap.innerHTML = cartPanelHtml().trim();
+        const nextPanel = wrap.firstElementChild;
+        if (panel && nextPanel) panel.replaceWith(nextPanel);
+        else if (nextPanel && !panel) {
+            const picker = root.querySelector(".pdp__variants");
+            picker?.after(nextPanel);
+        }
+
+        const actions = root.querySelector(".pdp__actions--cart");
+        const wrap2 = document.createElement("div");
+        wrap2.innerHTML = addBarHtml().trim();
+        const nextActions = wrap2.firstElementChild;
+        if (actions && nextActions) {
+            actions.replaceWith(nextActions);
+            bindAddBar(nextActions);
+        }
+        bindCartPanel();
+        if (window.TBWCart) window.TBWCart.paintBadge();
     }
 
     async function loadShippingQuote() {
@@ -351,10 +505,117 @@
         if (priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
     }
 
+    function bindAddBar(scope) {
+        const el = scope || root;
+        const qtyInput = el.querySelector("[data-add-qty]");
+        el.querySelector('[data-add-act="dec"]')?.addEventListener("click", () => {
+            addQty = Math.max(1, addQty - 1);
+            if (qtyInput) qtyInput.value = String(addQty);
+            const btn = el.querySelector("[data-add-to-cart]");
+            if (btn) {
+                const inCart = qtyInCartForVariant(selectedVariant()?.id);
+                btn.textContent =
+                    inCart > 0 ? `Add ${addQty} more` : `Add ${addQty} to cart`;
+            }
+        });
+        el.querySelector('[data-add-act="inc"]')?.addEventListener("click", () => {
+            addQty = Math.min(20, addQty + 1);
+            if (qtyInput) qtyInput.value = String(addQty);
+            const btn = el.querySelector("[data-add-to-cart]");
+            if (btn) {
+                const inCart = qtyInCartForVariant(selectedVariant()?.id);
+                btn.textContent =
+                    inCart > 0 ? `Add ${addQty} more` : `Add ${addQty} to cart`;
+            }
+        });
+        qtyInput?.addEventListener("change", () => {
+            addQty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
+            qtyInput.value = String(addQty);
+        });
+
+        el.querySelector("[data-add-to-cart]")?.addEventListener("click", (e) => {
+            const btn = e.currentTarget;
+            const original = btn.textContent;
+            try {
+                const pid = Number(btn.getAttribute("data-product-id"));
+                const vid = normVid(btn.getAttribute("data-variant-id"));
+                const q = Math.max(
+                    1,
+                    Math.min(20, Number(qtyInput?.value) || addQty || 1)
+                );
+                addQty = q;
+                if (window.TBWCart) {
+                    window.TBWCart.add(pid, vid, q);
+                }
+                try {
+                    if (window.tbwTrack && product) {
+                        const v = selectedVariant();
+                        const unit = Number(v?.price_usd ?? product.price_usd) || 0;
+                        window.tbwTrack("add_to_cart", {
+                            product_slug: product.slug || slug || "",
+                            value: Math.round(unit * q * 100) / 100,
+                            extra: { quantity: q, variant_id: vid },
+                        });
+                    }
+                } catch (_) {
+                    /* ignore */
+                }
+                if (selectedCountry) {
+                    try {
+                        localStorage.setItem("tbw:ship_country", selectedCountry);
+                    } catch (_) {
+                        /* ignore */
+                    }
+                }
+                btn.textContent = `Added ${q} ✓`;
+                btn.classList.add("is-added");
+                refreshCartUi();
+            } catch (_) {
+                /* ignore */
+            }
+            setTimeout(() => {
+                if (!btn.isConnected) return;
+                const inCart = qtyInCartForVariant(selectedVariant()?.id);
+                btn.textContent =
+                    inCart > 0 ? `Add ${addQty} more` : `Add ${addQty} to cart`;
+                btn.classList.remove("is-added");
+            }, 1400);
+        });
+    }
+
+    function bindCartPanel() {
+        root.querySelectorAll(".pdp__cart-line").forEach((row) => {
+            const pid = Number(row.getAttribute("data-cart-pid"));
+            const vid = normVid(row.getAttribute("data-cart-vid"));
+            row.querySelector('[data-cart-act="dec"]')?.addEventListener("click", () => {
+                if (!window.TBWCart) return;
+                const cur = qtyInCartForVariant(vid);
+                if (cur <= 1) window.TBWCart.remove(pid, vid);
+                else window.TBWCart.setQty(pid, vid, cur - 1);
+                refreshCartUi();
+            });
+            row.querySelector('[data-cart-act="inc"]')?.addEventListener("click", () => {
+                if (!window.TBWCart) return;
+                const cur = qtyInCartForVariant(vid);
+                window.TBWCart.setQty(pid, vid, Math.min(20, cur + 1));
+                refreshCartUi();
+            });
+            row.querySelector('[data-cart-act="remove"]')?.addEventListener(
+                "click",
+                () => {
+                    if (!window.TBWCart) return;
+                    window.TBWCart.remove(pid, vid);
+                    refreshCartUi();
+                }
+            );
+        });
+    }
+
     function bindUi() {
         root.querySelectorAll(".pdp__variant[data-variant-id]").forEach((btn) => {
             btn.addEventListener("click", () => {
                 selectedVariantId = Number(btn.getAttribute("data-variant-id"));
+                addQty = 1;
                 shippingQuote = null;
                 shippingStatus = selectedCountry ? "loading" : "idle";
                 render();
@@ -382,37 +643,8 @@
             });
         }
 
-        root.querySelector("[data-add-to-cart]")?.addEventListener("click", (e) => {
-            const btn = e.currentTarget;
-            const original = btn.textContent;
-            btn.textContent = "Added ✓";
-            btn.classList.add("is-added");
-            try {
-                const pid = Number(btn.getAttribute("data-product-id"));
-                const vidRaw = btn.getAttribute("data-variant-id");
-                const vid = vidRaw ? Number(vidRaw) : null;
-                if (window.TBWCart) {
-                    window.TBWCart.add(pid, vid, 1);
-                } else {
-                    const cart = JSON.parse(localStorage.getItem("tbw:cart") || "[]");
-                    const existing = cart.find(
-                        (x) => x.product_id === pid && x.variant_id === vid
-                    );
-                    if (existing) existing.quantity += 1;
-                    else cart.push({ product_id: pid, variant_id: vid, quantity: 1 });
-                    localStorage.setItem("tbw:cart", JSON.stringify(cart));
-                }
-                if (selectedCountry) {
-                    localStorage.setItem("tbw:ship_country", selectedCountry);
-                }
-            } catch (_) {
-                /* ignore */
-            }
-            setTimeout(() => {
-                btn.textContent = original;
-                btn.classList.remove("is-added");
-            }, 1600);
-        });
+        bindAddBar();
+        bindCartPanel();
     }
 
     async function loadDestinations() {
@@ -460,10 +692,25 @@
                 product.default_variant_id ||
                 (product.variants && product.variants[0] && product.variants[0].id) ||
                 null;
+            try {
+                if (window.tbwTrack) {
+                    window.tbwTrack("product_view", {
+                        product_slug: product.slug || slug || "",
+                        value: Number(product.price_usd) || undefined,
+                    });
+                }
+            } catch (_) {
+                /* ignore */
+            }
             render();
             if (selectedCountry) loadShippingQuote();
         } catch (err) {
             console.warn(err);
+            // Keep server-rendered SEO body if present (avoids Soft 404 after failed hydrate)
+            if (root.querySelector("[data-ssr]")) {
+                root.removeAttribute("aria-busy");
+                return;
+            }
             root.innerHTML = `<p class="catalog-empty">Could not load this product. <a href="/#featured">Back to shop</a></p>`;
         }
     }

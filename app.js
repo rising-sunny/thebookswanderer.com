@@ -374,16 +374,23 @@
     function loadAffiliatePicks() {
         if (!affiliateGrid) return;
         const A = window.TBW_AFFILIATE;
-        if (!A || !A.all) {
-            affiliateGrid.innerHTML =
-                '<p class="catalog-empty">E-reader picks will appear here soon.</p>';
-            affiliateGrid.removeAttribute("aria-busy");
+        if (!A || !A.ready || !A.all) {
+            window.addEventListener("tbw-affiliate-ready", loadAffiliatePicks, {
+                once: true,
+            });
+            // Keep SSR cards if present
+            if (affiliateGrid.querySelector("[data-ssr-card]")) {
+                affiliateGrid.classList.add("is-visible");
+                affiliateGrid.removeAttribute("aria-busy");
+            }
             return;
         }
         const list = A.all();
         if (!list.length) {
-            affiliateGrid.innerHTML =
-                '<p class="catalog-empty">No e-reader picks yet.</p>';
+            if (!affiliateGrid.querySelector("[data-ssr-card]")) {
+                affiliateGrid.innerHTML =
+                    '<p class="catalog-empty">No e-reader picks yet.</p>';
+            }
         } else {
             affiliateGrid.innerHTML = list.map(renderAffiliateCard).join("");
         }

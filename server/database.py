@@ -29,10 +29,16 @@ def get_db():
 
 
 def init_db() -> None:
-    from models import Order, OrderItem, Product, ProductVariant  # noqa: F401
+    from models import LiveEvent, Order, OrderItem, Product, ProductVariant  # noqa: F401
     from sqlalchemy import inspect, text
 
     Base.metadata.create_all(bind=engine)
+    try:
+        from live import _ensure_schema
+
+        _ensure_schema()
+    except Exception:
+        pass
 
     # Lightweight migrations for SQLite (create_all won't add columns)
     if not DATABASE_URL.startswith("sqlite"):

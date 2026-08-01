@@ -6,34 +6,64 @@
 
     <title>The Books Wanderer | Reading accessories for wandering souls</title>
     <meta name="description" content="A literary boutique: Kindle sleeves, page holders, wooden stands, and cozy accessories that turn reading into a ritual.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
     <meta name="theme-color" content="#f8f2e5">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="The Books Wanderer | Literary boutique">
-    <meta property="og:description" content="Beautiful, functional accessories for people who love to read.">
-    <meta property="og:image" content="assets/logo.png">
-    <meta property="og:locale" content="en_US">
-
-    <link rel="icon" href="assets/logo.png" type="image/png">
     <link rel="canonical" href="https://thebookswanderer.com/">
 
+    <!-- Open Graph (aligned with title + description) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="The Books Wanderer">
+    <meta property="og:title" content="The Books Wanderer | Reading accessories for wandering souls">
+    <meta property="og:description" content="A literary boutique: Kindle sleeves, page holders, wooden stands, and cozy accessories that turn reading into a ritual.">
+    <meta property="og:url" content="https://thebookswanderer.com/">
+    <meta property="og:image" content="https://thebookswanderer.com/assets/logo.png">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Books Wanderer | Reading accessories for wandering souls">
+    <meta name="twitter:description" content="A literary boutique: Kindle sleeves, page holders, wooden stands, and cozy accessories that turn reading into a ritual.">
+    <meta name="twitter:image" content="https://thebookswanderer.com/assets/logo.png">
+
+    <link rel="icon" href="assets/logo.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=21">
 
-    <link rel="stylesheet" href="styles.css?v=19">
-
-    <!-- Structured data for search engines -->
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "The Books Wanderer",
+        "url": "https://thebookswanderer.com/",
+        "description": "A literary boutique: Kindle sleeves, page holders, wooden stands, and cozy accessories that turn reading into a ritual.",
+        "publisher": { "@id": "https://thebookswanderer.com/#organization" }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://thebookswanderer.com/#organization",
+        "name": "The Books Wanderer",
+        "url": "https://thebookswanderer.com/",
+        "logo": "https://thebookswanderer.com/assets/logo.png",
+        "description": "Literary boutique for reading accessories and curated e-reader picks."
+    }
+    </script>
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "Store",
         "name": "The Books Wanderer",
         "description": "Literary boutique for reading accessories.",
-        "image": "assets/logo.png",
+        "image": "https://thebookswanderer.com/assets/logo.png",
         "url": "https://thebookswanderer.com/",
-        "priceRange": "$15 - $60"
+        "priceRange": "$7 - $60",
+        "currenciesAccepted": "USD",
+        "paymentAccepted": "PayPal"
     }
     </script>
 </head>
@@ -414,7 +444,7 @@
         <div class="footer__bottom">
             <p class="footer__quote">“For those who wander between pages.”</p>
             <div class="payments" aria-label="Accepted payment methods">
-                <span>VISA</span><span>MASTERCARD</span><span>PAYPAL</span><span>APPLE PAY</span>
+                <span>PAYPAL</span>
             </div>
             <p class="footer__affiliate">As an Amazon Associate I earn from qualifying purchases.</p>
             <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
@@ -422,8 +452,9 @@
     </div>
 </footer>
 
-<script src="cart.js?v=1" defer></script>
-<script src="affiliate-data.js?v=4" defer></script>
-<script src="app.js?v=19" defer></script>
+<script src="track.js?v=1" defer></script>
+<script src="cart.js?v=2" defer></script>
+<script src="affiliate-data.js?v=5" defer></script>
+<script src="app.js?v=20" defer></script>
 </body>
 </html>

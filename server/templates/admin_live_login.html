@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live · Sign in · The Books Wanderer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-800: #1b3728;
+    --green-700: #2b5240;
+    --gold-500: #c1912f;
+    --gold-600: #a97c22;
+    --cream-100: #f8f2e5;
+    --cream-200: #f0e8d6;
+    --border: #e0d4b8;
+    --muted: #5c6157;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px;
+    background: linear-gradient(180deg, #f8f2e5 0%, #efe6d0 100%);
+    color: #24291f;
+    font-family: "Karla", system-ui, sans-serif;
+  }
+  .wrap { width: 100%; max-width: 380px; }
+  .top-gold {
+    height: 4px;
+    background: linear-gradient(90deg, #c1912f, #e8c56a, #c1912f);
+    border-radius: 16px 16px 0 0;
+  }
+  .card {
+    background: #fffdf8;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 16px 16px;
+    padding: 28px 28px 32px;
+    box-shadow: 0 10px 32px rgba(27, 55, 40, 0.08);
+  }
+  .brand {
+    text-align: center; margin-bottom: 22px;
+  }
+  .brand img {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 2px solid #e8dfc8; background: var(--cream-100);
+    display: block; margin: 0 auto 12px;
+  }
+  h1 {
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 1.35rem; font-weight: 600; color: var(--green-800);
+    margin: 0 0 4px;
+  }
+  .eyebrow {
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--gold-600); margin: 0;
+  }
+  label {
+    display: block; font-size: 10px; color: var(--gold-600);
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;
+    margin: 0 0 6px;
+  }
+  input {
+    width: 100%; background: var(--cream-100);
+    border: 1px solid var(--border); color: #24291f;
+    padding: 11px 12px; border-radius: 10px; font-size: 15px;
+    font-family: inherit; margin-bottom: 14px;
+  }
+  input:focus {
+    outline: none; border-color: var(--gold-500);
+    box-shadow: 0 0 0 3px rgba(193, 145, 47, 0.18);
+  }
+  button {
+    width: 100%; margin-top: 4px;
+    background: var(--green-700); color: #f8f2e5; border: none;
+    padding: 12px 16px; font-weight: 700; font-size: 14px;
+    border-radius: 999px; cursor: pointer; letter-spacing: 0.02em;
+    font-family: inherit;
+  }
+  button:hover { background: var(--green-800); }
+  .error {
+    color: #a63a2f; font-size: 13px; margin-bottom: 12px;
+    background: #f8e8e6; border: 1px solid #e8c4bf; border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .foot {
+    text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted);
+    font-style: italic; font-family: "Playfair Display", Georgia, serif;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-gold"></div>
+  <form class="card" method="post" action="/admin/live/login">
+    <div class="brand">
+      <img src="/assets/logo-email.png" alt="The Books Wanderer" width="72" height="72">
+      <h1>Shop Live</h1>
+      <p class="eyebrow">The Books Wanderer</p>
+    </div>
+    {% if error %}<div class="error">Invalid credentials — try again.</div>{% endif %}
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+    <button type="submit">Enter the desk</button>
+    <p class="foot">Private desk · owners only</p>
+  </form>
+</div>
+</body>
+</html>

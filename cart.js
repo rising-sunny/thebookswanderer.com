@@ -16,16 +16,33 @@
             .replace(/"/g, "&quot;");
     }
 
+    /** Normalize variant id: missing / "" / NaN → null */
+    function normVid(v) {
+        if (v == null || v === "" || v === "null" || v === "undefined") return null;
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    function normPid(v) {
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+
+    function sameLine(item, productId, variantId) {
+        return (
+            normPid(item.product_id) === normPid(productId) &&
+            normVid(item.variant_id) === normVid(variantId)
+        );
+    }
+
     function read() {
         try {
             const raw = JSON.parse(localStorage.getItem(KEY) || "[]");
             if (!Array.isArray(raw)) return [];
             return raw
                 .map((x) => ({
-                    product_id: Number(x.product_id),
-                    variant_id: x.variant_id != null && x.variant_id !== ""
-                        ? Number(x.variant_id)
-                        : null,
+                    product_id: normPid(x.product_id),
+                    variant_id: normVid(x.variant_id),
                     quantity: Math.max(1, Math.min(20, Number(x.quantity) || 1)),
                 }))
                 .filter((x) => x.product_id > 0);
@@ -35,10 +52,15 @@
     }
 
     function write(items) {
-        localStorage.setItem(KEY, JSON.stringify(items));
+        const clean = (items || []).map((x) => ({
+            product_id: normPid(x.product_id),
+            variant_id: normVid(x.variant_id),
+            quantity: Math.max(1, Math.min(20, Number(x.quantity) || 1)),
+        })).filter((x) => x.product_id > 0);
+        localStorage.setItem(KEY, JSON.stringify(clean));
         paintBadge();
         try {
-            global.dispatchEvent(new CustomEvent("tbw:cart-change", { detail: { items } }));
+            global.dispatchEvent(new CustomEvent("tbw:cart-change", { detail: { items: clean } }));
         } catch (_) {
             /* ignore */
         }
@@ -50,13 +72,11 @@
 
     function add(productId, variantId, qty) {
         const items = read();
-        const pid = Number(productId);
-        const vid =
-            variantId != null && variantId !== "" ? Number(variantId) : null;
+        const pid = normPid(productId);
+        const vid = normVid(variantId);
         const q = Math.max(1, Math.min(20, Number(qty) || 1));
-        const existing = items.find(
-            (x) => x.product_id === pid && x.variant_id === vid
-        );
+        if (!pid) return items;
+        const existing = items.find((x) => sameLine(x, pid, vid));
         if (existing) existing.quantity = Math.min(20, existing.quantity + q);
         else items.push({ product_id: pid, variant_id: vid, quantity: q });
         write(items);
@@ -64,14 +84,12 @@
     }
 
     function setQty(productId, variantId, qty) {
-        const items = read();
-        const pid = Number(productId);
-        const vid =
-            variantId != null && variantId !== "" ? Number(variantId) : null;
+        const pid = normPid(productId);
+        const vid = normVid(variantId);
         const q = Math.max(0, Math.min(20, Number(qty) || 0));
-        const next = items
+        const next = read()
             .map((x) => {
-                if (x.product_id === pid && x.variant_id === vid) {
+                if (sameLine(x, pid, vid)) {
                     return { ...x, quantity: q };
                 }
                 return x;
@@ -82,7 +100,11 @@
     }
 
     function remove(productId, variantId) {
-        return setQty(productId, variantId, 0);
+        const pid = normPid(productId);
+        const vid = normVid(variantId);
+        const next = read().filter((x) => !sameLine(x, pid, vid));
+        write(next);
+        return next;
     }
 
     function clear() {
@@ -159,16 +181,14 @@
 
         const lines = data.items || [];
         const available = lines.filter((l) => l.available);
-        // Drop unavailable from storage
-        if (available.length !== raw.length) {
-            write(
-                available.map((l) => ({
-                    product_id: l.product_id,
-                    variant_id: l.variant_id,
-                    quantity: l.quantity,
-                }))
-            );
-        }
+        // Sync storage to available lines only (normalize variant ids)
+        write(
+            available.map((l) => ({
+                product_id: l.product_id,
+                variant_id: normVid(l.variant_id),
+                quantity: l.quantity,
+            }))
+        );
         if (!available.length) {
             clear();
             renderCartPage();
@@ -176,13 +196,17 @@
         }
 
         const rows = available
-            .map(
-                (l) => `
-<article class="cart-line" data-pid="${l.product_id}" data-vid="${l.variant_id ?? ""}">
+            .map((l) => {
+                const vidAttr =
+                    l.variant_id != null && l.variant_id !== ""
+                        ? String(l.variant_id)
+                        : "";
+                return `
+<article class="cart-line" data-pid="${l.product_id}" data-vid="${escapeHtml(vidAttr)}">
   <a class="cart-line__media" href="/product.html?slug=${encodeURIComponent(l.slug || "")}">
     ${
         l.image_url
-            ? `<img src="${escapeHtml(l.image_url)}" alt="" loading="lazy">`
+            ? `<img src="${escapeHtml(l.image_url)}" alt="${escapeHtml(l.product_title || l.title || "")}" loading="lazy">`
             : `<span class="cart-line__ph"></span>`
     }
   </a>
@@ -200,12 +224,12 @@
         <input type="number" min="1" max="20" value="${l.quantity}" data-qty inputmode="numeric">
         <button type="button" class="cart-qty__btn" data-act="inc" aria-label="Increase quantity">+</button>
       </label>
-      <button type="button" class="cart-line__remove" data-act="remove">Remove</button>
+      <button type="button" class="cart-line__remove" data-act="remove" aria-label="Remove ${escapeHtml(l.product_title || "item")} from cart">Remove</button>
     </div>
   </div>
   <p class="cart-line__total"><strong>${money(l.line_total)}</strong> <small>USD</small></p>
-</article>`
-            )
+</article>`;
+            })
             .join("");
 
         root.innerHTML = `
@@ -216,6 +240,9 @@
       <p class="cart-head__meta">${available.length} line${available.length === 1 ? "" : "s"} · ${data.count} item${data.count === 1 ? "" : "s"}</p>
     </header>
     <div class="cart-lines">${rows}</div>
+    <p class="cart-clear-wrap">
+      <button type="button" class="cart-clear" id="cartClearAll">Clear cart</button>
+    </p>
   </div>
   <aside class="cart-summary">
     <h2>Order summary</h2>
@@ -224,35 +251,63 @@
       <strong>${money(data.product_total)}</strong>
     </div>
     <p class="cart-summary__note">Shipping calculated at checkout by destination.</p>
+    <p class="cart-summary__note">Payment: <strong>PayPal</strong> only.</p>
     <a class="btn cart-summary__cta" href="/checkout.html">Proceed to checkout</a>
     <a class="btn btn--ghost cart-summary__shop" href="/#featured">Continue shopping</a>
   </aside>
 </div>`;
 
+        try {
+            if (window.tbwTrack) {
+                const firstSlug = (available[0] && available[0].slug) || "";
+                window.tbwTrack("cart_view", {
+                    product_slug: firstSlug || undefined,
+                    value: Number(data.product_total) || 0,
+                    extra: { lines: available.length, items: data.count },
+                });
+            }
+        } catch (_) {
+            /* ignore */
+        }
+
         root.querySelectorAll(".cart-line").forEach((row) => {
-            const pid = Number(row.getAttribute("data-pid"));
-            const vidRaw = row.getAttribute("data-vid");
-            const vid = vidRaw === "" || vidRaw == null ? null : Number(vidRaw);
+            const pid = normPid(row.getAttribute("data-pid"));
+            const vid = normVid(row.getAttribute("data-vid"));
             const input = row.querySelector("[data-qty]");
 
             row.querySelector('[data-act="dec"]')?.addEventListener("click", () => {
-                const q = Math.max(1, (Number(input.value) || 1) - 1);
-                setQty(pid, vid, q);
+                const cur = Number(input?.value) || 1;
+                if (cur <= 1) {
+                    remove(pid, vid);
+                } else {
+                    setQty(pid, vid, cur - 1);
+                }
                 renderCartPage();
             });
             row.querySelector('[data-act="inc"]')?.addEventListener("click", () => {
-                const q = Math.min(20, (Number(input.value) || 1) + 1);
+                const q = Math.min(20, (Number(input?.value) || 1) + 1);
                 setQty(pid, vid, q);
                 renderCartPage();
             });
             input?.addEventListener("change", () => {
-                setQty(pid, vid, Number(input.value) || 1);
+                const q = Number(input.value) || 0;
+                if (q <= 0) remove(pid, vid);
+                else setQty(pid, vid, q);
                 renderCartPage();
             });
-            row.querySelector('[data-act="remove"]')?.addEventListener("click", () => {
+            row.querySelector('[data-act="remove"]')?.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 remove(pid, vid);
                 renderCartPage();
             });
+        });
+
+        document.getElementById("cartClearAll")?.addEventListener("click", () => {
+            if (global.confirm("Remove all items from your cart?")) {
+                clear();
+                renderCartPage();
+            }
         });
 
         paintBadge();
@@ -289,7 +344,6 @@
     document.addEventListener("click", (e) => {
         const btn = e.target.closest("#cartBtn, [data-cart-btn]");
         if (!btn) return;
-        // If it's a link with href to cart, let it navigate
         if (btn.tagName === "A" && btn.getAttribute("href")) return;
         e.preventDefault();
         window.location.href = "/cart.html";
