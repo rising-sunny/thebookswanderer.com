@@ -347,11 +347,14 @@ el comentario se actualizó.
     pago. El dueño reporta haberlo solucionado; **falta confirmar** que la etiqueta roja
     desapareció y que la cuenta admite publicar.
   - Pendiente: OAuth del MCP (§4.B), BM ID, moneda de la cuenta.
-  - Píxel **desplegado a producción** y verificado en la web en vivo: `fbevents.js` carga,
-    `fbq` inicializa y Meta devuelve la config de `signals/config/907494619068513`. El envío
-    del beacon a `facebook.com/tr` no se pudo observar porque el navegador de la sesión
-    bloquea ese endpoint; falta confirmarlo en **Test events** (no en Overview, que va con
-    hasta 30 min de retraso, ni en History, que solo registra cambios de configuración).
+  - Píxel **desplegado a producción y confirmado de punta a punta**: en DevTools del dueño,
+    `track.js?v=2` → `fbevents.js` → `tr/?id=907494619068513&ev=PageView` con **HTTP 200**.
+    El sitio no envía CSP que interfiera.
+  - La pantalla **Test events no muestra nada**, y es un falso negativo: empareja el navegador
+    por cookies de terceros y falla en navegadores que las bloquean. No perder tiempo ahí.
+    Para validar eventos usar **Overview** (hasta 30 min de retraso, y ojo con el rango de
+    fechas, que por defecto puede excluir hoy) o la extensión Meta Pixel Helper.
+    **History** solo registra cambios de configuración, nunca eventos.
   - Dataset **ya asignado** a la cuenta `Stunning Revelations 3`. ✔
   - Se generó un **token de Conversions API** + system user. El token NO se guarda en este
     repo ni en el chat: va a `server/.env` del VPS (gitignoreado) cuando se implemente CAPI.
