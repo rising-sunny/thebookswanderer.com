@@ -22,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="styles.css?v=17">
+    <link rel="stylesheet" href="styles.css?v=19">
 
     <!-- Structured data for search engines -->
     <script type="application/ld+json">
@@ -94,6 +94,7 @@
         <nav class="nav" id="nav" aria-label="Primary">
             <a class="nav__link" href="#collections">Collections</a>
             <a class="nav__link" href="#featured">Featured</a>
+            <a class="nav__link" href="#ereaders">E-readers</a>
             <a class="nav__link" href="#story">Our story</a>
             <a class="nav__link" href="#newsletter">Newsletter</a>
         </nav>
@@ -205,8 +206,39 @@
         </div>
     </section>
 
+    <!-- ====================== Amazon affiliate e-reader picks ======================
+         Placed high so #ereaders is easy to find (not buried under the full catalog). -->
+    <section class="section section--sunken" id="ereaders" aria-labelledby="ereadersTitle">
+        <div class="container">
+            <div class="section__head reveal">
+                <div>
+                    <p class="eyebrow">Amazon picks</p>
+                    <h2 id="ereadersTitle">E-readers we recommend</h2>
+                </div>
+                <a class="link-more" href="/pick.html?slug=kindle-paperwhite">
+                    Kindle Paperwhite
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                </a>
+            </div>
+
+            <aside class="affiliate-disclosure reveal" role="note">
+                <p>
+                    <strong>As an Amazon Associate I earn from qualifying purchases.</strong>
+                    Products below open on Amazon.com via our affiliate links
+                    (<span class="paid-link">paid links</span>).
+                    Amazon and the Amazon logo are trademarks of Amazon.com, Inc. or its affiliates.
+                    We are not Amazon; devices are sold and fulfilled by Amazon, not from our boutique warehouse.
+                </p>
+            </aside>
+
+            <div class="products products--affiliate reveal is-visible" id="affiliateGrid" aria-busy="true">
+                <p class="catalog-loading">Loading e-reader picks…</p>
+            </div>
+        </div>
+    </section>
+
     <!-- ====================== Products ====================== -->
-    <section class="section section--sunken" id="featured">
+    <section class="section" id="featured">
         <div class="container">
             <div class="section__head reveal">
                 <div>
@@ -353,8 +385,8 @@
                 <ul>
                     <li><a href="#collections">Collections</a></li>
                     <li><a href="#featured">New arrivals</a></li>
+                    <li><a href="#ereaders">E-readers (Amazon)</a></li>
                     <li><a href="#featured">Best sellers</a></li>
-                    <li><a href="#">Gift cards</a></li>
                 </ul>
             </div>
 
@@ -384,12 +416,14 @@
             <div class="payments" aria-label="Accepted payment methods">
                 <span>VISA</span><span>MASTERCARD</span><span>PAYPAL</span><span>APPLE PAY</span>
             </div>
+            <p class="footer__affiliate">As an Amazon Associate I earn from qualifying purchases.</p>
             <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
         </div>
     </div>
 </footer>
 
 <script src="cart.js?v=1" defer></script>
-<script src="app.js?v=17" defer></script>
+<script src="affiliate-data.js?v=4" defer></script>
+<script src="app.js?v=19" defer></script>
 </body>
 </html>

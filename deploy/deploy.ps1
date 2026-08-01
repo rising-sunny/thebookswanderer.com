@@ -21,6 +21,9 @@ scp -o BatchMode=yes `
     "$Root\cart.js" `
     "$Root\checkout.html" `
     "$Root\checkout.js" `
+    "$Root\affiliate-data.js" `
+    "$Root\pick.html" `
+    "$Root\pick.js" `
     "${HostName}:${RemotePath}/"
 scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
 if (Test-Path "$Root\assets\products") {

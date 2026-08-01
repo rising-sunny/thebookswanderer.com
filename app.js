@@ -335,6 +335,64 @@
     activeCategory = readCategoryFromUrl();
     loadCategories().then(loadCatalog);
 
+    /* ---------- Amazon affiliate e-reader picks ---------- */
+    const affiliateGrid = document.getElementById("affiliateGrid");
+
+    function renderAffiliateCard(p) {
+        const detail = `/pick.html?slug=${encodeURIComponent(p.slug)}`;
+        const img = escapeHtml(p.imageUrl || "");
+        const title = escapeHtml(p.shortTitle || p.title || "");
+        const blurb = escapeHtml(p.blurb || "");
+        const badge = p.badge
+            ? `<span class="badge badge--gold">${escapeHtml(p.badge)}</span>`
+            : "";
+        const amazon = escapeHtml(p.amazonUrl || "#");
+        return `
+<article class="product product--affiliate">
+  <a class="product__link" href="${detail}" aria-label="View ${title}">
+    <div class="product__media pick-media">
+      ${badge}
+      <img src="${img}" alt="${title}" width="600" height="600" loading="lazy" decoding="async">
+    </div>
+  </a>
+  <div class="product__body">
+    <p class="product__cat">${escapeHtml(p.merchant || "Amazon")} · ${escapeHtml(p.category || "E-readers")}</p>
+    <h3><a href="${detail}">${title}</a></h3>
+    <p class="product__blurb-sm">${blurb}</p>
+    <p class="product__price product__price--note"><strong>See price on Amazon</strong></p>
+    <a class="add-to-cart"
+       href="${amazon}"
+       target="_blank"
+       rel="nofollow sponsored noopener"
+       data-affiliate="amazon"
+       data-asin="${escapeHtml(p.asin || "")}">View on Amazon</a>
+    <p class="paid-link-note"><span class="paid-link">(paid link)</span> · Affiliate</p>
+  </div>
+</article>`;
+    }
+
+    function loadAffiliatePicks() {
+        if (!affiliateGrid) return;
+        const A = window.TBW_AFFILIATE;
+        if (!A || !A.all) {
+            affiliateGrid.innerHTML =
+                '<p class="catalog-empty">E-reader picks will appear here soon.</p>';
+            affiliateGrid.removeAttribute("aria-busy");
+            return;
+        }
+        const list = A.all();
+        if (!list.length) {
+            affiliateGrid.innerHTML =
+                '<p class="catalog-empty">No e-reader picks yet.</p>';
+        } else {
+            affiliateGrid.innerHTML = list.map(renderAffiliateCard).join("");
+        }
+        affiliateGrid.classList.add("is-visible");
+        affiliateGrid.removeAttribute("aria-busy");
+    }
+
+    loadAffiliatePicks();
+
     /* ---------- Cart badge (shared via cart.js) ---------- */
     if (window.TBWCart) window.TBWCart.paintBadge();
 

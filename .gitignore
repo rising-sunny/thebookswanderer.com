@@ -8,6 +8,7 @@ server/.venv/
 *.pyc
 
 # Local QA / temp dumps
+.tmp-browser/
 pdp-check.png
 pdp-mobile-fixed.png
 _live_product.js

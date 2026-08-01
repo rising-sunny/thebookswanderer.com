@@ -2484,6 +2484,229 @@ a.add-to-cart {
     }
 }
 
+/* ==========================================================================
+   Amazon Associates — e-reader picks + disclosures
+   ========================================================================== */
+
+/* Sticky header: land #ereaders below the bar, not under it */
+#ereaders {
+    scroll-margin-top: calc(var(--header-h) + var(--sp-4));
+}
+
+/* Never hide this commercial section with scroll-reveal alone */
+.js-anim #ereaders .reveal,
+.js-anim #affiliateGrid.reveal {
+    opacity: 1;
+    transform: none;
+}
+
+.affiliate-disclosure {
+    margin: 0 0 var(--sp-5);
+    padding: var(--sp-4) var(--sp-5);
+    background: color-mix(in srgb, var(--cream-200) 80%, #fff);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: var(--ink-muted);
+    font-size: var(--t-sm);
+    line-height: 1.55;
+}
+
+.affiliate-disclosure p {
+    margin: 0;
+}
+
+.affiliate-disclosure p + p {
+    margin-top: var(--sp-2);
+}
+
+.affiliate-disclosure--page {
+    margin-bottom: var(--sp-5);
+}
+
+.affiliate-disclosure__detail {
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.paid-link {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.paid-link-note {
+    margin: var(--sp-2) 0 0;
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-align: center;
+}
+
+.footer__affiliate {
+    margin: var(--sp-3) 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    max-width: 40rem;
+    line-height: 1.45;
+}
+
+.products--affiliate {
+    margin-top: var(--sp-2);
+}
+
+.product--affiliate .product__media {
+    aspect-ratio: 1 / 1;
+    background: #fff;
+}
+
+.product--affiliate .pick-media img {
+    object-fit: contain;
+    padding: var(--sp-4);
+    background: #fff;
+}
+
+.product__blurb-sm {
+    margin: var(--sp-2) 0 0;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product__price--note {
+    font-weight: 600;
+    color: var(--forest, var(--ink));
+}
+
+.product__actions--affiliate {
+    padding: 0 var(--sp-3) var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.product__actions--affiliate .btn,
+.product__actions--affiliate .add-to-cart {
+    width: 100%;
+}
+
+.btn--sm {
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+}
+
+.pick-badge {
+    position: absolute;
+    z-index: 2;
+    top: var(--sp-3);
+    left: var(--sp-3);
+}
+
+.pick-bullets {
+    margin: var(--sp-4) 0;
+    padding-left: 1.15rem;
+    color: var(--ink-muted);
+    font-size: var(--t-sm);
+    line-height: 1.55;
+}
+
+.pick-bullets li + li {
+    margin-top: 0.4rem;
+}
+
+.pick-cta {
+    margin-top: var(--sp-5);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg-raised);
+}
+
+.pick-cta__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.pick-cta__meta {
+    margin: var(--sp-3) 0 0;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+.pick-cta__note {
+    margin: var(--sp-2) 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    line-height: 1.45;
+}
+
+.pick-pairs {
+    margin-top: var(--sp-6);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--line);
+}
+
+.pick-pairs__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+}
+
+.pick-pair {
+    display: inline-flex;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 0.85rem;
+    background: var(--cream-100, #fff);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.pick-pair:hover {
+    border-color: var(--gold-300);
+    background: color-mix(in srgb, var(--gold-300) 12%, #fff);
+}
+
+.page-pick .pdp__blurb {
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 0 0 var(--sp-3);
+}
+
+.page-pick .pdp__desc {
+    color: var(--ink-muted);
+    font-size: var(--t-sm);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.page-pick .pdp__stage {
+    aspect-ratio: 1 / 1;
+    background: #fff;
+}
+
+.page-pick .pdp__stage img {
+    background: #fff;
+    object-fit: contain;
+}
+
+.page-pick .pdp__thumbs {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
+
+.page-pick .pdp__thumb img {
+    object-fit: contain;
+    background: #fff;
+    padding: 4px;
+}
+
 @media print {
     .leaves,
     .announcement,
