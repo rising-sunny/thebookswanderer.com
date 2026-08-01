@@ -316,7 +316,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
         <p class="footer__legal">&copy; 2026 The Books Wanderer · {_esc_text(title)}</p>
     </div>
 </footer>
-<script src="/track.js?v=2" defer></script>
+<script src="/track.js?v=3" defer></script>
 <script src="/cart.js?v=2" defer></script>
 <script src="/product.js?v=23" defer></script>
 </body>
@@ -522,7 +522,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
         <p class="footer__legal">&copy; 2026 The Books Wanderer · {_esc_text(title)}</p>
     </div>
 </footer>
-<script src="/track.js?v=2" defer></script>
+<script src="/track.js?v=3" defer></script>
 <script src="/cart.js?v=2" defer></script>
 <script src="/affiliate-data.js?v=5" defer></script>
 <script src="/pick.js?v=4" defer></script>

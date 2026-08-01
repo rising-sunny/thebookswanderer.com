@@ -145,7 +145,15 @@
                         params.num_items = data.extra.lines;
                     }
                 }
-                window.fbq("track", name, params);
+                // Purchase goes out twice: from here without an amount (the return
+                // page only knows the order id) and from the server with the real
+                // total via the Conversions API. Sharing one id lets Meta keep a
+                // single conversion — see server/services/meta_capi.py.
+                var opts;
+                if (data && data.extra && data.extra.order_id) {
+                    opts = { eventID: "purchase-" + data.extra.order_id };
+                }
+                window.fbq("track", name, params, opts);
             } catch (_) {
                 /* pixel must never break the self-hosted funnel */
             }

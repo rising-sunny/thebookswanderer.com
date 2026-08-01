@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
@@ -749,6 +749,7 @@ def _checkout_redirect(status: str, order_id: int) -> RedirectResponse:
 
 @app.get("/api/checkout/return")
 async def checkout_return(
+    request: Request,
     order_id: int = Query(...),
     token: str | None = Query(None),  # PayPal order id
     db: Session = Depends(get_db),
@@ -807,6 +808,31 @@ async def checkout_return(
             },
         )
     except Exception:  # noqa: BLE001
+        pass
+
+    # Meta Conversions API: the browser pixel also fires Purchase here but has no
+    # amount, so this is the only event carrying real revenue. Same event_id on
+    # both, so Meta counts one conversion. No-ops until META_CAPI_TOKEN is set.
+    try:
+        from services import geo as geo_service
+        from services import meta_capi
+
+        slugs: dict[int, str] = {}
+        for it in items:
+            prod = db.get(Product, it.product_id)
+            if prod and prod.slug:
+                slugs[it.product_id] = prod.slug
+        await meta_capi.send_purchase(
+            order,
+            items,
+            slugs,
+            fbp=request.cookies.get("_fbp"),
+            fbc=request.cookies.get("_fbc"),
+            client_ip=geo_service.extract_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:  # noqa: BLE001
+        # A paid order must never fail because of analytics.
         pass
 
     try:
