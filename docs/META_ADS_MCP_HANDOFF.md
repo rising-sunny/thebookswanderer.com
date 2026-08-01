@@ -221,11 +221,12 @@ Catálogo: productos CJ + picks Amazon afiliados; checkout PayPal; tracking prop
 
 ## 7. Criterios de “tarea completada”
 
-- [ ] `meta-ads` MCP autenticado y healthy en el cliente de IA del dueño.
-- [ ] Página **The Books Wanderer** visible vía MCP / BM.
-- [ ] (Ideal) Ad account + Pixel TBW creados y enlazados al dominio.
-- [ ] Prueba de lectura OK (cuentas / páginas / insights vacíos o de MR diferenciados).
-- [ ] Documento actualizado abajo con IDs reales (Page ID, Ad Account ID, Pixel ID).
+- [x] `meta-ads` MCP autenticado y healthy en el cliente de IA del dueño. (2026-08-01)
+- [x] Página **The Books Wanderer** visible vía MCP / BM.
+- [x] Pixel TBW creado, instalado en el sitio y enlazado a la cuenta de anuncios.
+      Ad account: reutilizada (`Stunning Revelations 3`), no dedicada — decisión consciente.
+- [x] Prueba de lectura OK: 10 ad accounts y 1 página listadas sin modificar nada.
+- [x] Documento actualizado con IDs reales (falta solo `BM_ID`).
 
 ### Rellenar cuando se complete
 
@@ -243,6 +244,12 @@ META_AD_ACCOUNT_ID_TBW_ALT=120243021519890256 # mismo activo, formato de ID nuev
 META_PIXEL_ID_TBW=907494619068513   # dataset "The Books Wanderer", creado 2026-08-01
                                     # CAPI habilitado a nivel BM al crearlo (afecta tambien
                                     # a los datasets existentes de stunning.revelations)
+MONEDA_AD_ACCOUNT=CLP               # OJO: la tienda vende en USD. Ver nota abajo.
+ESTADO_AD_ACCOUNT=ACTIVE            # confirmado por MCP 2026-08-01 tras arreglar el pago
+MCP_CLIENT=claude                   # CLI de npm (%APPDATA%\npm\claude.cmd), NO la app de
+                                    # escritorio: son instalaciones distintas y el token
+                                    # OAuth vive solo en la de npm.
+OAUTH_DONE_AT=2026-08-01            # scope concedido: solo la Pagina The Books Wanderer
 BM_ID=                              # pendiente (sacar de la URL de business.facebook.com/settings)
                                     # BM elegido por el dueño: "stunning.revelations" (decisión 2026-08-01).
                                     # No se reutiliza el BM de MathRelaxing: TBW queda aislado,
@@ -326,6 +333,27 @@ el comentario se actualizó.
 - Dueño / operador: Esteban (emails usados en el proyecto: `estebannavarro.rojo@gmail.com` notificaciones dueño; pruebas a `esteban.hopestarstore@gmail.com`).
 - Preferencia de idioma con el dueño: **español**.
 - Preferencia de seguridad ads: **pausado por defecto**, confirmación antes de gastar.
+
+---
+
+## 10.b Hallazgos de la primera lectura vía MCP (2026-08-01)
+
+Salida real de `ads_get_ad_accounts` / `ads_get_user_pages`, ejecutadas en solo lectura:
+
+- **`Stunning Revelations 3` (1636887674121801) está ACTIVE.** El arreglo de facturación
+  funcionó; el bloqueo para publicar campañas está levantado.
+- **Su moneda es CLP, no USD.** No se puede cambiar. La tienda cobra en USD por PayPal y el
+  píxel envía `currency: "USD"` (ver `fireMeta` en `track.js`). Meta convierte para el
+  reporting, pero presupuestos y métricas de la cuenta se leen en pesos chilenos: al comparar
+  ROAS contra los ingresos reales de PayPal hay una conversión de por medio, no es 1:1.
+- **`MathRelaxing` (2206299143461363, USD) también es ACTIVE y visible** desde este mismo
+  acceso. Queda respondida la duda de §1: el dueño llega a las dos marcas desde el mismo sitio.
+- **7 de las 10 cuentas están en `UNSETTLED`** (saldo pendiente): 261748368151444, CP1,
+  CP NUEVA, NUEVA CP RESUCITADA, CP NUEVA MAGNA, Stunning Revelations, Stunning Revelations 2.
+  Más `Easy Ads` en `DISABLED`. Riesgo a vigilar: una deuda acumulada en el portfolio puede
+  acabar afectando a las cuentas sanas.
+- **Solo se ve 1 Página, The Books Wanderer.** Es lo esperado: en el consentimiento se eligió
+  "current Pages only" con esa única página. Para gestionar otra marca habría que reautenticar.
 
 ---
 
