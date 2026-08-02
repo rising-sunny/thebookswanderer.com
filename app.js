@@ -428,14 +428,19 @@
         heart.setAttribute("aria-pressed", String(!pressed));
     });
 
-    /* ---------- Newsletter (no backend yet) ---------- */
+    /* ---------- Newsletter ----------
+       Antes esto no enviaba nada: validaba el email, decia "You're in! Check
+       your inbox to confirm" y descartaba la direccion. No habia lista ni
+       confirmacion que revisar. Ahora va a /api/newsletter/subscribe y el
+       mensaje solo se muestra cuando el servidor confirma que la guardo. */
     const form = document.getElementById("newsletterForm");
     const status = document.getElementById("formStatus");
 
     if (form && status) {
-        form.addEventListener("submit", (e) => {
+        form.addEventListener("submit", async (e) => {
             e.preventDefault();
             const email = form.querySelector("input[type=email]");
+            const button = form.querySelector("button[type=submit]");
 
             if (!email.value || !email.checkValidity()) {
                 status.textContent = "Please check your email — it looks incomplete.";
@@ -443,9 +448,27 @@
                 return;
             }
 
-            // TODO: send to your provider (Mailchimp, Klaviyo, Resend…).
-            status.textContent = "You're in! Check your inbox to confirm.";
-            form.reset();
+            if (button) button.disabled = true;
+            status.textContent = "Adding you…";
+
+            try {
+                const res = await fetch("/api/newsletter/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email.value.trim() }),
+                });
+                if (!res.ok) throw new Error("subscribe failed");
+                const data = await res.json();
+                status.textContent = data.already
+                    ? "You were already on the list — nothing to do."
+                    : "Added. One letter a month, and a link to leave in each one.";
+                form.reset();
+            } catch (_) {
+                status.textContent =
+                    "That didn't go through. Try again, or email hello@thebookswanderer.com.";
+            } finally {
+                if (button) button.disabled = false;
+            }
         });
     }
 

@@ -237,3 +237,20 @@ class EmailOptOut(Base):
     email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     source: Mapped[str] = mapped_column(String(40), default="unsubscribe_link")
+
+
+class NewsletterSubscriber(Base):
+    """Suscriptor del boletín.
+
+    Existe porque el formulario de la portada decía "You're in! Check your
+    inbox" y tiraba la dirección: no había backend, ni lista, ni confirmación
+    que revisar. Ahora la dirección se guarda de verdad.
+    """
+
+    __tablename__ = "newsletter_subscribers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    source: Mapped[str] = mapped_column(String(40), default="homepage")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)

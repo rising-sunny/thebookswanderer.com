@@ -1162,6 +1162,41 @@ def unsubscribe_token(email: str) -> str:
     return hmac.new(secret, normalized, hashlib.sha256).hexdigest()[:24]
 
 
+class NewsletterIn(BaseModel):
+    email: EmailStr
+
+
+@app.post("/api/newsletter/subscribe")
+def newsletter_subscribe(body: NewsletterIn, db: Session = Depends(get_db)):
+    """Guarda la dirección de verdad.
+
+    Antes el formulario de la portada solo respondía "You're in! Check your
+    inbox" desde JavaScript y descartaba el email: no había lista, ni backend,
+    ni confirmación que revisar.
+    """
+    from models import EmailOptOut, NewsletterSubscriber
+
+    normalized = body.email.strip().lower()
+
+    # Quien pidió no recibir correos no vuelve a entrar por aquí.
+    if db.query(EmailOptOut).filter(EmailOptOut.email == normalized).one_or_none():
+        return {"ok": True, "already": True}
+
+    existing = (
+        db.query(NewsletterSubscriber)
+        .filter(NewsletterSubscriber.email == normalized)
+        .one_or_none()
+    )
+    if existing:
+        existing.active = True
+        db.commit()
+        return {"ok": True, "already": True}
+
+    db.add(NewsletterSubscriber(email=normalized))
+    db.commit()
+    return {"ok": True, "already": False}
+
+
 @app.get("/api/unsubscribe", response_class=HTMLResponse)
 def unsubscribe(
     email: str = Query(...),
@@ -1178,12 +1213,18 @@ def unsubscribe(
     if not _hmac.compare_digest(t, unsubscribe_token(normalized)):
         raise HTTPException(400, "Invalid unsubscribe link")
 
+    from models import NewsletterSubscriber
+
     existing = (
         db.query(EmailOptOut).filter(EmailOptOut.email == normalized).one_or_none()
     )
     if not existing:
         db.add(EmailOptOut(email=normalized))
-        db.commit()
+    # La baja vale para todo, no solo para los recordatorios de carrito.
+    db.query(NewsletterSubscriber).filter(
+        NewsletterSubscriber.email == normalized
+    ).update({"active": False})
+    db.commit()
 
     return HTMLResponse(
         f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
