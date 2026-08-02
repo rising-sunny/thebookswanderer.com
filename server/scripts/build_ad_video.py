@@ -32,6 +32,8 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+# 4:5 para el feed de Facebook, 9:16 para TikTok / Reels / Stories.
+FORMATOS = {"feed": (1080, 1350), "vertical": (1080, 1920)}
 W, H, FPS = 1080, 1350, 30
 DUR = 2.4
 CREAM = "#F8F2E5"
@@ -79,14 +81,16 @@ def catalogo(slugs: list[str]) -> list[dict]:
 
 
 def portada(dst: Path) -> None:
+    # Anclado al centro del alto para que sirva en 4:5 y en 9:16.
+    c = H // 2
     vf = (
         f"drawtext=fontfile={SANS_B}:text='LITERARY BOUTIQUE':fontcolor={GOLD}:"
-        f"fontsize=34:x=(w-tw)/2:y=440:alpha='min(1,(t-0.2)*2)',"
+        f"fontsize=34:x=(w-tw)/2:y={c-235}:alpha='min(1,(t-0.2)*2)',"
         f"drawtext=fontfile={SERIF_B}:text='The Books Wanderer':fontcolor={GREEN}:"
-        f"fontsize=86:x=(w-tw)/2:y=520:alpha='min(1,(t-0.4)*2)',"
-        f"drawbox=x=(iw-180)/2:y=680:w=180:h=4:color={GOLD}@0.9:t=fill,"
+        f"fontsize=86:x=(w-tw)/2:y={c-155}:alpha='min(1,(t-0.4)*2)',"
+        f"drawbox=x=(iw-180)/2:y={c+5}:w=180:h=4:color={GOLD}@0.9:t=fill,"
         f"drawtext=fontfile={SERIF}:text='For those who wander between pages':"
-        f"fontcolor=0x2B5240:fontsize=40:x=(w-tw)/2:y=740:alpha='min(1,(t-0.8)*2)',"
+        f"fontcolor=0x2B5240:fontsize=40:x=(w-tw)/2:y={c+65}:alpha='min(1,(t-0.8)*2)',"
         f"fade=t=out:st=2.2:d=0.4:c={CREAM_HEX}"
     )
     ff("-f", "lavfi", "-i", f"color=c={CREAM}:s={W}x{H}:d=2.6:r={FPS}",
@@ -99,8 +103,18 @@ def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
     # El backslash escapa el $ para drawtext, no para el shell: aqui no hay shell.
     p = f"${precio:.2f}".replace("$", r"\$")
     n = int(DUR * FPS)
+    # En 9:16 las fotos de catalogo (casi cuadradas) perderian medio producto al
+    # recortarlas, asi que se encajan enteras sobre fondo crema. En 4:5 el
+    # recorte apenas quita nada y llena mejor el marco.
+    if H / W > 1.5:
+        encaje = (
+            f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
+            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={CREAM},"
+        )
+    else:
+        encaje = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
     vf = (
-        f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        f"{encaje}"
         f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:x='iw/2-(iw/zoom/2)':"
         f"y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS},"
         f"drawbox=x=0:y={H-300}:w={W}:h=300:color=black@0.45:t=fill,"
@@ -118,16 +132,17 @@ def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
 
 
 def cierre(dst: Path) -> None:
+    c = H // 2
     vf = (
         f"drawtext=fontfile={SERIF_B}:text='Small things':fontcolor={GREEN}:"
-        f"fontsize=76:x=(w-tw)/2:y=520,"
+        f"fontsize=76:x=(w-tw)/2:y={c-155},"
         f"drawtext=fontfile={SERIF_B}:text='that make reading a ritual':"
-        f"fontcolor={GREEN}:fontsize=56:x=(w-tw)/2:y=625,"
-        f"drawbox=x=(iw-180)/2:y=730:w=180:h=4:color={GOLD}@0.9:t=fill,"
+        f"fontcolor={GREEN}:fontsize=56:x=(w-tw)/2:y={c-50},"
+        f"drawbox=x=(iw-180)/2:y={c+55}:w=180:h=4:color={GOLD}@0.9:t=fill,"
         f"drawtext=fontfile={SANS_B}:text='thebookswanderer.com':fontcolor={GOLD}:"
-        f"fontsize=46:x=(w-tw)/2:y=790,"
+        f"fontsize=46:x=(w-tw)/2:y={c+115},"
         f"drawtext=fontfile={SERIF}:text='Shipping priced per destination':"
-        f"fontcolor=0x5C6157:fontsize=32:x=(w-tw)/2:y=880,"
+        f"fontcolor=0x5C6157:fontsize=32:x=(w-tw)/2:y={c+205},"
         f"fade=t=in:st=0:d=0.4:c={CREAM_HEX}"
     )
     ff("-f", "lavfi", "-i", f"color=c={CREAM}:s={W}x{H}:d=2.8:r={FPS}",
@@ -139,7 +154,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Genera el video del anuncio.")
     ap.add_argument("--slugs", default=",".join(POR_DEFECTO))
     ap.add_argument("--out", default="/root/tbw-ad.mp4")
+    ap.add_argument("--format", choices=sorted(FORMATOS), default="feed",
+                    help="feed = 1080x1350 (Facebook), vertical = 1080x1920 "
+                         "(TikTok, Reels, Stories).")
     args = ap.parse_args()
+
+    global W, H
+    W, H = FORMATOS[args.format]
 
     productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
     if not productos:
