@@ -3,6 +3,24 @@
 <head>
 <meta charset="utf-8">
 <title>FB Cover · The Books Wanderer</title>
+<!--
+  Portada de Facebook · 1640x624
+
+  Render:
+    chromium --headless --screenshot=facebook-cover.png --window-size=1640,624 \
+             https://thebookswanderer.com/assets/social/facebook-cover.html
+
+  Dos restricciones de Facebook que condicionan el diseño:
+
+  1. RECORTE EN MOVIL. En escritorio se ve la imagen entera (proporcion 2.63:1),
+     pero en movil se recorta a ~1.78:1 desde el centro: se pierden unos 300px
+     por cada lado. Todo lo legible vive dentro de .safe.
+
+  2. LA FOTO DE PERFIL. En escritorio se superpone sobre la esquina inferior
+     izquierda, ocupando aproximadamente 230x230 desde x=48. Esa zona queda
+     vacia a proposito: antes habia un circulo con el logo justo debajo, y la
+     foto de perfil lo tapaba.
+-->
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -24,7 +42,7 @@
     color: #1b3728;
   }
 
-  /* subtle paper grain via layered noise-ish dots (pure CSS) */
+  /* Grano de papel */
   .cover::before {
     content: "";
     position: absolute;
@@ -46,34 +64,10 @@
     z-index: 5;
   }
 
-  /* decorative leaf shapes (right side) */
-  .leaves {
-    position: absolute;
-    right: 0; top: 0; bottom: 0;
-    width: 48%;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .leaf {
-    position: absolute;
-    width: 28px; height: 42px;
-    border-radius: 0 80% 0 80%;
-    transform-origin: center;
-    opacity: 0.85;
-  }
-  .leaf.l1 { background: #c4501e; right: 18%; top: 14%; transform: rotate(28deg); }
-  .leaf.l2 { background: #a97c22; right: 28%; top: 22%; width: 22px; height: 34px; transform: rotate(-18deg); opacity: 0.7; }
-  .leaf.l3 { background: #8b2f27; right: 12%; top: 38%; width: 24px; height: 36px; transform: rotate(52deg); opacity: 0.75; }
-  .leaf.l4 { background: #2b5240; right: 22%; top: 48%; width: 20px; height: 30px; transform: rotate(-40deg); opacity: 0.55; }
-  .leaf.l5 { background: #d9662f; right: 34%; top: 58%; width: 26px; height: 38px; transform: rotate(12deg); opacity: 0.7; }
-  .leaf.l6 { background: #c1912f; right: 8%; top: 62%; width: 18px; height: 28px; transform: rotate(-55deg); opacity: 0.65; }
-  .leaf.l7 { background: #1b3728; right: 26%; top: 72%; width: 22px; height: 32px; transform: rotate(35deg); opacity: 0.5; }
-  .leaf.l8 { background: #a63a2f; right: 40%; top: 18%; width: 16px; height: 24px; transform: rotate(-25deg); opacity: 0.55; }
-
-  /* soft green panel accent on the right */
+  /* Orbe verde con el libro */
   .panel-right {
     position: absolute;
-    right: -80px;
+    right: -60px;
     top: 50%;
     transform: translateY(-50%);
     width: 520px;
@@ -93,10 +87,9 @@
     border: 1.5px solid rgba(226, 196, 124, 0.35);
   }
 
-  /* open book silhouette (CSS shapes) on the green orb */
   .book {
     position: absolute;
-    right: 120px;
+    right: 140px;
     top: 50%;
     transform: translateY(-46%);
     width: 280px;
@@ -154,7 +147,7 @@
 
   .glow {
     position: absolute;
-    right: 160px;
+    right: 180px;
     top: 70px;
     width: 220px;
     height: 160px;
@@ -163,92 +156,86 @@
     pointer-events: none;
   }
 
-  /* left brand block */
-  .brand {
+  /* Hojas: el mismo SVG que cae en la portada del sitio, no bloques con
+     border-radius. Consistencia de marca y bordes reales con nervadura. */
+  .leaves {
     position: absolute;
-    left: 72px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    gap: 36px;
-    z-index: 4;
-    max-width: 920px;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
   }
-  .logo-wrap {
-    flex-shrink: 0;
-    width: 196px;
-    height: 196px;
-    border-radius: 50%;
-    background: #fffdf8;
-    border: 3px solid #c1912f;
-    box-shadow:
-      0 0 0 6px rgba(248, 242, 229, 0.9),
-      0 0 0 8px rgba(43, 82, 64, 0.25),
-      0 14px 32px rgba(27, 55, 40, 0.12);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .logo-wrap img {
-    width: 188px;
-    height: 188px;
-    object-fit: cover;
-    border-radius: 50%;
+  .leaves svg {
+    position: absolute;
     display: block;
   }
-  .copy {
+  .lf1 { left: 44%; top: 12%; width: 30px; transform: rotate(24deg);  color: #c4501e; opacity: .55; }
+  .lf2 { left: 52%; top: 30%; width: 22px; transform: rotate(-32deg); color: #a97c22; opacity: .45; }
+  .lf3 { left: 38%; top: 74%; width: 26px; transform: rotate(48deg);  color: #8b2f27; opacity: .40; }
+  .lf4 { left: 60%; top: 60%; width: 20px; transform: rotate(-14deg); color: #2b5240; opacity: .40; }
+  .lf5 { left: 30%; top: 88%; width: 18px; transform: rotate(62deg);  color: #c1912f; opacity: .35; }
+  .lf6 { left: 66%; top: 18%; width: 24px; transform: rotate(-48deg); color: #d9662f; opacity: .40; }
+  .lf7 { left: 24%; top: 20%; width: 16px; transform: rotate(18deg);  color: #1b3728; opacity: .28; }
+
+  /* Zona segura: sobrevive al recorte movil y esquiva la foto de perfil. */
+  .safe {
+    position: absolute;
+    left: 300px;
+    right: 470px;
+    top: 0;
+    bottom: 96px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    min-width: 0;
+    justify-content: center;
+    z-index: 4;
   }
   .eyebrow {
     font-family: "Segoe UI", system-ui, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.26em;
     text-transform: uppercase;
     color: #a97c22;
+    margin-bottom: 14px;
   }
   h1 {
-    font-size: 58px;
+    font-size: 74px;
     font-weight: 600;
-    line-height: 1.08;
-    letter-spacing: 0.01em;
+    line-height: 1.04;
+    letter-spacing: 0.005em;
     color: #1b3728;
+    text-shadow: 0 1px 0 rgba(255,255,255,.5);
   }
   .rule {
-    width: 96px;
+    width: 110px;
     height: 3px;
     border-radius: 2px;
     background: linear-gradient(90deg, #c1912f, #e2c47c);
-    margin: 4px 0 2px;
+    margin: 20px 0 16px;
   }
   .tag {
-    font-size: 22px;
+    font-size: 27px;
     font-style: italic;
     color: #2b5240;
     line-height: 1.35;
-    max-width: 520px;
+    max-width: 620px;
   }
   .url {
     font-family: "Segoe UI", system-ui, sans-serif;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     color: #5c6157;
-    margin-top: 6px;
+    margin-top: 22px;
   }
 
+  /* Reservado para la foto de perfil en escritorio. Vacio a proposito. */
   .corner {
     position: absolute;
-    left: 28px;
-    bottom: 22px;
+    left: 300px;
+    bottom: 30px;
     font-family: "Segoe UI", system-ui, sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.14em;
+    font-size: 12px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: rgba(92, 97, 87, 0.55);
     z-index: 4;
@@ -260,44 +247,37 @@
     <div class="gold-bar"></div>
     <div class="panel-right"></div>
     <div class="glow"></div>
-    <div class="leaves">
-      <span class="leaf l1"></span>
-      <span class="leaf l2"></span>
-      <span class="leaf l3"></span>
-      <span class="leaf l4"></span>
-      <span class="leaf l5"></span>
-      <span class="leaf l6"></span>
-      <span class="leaf l7"></span>
-      <span class="leaf l8"></span>
+
+    <div class="leaves" aria-hidden="true">
+      <svg class="lf1" viewBox="0 0 24 28"><path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/><path d="M12 22.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      <svg class="lf2" viewBox="0 0 24 28"><path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/><path d="M12 22.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      <svg class="lf3" viewBox="0 0 24 28"><path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/><path d="M12 22.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      <svg class="lf4" viewBox="0 0 24 28"><path d="M12 2l6 12-6 12-6-12 6-12Z" fill="currentColor"/></svg>
+      <svg class="lf5" viewBox="0 0 24 28"><path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/><path d="M12 22.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      <svg class="lf6" viewBox="0 0 24 28"><path d="M12 2l6 12-6 12-6-12 6-12Z" fill="currentColor"/></svg>
+      <svg class="lf7" viewBox="0 0 24 28"><path d="M12 3C7 7 4.5 11 5.5 15.5 6.4 19.5 9 21.5 12 22.5c3-1 5.6-3 6.5-7C19.5 11 17 7 12 3Z" fill="currentColor"/><path d="M12 22.5V6" stroke="rgba(0,0,0,.25)" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
     </div>
+
     <div class="book" aria-hidden="true">
       <div class="page left">
-        <span class="line"></span>
-        <span class="line"></span>
-        <span class="line"></span>
-        <span class="line"></span>
+        <span class="line"></span><span class="line"></span>
+        <span class="line"></span><span class="line"></span>
       </div>
       <div class="spine"></div>
       <div class="page right">
-        <span class="line"></span>
-        <span class="line"></span>
-        <span class="line"></span>
-        <span class="line"></span>
+        <span class="line"></span><span class="line"></span>
+        <span class="line"></span><span class="line"></span>
       </div>
     </div>
 
-    <div class="brand">
-      <div class="logo-wrap">
-        <img src="../logo.png" alt="The Books Wanderer" width="188" height="188">
-      </div>
-      <div class="copy">
-        <div class="eyebrow">Literary boutique</div>
-        <h1>The Books Wanderer</h1>
-        <div class="rule"></div>
-        <p class="tag">For those who wander between pages.</p>
-        <p class="url">thebookswanderer.com</p>
-      </div>
+    <div class="safe">
+      <div class="eyebrow">Literary boutique</div>
+      <h1>The Books Wanderer</h1>
+      <div class="rule"></div>
+      <p class="tag">For those who wander between pages.</p>
+      <p class="url">thebookswanderer.com</p>
     </div>
+
     <div class="corner">Reading accessories · worldwide</div>
   </div>
 </body>
