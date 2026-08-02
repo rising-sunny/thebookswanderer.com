@@ -122,12 +122,45 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     variants = detail.get("variants") or []
     lifestyle = detail.get("lifestyle_images") or detail.get("images") or []
 
-    if price is not None and price_max is not None and float(price_max) > float(price):
+    tiene_rango = (
+        price is not None
+        and price_max is not None
+        and float(price_max) > float(price)
+    )
+    if tiene_rango:
         price_block = f"${float(price):.2f}–${float(price_max):.2f} USD"
     elif price is not None:
         price_block = f"${float(price):.2f} USD"
     else:
         price_block = ""
+
+    # Microdatos del precio.
+    #
+    # Antes el importe visible iba dentro de itemprop="price", asi que Google
+    # leia "$9.99 USD" -- o peor, "$9.99-$27.99 USD" -- donde espera un numero
+    # pelado. De ahi el "formato de precio no valido" de Search Console. El dato
+    # legible por maquina va ahora en <meta content>, y el texto para personas
+    # queda fuera del itemprop, que es como se marca esto.
+    if price is None:
+        price_microdata = ""
+    else:
+        tipo = "AggregateOffer" if tiene_rango else "Offer"
+        if tiene_rango:
+            importes = (
+                f'<meta itemprop="lowPrice" content="{float(price):.2f}">'
+                f'<meta itemprop="highPrice" content="{float(price_max):.2f}">'
+            )
+        else:
+            importes = f'<meta itemprop="price" content="{float(price):.2f}">'
+        price_microdata = (
+            '<p class="pdp__price">'
+            f'<strong itemprop="offers" itemscope itemtype="https://schema.org/{tipo}">'
+            '<meta itemprop="priceCurrency" content="USD">'
+            f"{importes}"
+            '<meta itemprop="availability" content="https://schema.org/InStock">'
+            f"{_esc_text(price_block)}"
+            "</strong></p>"
+        )
 
     # JSON-LD Product + BreadcrumbList (helps avoid thin-page / soft-404 signals)
     json_ld_product: dict[str, Any] = {
@@ -143,11 +176,21 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     if img:
         json_ld_product["image"] = [img]
     if price is not None:
+        # Con variantes a distintos precios, un solo "price" contradice al rango
+        # que se ve en pantalla. AggregateOffer es lo que describe eso.
+        if tiene_rango:
+            importe: dict[str, Any] = {
+                "@type": "AggregateOffer",
+                "lowPrice": f"{float(price):.2f}",
+                "highPrice": f"{float(price_max):.2f}",
+                "offerCount": max(len(variants), 1),
+            }
+        else:
+            importe = {"@type": "Offer", "price": f"{float(price):.2f}"}
         json_ld_product["offers"] = {
-            "@type": "Offer",
+            **importe,
             "url": canonical,
             "priceCurrency": "USD",
-            "price": f"{float(price):.2f}",
             "availability": "https://schema.org/InStock",
             "itemCondition": "https://schema.org/NewCondition",
             "seller": {"@type": "Organization", "name": "The Books Wanderer"},
@@ -244,7 +287,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
 <article class="pdp-ssr" data-ssr="1" itemscope itemtype="https://schema.org/Product">
   <p class="eyebrow">{_esc_text(category)}</p>
   <h1 itemprop="name">{_esc_text(title)}</h1>
-  {"<p class=\"pdp__price\"><strong itemprop=\"offers\" itemscope itemtype=\"https://schema.org/Offer\"><meta itemprop=\"priceCurrency\" content=\"USD\"><span itemprop=\"price\">" + _esc_text(price_block) + "</span></strong></p>" if price_block else ""}
+  {price_microdata}
   {hero}
   <div itemprop="description">
     <p>{_esc_text(desc)}</p>
