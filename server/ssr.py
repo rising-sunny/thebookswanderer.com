@@ -83,6 +83,21 @@ def _social_head(
     return "\n    ".join(lines)
 
 
+def _ship_countries() -> list[str]:
+    """Códigos de país a los que enviamos, para la política de devoluciones.
+
+    Importación diferida: main.py importa ssr.py, así que hacerlo arriba sería
+    un ciclo. En tiempo de petición main ya está cargado. La lista tiene una
+    sola fuente de verdad y no se duplica aquí.
+    """
+    try:
+        from main import SHIP_DESTINATIONS
+
+        return [d["code"] for d in SHIP_DESTINATIONS]
+    except Exception:  # noqa: BLE001
+        return ["GB", "US"]
+
+
 def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     """Full HTML document for a store product (CJ catalog)."""
     title = detail.get("title") or "Product"
@@ -136,7 +151,25 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
             "availability": "https://schema.org/InStock",
             "itemCondition": "https://schema.org/NewCondition",
             "seller": {"@type": "Organization", "name": "The Books Wanderer"},
+            # Refleja shipping-returns.html tal cual. Si esa pagina cambia,
+            # esto cambia con ella: publicar aqui condiciones distintas de las
+            # que lee el comprador seria una promesa falsa, no un dato SEO.
+            "hasMerchantReturnPolicy": {
+                "@type": "MerchantReturnPolicy",
+                "applicableCountry": _ship_countries(),
+                "returnPolicyCategory":
+                    "https://schema.org/MerchantReturnFiniteReturnWindow",
+                "merchantReturnDays": 14,
+                "returnMethod": "https://schema.org/ReturnByMail",
+                "returnFees": "https://schema.org/ReturnShippingFees",
+                "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
+            },
         }
+        # Sin "shippingDetails" a proposito: el flete se calcula por destino y
+        # por variante contra el transportista, asi que no hay una tarifa unica
+        # que declarar. Inventar una plana para contentar a Search Console
+        # pondria en los resultados de Google un precio que el checkout no va a
+        # cobrar. Google lo marca como no critico.
 
     json_ld_breadcrumb = {
         "@context": "https://schema.org",
@@ -426,6 +459,17 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
             f'<a class="pick-pair" href="{_esc(href)}">{_esc_text(label)}</a> '
         )
 
+    # Sin bloque "offers" a proposito.
+    #
+    # Estas paginas recomiendan un producto que vende Amazon, no nosotros, y no
+    # conocemos su precio: cambia a diario y el acuerdo de Amazon Associates no
+    # permite publicar precios obtenidos por nuestra cuenta. Antes se emitia un
+    # Offer con priceCurrency "USD" y sin "price", que es justo lo que Search
+    # Console reporto como "formato de precio no valido": moneda sin importe.
+    #
+    # Un Offer incompleto es peor que ninguno. Un Product sin offers no opta a
+    # resultados enriquecidos, pero es structured data valido y describe la
+    # pagina con honestidad: aqui no se compra nada.
     json_ld: dict[str, Any] = {
         "@context": "https://schema.org",
         "@type": "Product",
@@ -434,18 +478,14 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
         "sku": pick.get("asin") or pick.get("slug"),
         "brand": {"@type": "Brand", "name": "Amazon"},
         "url": canonical,
-        "offers": {
-            "@type": "Offer",
-            "url": amazon,
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock",
-            "seller": {"@type": "Organization", "name": "Amazon"},
-        },
     }
+    # "image" es obligatorio: sin imagen del pick, cae al logo de la marca.
     if images:
         json_ld["image"] = images[:5]
     elif img:
         json_ld["image"] = [img]
+    else:
+        json_ld["image"] = [f"{PUBLIC_BASE}/assets/logo.png"]
 
     ld = json.dumps(json_ld, ensure_ascii=False)
     v = _css_ver()
