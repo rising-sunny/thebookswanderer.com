@@ -124,3 +124,52 @@ a `/act_<id>/advideos`, que el token de usuario ya podía usar gracias a
 vuelve obligatorio al migrar a `OFFSITE_CONVERSIONS`.
 
 **Nunca activar desde el panel de sugerencias de Ads Manager**: su slider viene por defecto en **$10.000/día**.
+
+---
+
+# Anuncio 02 — Estados Unidos
+
+**Estado:** creado en `PAUSED` el 2026-08-02.
+
+| Objeto | ID |
+|---|---|
+| Campaña | `120249991557130256` |
+| Ad set | `120249991559160256` |
+| Anuncio | `120249991560650256` |
+| Creatividad | `911872478014927` — **la misma que GB** |
+
+Campaña separada, no un ad set más dentro de la de GB. Con CBO, añadirlo allí
+habría partido los mismos 5.000 CLP entre dos países; así cada mercado tiene su
+propio presupuesto y su propio aprendizaje.
+
+## Misma creatividad, a propósito
+
+Reutiliza el vídeo y el copy de GB sin un solo cambio. Es lo que convierte esto
+en una comparación limpia: **la única variable que cambia es el país**. Si el
+copy también cambiara, un resultado distinto no diría si fue el mercado o el
+texto.
+
+Los precios en el vídeo van en dólares, así que en EE.UU. se leen nativos.
+
+## Economía, frente a Reino Unido
+
+| | GB | US |
+|---|---|---|
+| Envío | $4.20 | **$5.97** |
+| Plazo | 4-9 días | 5-11 días |
+| Ticket | $12.19 | $13.96 |
+| Margen de contribución | ~$6.28 | **~$6.45** |
+| CPM relativo | medio | **el más alto del mundo** |
+
+El margen por pedido es ligeramente mejor en EE.UU. porque el recargo de envío
+suma más en términos absolutos. Lo que empeora es el coste de llegar: los CPM
+estadounidenses son los más caros que existen, así que con el mismo presupuesto
+se compran bastantes menos impresiones.
+
+**La pregunta que responde este test:** ¿compensa el margen algo mayor el coste
+de adquisición mucho mayor? Solo se sabe midiendo.
+
+## Aviso de gasto
+
+5.000 CLP/día **adicionales**. Con las dos campañas activas el gasto diario pasa
+de ~5 a ~10,5 USD.
