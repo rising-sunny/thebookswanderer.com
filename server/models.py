@@ -168,6 +168,12 @@ class Order(Base):
     cj_order_number: Mapped[str] = mapped_column(String(80), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
+    # Abandoned-checkout reminder: set once so nobody is emailed twice.
+    # See server/scripts/send_cart_reminders.py
+    cart_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -214,3 +220,20 @@ class LiveEvent(Base):
     medium: Mapped[str | None] = mapped_column(String(40), nullable=True)
     campaign: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class EmailOptOut(Base):
+    """Quien pidió no recibir más recordatorios.
+
+    El envío de recordatorios de carrito se ampara en el soft opt-in del PECR
+    británico y equivalentes europeos, que exige una salida fácil en cada
+    mensaje. Cada email lleva un enlace firmado a /api/unsubscribe, y esta
+    tabla es la lista de supresión que consulta el script antes de enviar.
+    """
+
+    __tablename__ = "email_opt_outs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    source: Mapped[str] = mapped_column(String(40), default="unsubscribe_link")

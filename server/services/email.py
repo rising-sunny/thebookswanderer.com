@@ -63,6 +63,7 @@ def _send_sync(
     text: str,
     html: str | None = None,
     reply_to: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> bool:
     if not configured():
         log.info("email skipped (SMTP not configured): %s → %s", subject, list(to))
@@ -86,6 +87,12 @@ def _send_sync(
     msg["Message-ID"] = make_msgid(domain=_env("MAIL_FROM").split("@")[-1] or "thebookswanderer.com")
     if reply_to or _env("MAIL_REPLY_TO"):
         msg["Reply-To"] = reply_to or _env("MAIL_REPLY_TO")
+    # List-Unsubscribe: Gmail y Outlook muestran su propio boton de baja con
+    # esta cabecera, y su ausencia penaliza la entregabilidad de cualquier
+    # envio que no sea estrictamente transaccional.
+    for key, value in (headers or {}).items():
+        if value:
+            msg[key] = value
 
     msg.set_content(text)
     if html:
@@ -122,11 +129,13 @@ async def send_email(
     text: str,
     html: str | None = None,
     reply_to: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> bool:
     if isinstance(to, str):
         to = [to]
     return await asyncio.to_thread(
-        _send_sync, to=to, subject=subject, text=text, html=html, reply_to=reply_to
+        _send_sync, to=to, subject=subject, text=text, html=html,
+        reply_to=reply_to, headers=headers
     )
 
 
@@ -575,10 +584,16 @@ async def send_cart_reminder(
     email: str,
     customer_name: str = "",
     lines: list[dict[str, Any]] | None = None,
+    unsubscribe_url: str = "",
 ) -> bool:
     """
     Abandoned-cart style reminder (call from a cron/script when you detect
     a cart email with no completed order).
+
+    Unlike the order emails this one is not transactional: it goes to someone
+    who never bought. UK PECR and the EU equivalent allow it under soft opt-in
+    only if every message carries an easy way out, so pass unsubscribe_url --
+    server/scripts/send_cart_reminders.py builds a signed one.
     """
     name = customer_name or "there"
     shop = _shop_name()
@@ -604,6 +619,20 @@ Finish your order anytime:
 
 — {shop}
 """
+    if unsubscribe_url:
+        text += f"\nDon't want these reminders? Unsubscribe here:\n{unsubscribe_url}\n"
+
+    opt_out_html = (
+        f"""
+          <p style="margin:22px 0 0;text-align:center;font-size:12px;color:#8a8a8a">
+            Not interested? <a href="{_esc(unsubscribe_url)}" style="color:#8a8a8a">
+            Unsubscribe from these reminders</a> — we won't email you again.
+          </p>
+        """
+        if unsubscribe_url
+        else ""
+    )
+
     html = _wrap_html(
         preheader="Your cart is waiting",
         eyebrow="Still thinking it over?",
@@ -618,6 +647,14 @@ Finish your order anytime:
             {items_html}
           </ul>
           <p style="margin:0;text-align:center">{_btn(f"{base}/cart.html", "Return to cart")}</p>
+          {opt_out_html}
         """,
     )
-    return await send_email(to=email, subject=subject, text=text, html=html)
+    headers = (
+        {"List-Unsubscribe": f"<{unsubscribe_url}>",
+         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+        if unsubscribe_url
+        else None
+    )
+    return await send_email(to=email, subject=subject, text=text, html=html,
+                            headers=headers)

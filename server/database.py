@@ -62,3 +62,9 @@ def init_db() -> None:
         if "variant_id" not in ocols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE order_items ADD COLUMN variant_id INTEGER DEFAULT 0"))
+    # orders.cart_reminder_sent_at
+    if "orders" in insp.get_table_names():
+        rcols = {c["name"] for c in insp.get_columns("orders")}
+        if "cart_reminder_sent_at" not in rcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN cart_reminder_sent_at DATETIME"))

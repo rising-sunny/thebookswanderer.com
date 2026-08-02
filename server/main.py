@@ -1147,6 +1147,60 @@ def admin_list_orders(
     }
 
 
+def unsubscribe_token(email: str) -> str:
+    """Firma el email con SECRET_KEY.
+
+    Sin firma, /api/unsubscribe?email=... permitiria dar de baja a cualquiera
+    con solo conocer su direccion. El token es corto porque el enlace va en un
+    email y nadie gana nada falsificandolo mas alla de darse de baja a si mismo.
+    """
+    import hashlib
+    import hmac
+
+    secret = (os.getenv("SECRET_KEY", "") or "tbw").encode()
+    normalized = (email or "").strip().lower().encode()
+    return hmac.new(secret, normalized, hashlib.sha256).hexdigest()[:24]
+
+
+@app.get("/api/unsubscribe", response_class=HTMLResponse)
+def unsubscribe(
+    email: str = Query(...),
+    t: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Baja de los recordatorios de carrito. Un clic, sin login."""
+    import hmac as _hmac
+    from html import escape as _esc_html
+
+    from models import EmailOptOut
+
+    normalized = email.strip().lower()
+    if not _hmac.compare_digest(t, unsubscribe_token(normalized)):
+        raise HTTPException(400, "Invalid unsubscribe link")
+
+    existing = (
+        db.query(EmailOptOut).filter(EmailOptOut.email == normalized).one_or_none()
+    )
+    if not existing:
+        db.add(EmailOptOut(email=normalized))
+        db.commit()
+
+    return HTMLResponse(
+        f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Unsubscribed · The Books Wanderer</title>
+<link rel="stylesheet" href="/styles.css?v=23"></head>
+<body class="page-product"><main class="legal"><div class="container legal__inner">
+<h1>You're unsubscribed</h1>
+<p>We won't send <strong>{_esc_html(normalized)}</strong> any more cart reminders.</p>
+<p>Order confirmations and shipping updates still go out when you buy something —
+those aren't marketing, and you'd want them.</p>
+<p><a href="/">Back to the shop</a></p>
+</div></main></body></html>"""
+    )
+
+
 @app.get("/api/checkout/status/{order_id}")
 def checkout_status(order_id: int, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
