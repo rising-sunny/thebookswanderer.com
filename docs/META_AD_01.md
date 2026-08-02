@@ -173,3 +173,57 @@ de adquisición mucho mayor? Solo se sabe midiendo.
 
 5.000 CLP/día **adicionales**. Con las dos campañas activas el gasto diario pasa
 de ~5 a ~10,5 USD.
+
+---
+
+# Anuncio 03 — España
+
+**Estado:** creado en `PAUSED` el 2026-08-02.
+
+| Objeto | ID |
+|---|---|
+| Campaña | `120249991722490256` |
+| Ad set | `120249991725050256` |
+| Anuncio | `120249991736830256` |
+| Creatividad | `27719895547666761` — **propia, en español** |
+| Vídeo | `2039858179963490` |
+
+Único de los tres con creatividad distinta. GB y US comparten la inglesa para
+que la comparación entre ellos sea limpia; España cambia el idioma porque ahí
+está justamente su ventaja.
+
+## Por qué España
+
+El CPC no sale solo de un CPM barato: `CPC = CPM ÷ (CTR × 1000)`. España no es
+el CPM más bajo de los destinos rápidos — Polonia lo es, a $3.65 de envío — pero
+es el único donde el dueño escribe el copy en su idioma nativo sin coste ni
+traductor. Un anuncio en inglés a Polonia tiene un CTR malo que se come la
+ventaja del CPM.
+
+Envío $4.73, plazo 4-9 días: mismo grupo rápido que Reino Unido.
+
+## Traducción: solo portada y cierre
+
+Los nombres de producto y los precios se quedan en inglés. Es lo que el
+comprador va a encontrar al aterrizar, y traducirlos en el vídeo crearía un
+desajuste peor que dejarlos.
+
+Los acentos van escritos: `páginas`, `pequeños`, `Envío`. Un primer render los
+omitió por precaución de codificación, pero drawtext con DejaVu los pinta sin
+problema — y "pequenos" delata el texto como generado, que es exactamente lo
+contrario de lo que se busca al anunciarse en el idioma del mercado.
+
+## El riesgo que hay que medir
+
+**La web está íntegramente en inglés.** El anuncio en español gana el clic y
+luego aterriza en un sitio que el visitante quizá no lee con comodidad. Por eso
+el copy lo dice explícitamente al final — *"La tienda está en inglés"* — en vez
+de dejar que lo descubra tras pagar el clic.
+
+Si España da buen CTR y mala conversión, esa es la causa más probable, y la
+solución sería traducir el sitio, no cambiar el anuncio.
+
+## DSA
+
+España es UE, así que el ad set lleva `dsa_beneficiary` y `dsa_payor`
+declarados. GB y US no los necesitan.

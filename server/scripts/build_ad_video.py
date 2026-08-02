@@ -34,6 +34,30 @@ from pathlib import Path
 
 # 4:5 para el feed de Facebook, 9:16 para TikTok / Reels / Stories.
 FORMATOS = {"feed": (1080, 1350), "vertical": (1080, 1920)}
+
+# Solo se traducen la portada y el cierre. Los nombres de producto y los precios
+# se quedan como estan porque es lo que el comprador va a encontrar en la web,
+# que esta en ingles: traducirlos aqui crearia un desajuste al aterrizar.
+TEXTOS = {
+    "en": {
+        "eyebrow": "LITERARY BOUTIQUE",
+        "tagline": "For those who wander between pages",
+        "cierre1": "Small things",
+        "cierre2": "that make reading a ritual",
+        "cierre3": "Shipping priced per destination",
+    },
+    # Con acentos: drawtext + DejaVu los renderiza sin problema, comprobado.
+    # Escribirlos sin tilde para "evitar riesgos" delata el texto como generado
+    # y arruina justo la ventaja de anunciarse en el idioma del mercado.
+    "es": {
+        "eyebrow": "BOUTIQUE LITERARIA",
+        "tagline": "Para quienes vagan entre páginas",
+        "cierre1": "Objetos pequeños",
+        "cierre2": "que hacen del leer un ritual",
+        "cierre3": "Envío calculado según destino",
+    },
+}
+T = TEXTOS["en"]
 W, H, FPS = 1080, 1350, 30
 DUR = 2.4
 CREAM = "#F8F2E5"
@@ -84,12 +108,12 @@ def portada(dst: Path) -> None:
     # Anclado al centro del alto para que sirva en 4:5 y en 9:16.
     c = H // 2
     vf = (
-        f"drawtext=fontfile={SANS_B}:text='LITERARY BOUTIQUE':fontcolor={GOLD}:"
+        f"drawtext=fontfile={SANS_B}:text='{T['eyebrow']}':fontcolor={GOLD}:"
         f"fontsize=34:x=(w-tw)/2:y={c-235}:alpha='min(1,(t-0.2)*2)',"
         f"drawtext=fontfile={SERIF_B}:text='The Books Wanderer':fontcolor={GREEN}:"
         f"fontsize=86:x=(w-tw)/2:y={c-155}:alpha='min(1,(t-0.4)*2)',"
         f"drawbox=x=(iw-180)/2:y={c+5}:w=180:h=4:color={GOLD}@0.9:t=fill,"
-        f"drawtext=fontfile={SERIF}:text='For those who wander between pages':"
+        f"drawtext=fontfile={SERIF}:text='{T['tagline']}':"
         f"fontcolor=0x2B5240:fontsize=40:x=(w-tw)/2:y={c+65}:alpha='min(1,(t-0.8)*2)',"
         f"fade=t=out:st=2.2:d=0.4:c={CREAM_HEX}"
     )
@@ -134,14 +158,14 @@ def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
 def cierre(dst: Path) -> None:
     c = H // 2
     vf = (
-        f"drawtext=fontfile={SERIF_B}:text='Small things':fontcolor={GREEN}:"
+        f"drawtext=fontfile={SERIF_B}:text='{T['cierre1']}':fontcolor={GREEN}:"
         f"fontsize=76:x=(w-tw)/2:y={c-155},"
-        f"drawtext=fontfile={SERIF_B}:text='that make reading a ritual':"
+        f"drawtext=fontfile={SERIF_B}:text='{T['cierre2']}':"
         f"fontcolor={GREEN}:fontsize=56:x=(w-tw)/2:y={c-50},"
         f"drawbox=x=(iw-180)/2:y={c+55}:w=180:h=4:color={GOLD}@0.9:t=fill,"
         f"drawtext=fontfile={SANS_B}:text='thebookswanderer.com':fontcolor={GOLD}:"
         f"fontsize=46:x=(w-tw)/2:y={c+115},"
-        f"drawtext=fontfile={SERIF}:text='Shipping priced per destination':"
+        f"drawtext=fontfile={SERIF}:text='{T['cierre3']}':"
         f"fontcolor=0x5C6157:fontsize=32:x=(w-tw)/2:y={c+205},"
         f"fade=t=in:st=0:d=0.4:c={CREAM_HEX}"
     )
@@ -157,10 +181,14 @@ def main() -> None:
     ap.add_argument("--format", choices=sorted(FORMATOS), default="feed",
                     help="feed = 1080x1350 (Facebook), vertical = 1080x1920 "
                          "(TikTok, Reels, Stories).")
+    ap.add_argument("--lang", choices=sorted(TEXTOS), default="en",
+                    help="Idioma de la portada y el cierre. Los nombres de "
+                         "producto no se traducen: la web esta en ingles.")
     args = ap.parse_args()
 
-    global W, H
+    global W, H, T
     W, H = FORMATOS[args.format]
+    T = TEXTOS[args.lang]
 
     productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
     if not productos:
