@@ -275,11 +275,16 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
             "</section>"
         )
 
+    # itemprop="image" es lo que faltaba: la etiqueta estaba, pero sin declarar
+    # que era la imagen del producto. El <article> de microdatos es un item
+    # aparte del JSON-LD y Google los valida por separado, asi que tener la
+    # imagen solo en el JSON-LD no salvaba a este.
     hero = (
-        f'<img src="{_esc(img)}" alt="{_esc(title)}" width="800" height="1000" '
+        f'<img itemprop="image" src="{_esc(img)}" alt="{_esc(title)}" width="800" height="1000" '
         f'style="max-width:min(100%,420px);height:auto;border-radius:12px;display:block;margin:1rem 0">'
         if img
-        else ""
+        # Sin foto de producto, el logo mantiene el item valido.
+        else f'<meta itemprop="image" content="{PUBLIC_BASE}/assets/logo.png">'
     )
 
     # Substantial article body — Google Soft 404 is often thin / empty pages.
