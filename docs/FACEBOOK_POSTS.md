@@ -85,8 +85,12 @@ o mejor, una foto tuya del producto si lo tienes en mano
 
 > Fourteen paper butterflies, each one in its own kraft sleeve.
 >
-> Soft botanical prints that perch on the page like a garden edge. They come ready to give,
-> which is why most people who buy a set end up keeping half and gifting the rest.
+> Soft botanical prints that perch on the page like a garden edge. Fourteen is enough to keep
+> a few and still have plenty left to give away.
+>
+> <!-- Antes decia "most people who buy a set end up keeping half and gifting the rest":
+>      un comportamiento de clientes inventado, en una tienda sin ventas. -->
+
 >
 > Swipe for the four designs →
 >
