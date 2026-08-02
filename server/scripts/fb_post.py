@@ -74,6 +74,55 @@ def _scrub(text: str, token: str) -> str:
     return text.replace(token, "<TOKEN>") if token else text
 
 
+def _token_info(token: str) -> dict:
+    """Tipo, caducidad y permisos reales del token, segun Meta."""
+    try:
+        resp = httpx.get(
+            f"{GRAPH}/debug_token",
+            params={"input_token": token, "access_token": token},
+            timeout=30,
+        )
+        if resp.status_code >= 400:
+            return {}
+        return resp.json().get("data", {})
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _resolve_page_token(page_id: str, token: str) -> str:
+    """Devuelve un token capaz de publicar en la Pagina.
+
+    El feed de una Pagina solo acepta un Page Access Token. Si en .env hay un
+    token de usuario -- lo habitual, porque es lo que devuelve el Graph API
+    Explorer -- se cambia aqui por el de la Pagina, que es exactamente lo que
+    haria /me/accounts a mano. Asi el .env guarda un solo token y no hay que
+    renovar dos.
+    """
+    info = _token_info(token)
+    if (info.get("type") or "").upper() == "PAGE":
+        return token
+
+    resp = httpx.get(
+        f"{GRAPH}/me/accounts",
+        params={"access_token": token, "fields": "id,name,access_token"},
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        sys.exit(
+            "El token es de usuario y no se pudo obtener el de la Pagina:\n"
+            + _scrub(resp.text, token)[:500]
+        )
+    for page in resp.json().get("data", []):
+        if str(page.get("id")) == str(page_id):
+            return page.get("access_token") or token
+
+    nombres = ", ".join(p.get("name", "?") for p in resp.json().get("data", [])) or "ninguna"
+    sys.exit(
+        f"El token no da acceso a la Pagina {page_id}.\n"
+        f"Paginas visibles con este token: {nombres}"
+    )
+
+
 def _parse_schedule(value: str | None) -> int | None:
     """Meta exige entre 10 minutos y 30 dias vista."""
     if not value:
@@ -113,31 +162,38 @@ def _is_url(value: str) -> bool:
 
 def cmd_whoami(args, page_id: str, token: str) -> None:
     """Verifica el token sin publicar nada."""
-    with httpx.Client(timeout=30) as client:
-        page = client.get(
-            f"{GRAPH}/{page_id}",
-            params={"fields": "name,link,fan_count,category", "access_token": token},
-        )
-        perms = client.get(
-            f"{GRAPH}/{page_id}",
-            params={"fields": "tasks", "access_token": token},
-        )
-    if page.status_code >= 400:
-        sys.exit(f"El token no sirve para esta Pagina:\n{_scrub(page.text, token)[:600]}")
+    info = _token_info(token)
+    tipo = (info.get("type") or "?").upper()
+    scopes = info.get("scopes", [])
+    caduca = "nunca" if info.get("expires_at") == 0 else str(info.get("expires_at"))
 
-    d = page.json()
+    print(f"Token     : tipo {tipo}, caduca {caduca}, valido={info.get('is_valid')}")
+    if tipo == "USER":
+        print("            (de usuario: se derivara el de la Pagina al publicar)")
+
+    page_token = _resolve_page_token(page_id, token)
+
+    resp = httpx.get(
+        f"{GRAPH}/{page_id}",
+        params={"fields": "name,link,fan_count,category", "access_token": page_token},
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        sys.exit(f"El token no sirve para esta Pagina:\n{_scrub(resp.text, token)[:600]}")
+
+    d = resp.json()
     print(f"Pagina    : {d.get('name')}")
     print(f"ID        : {page_id}")
     print(f"Categoria : {d.get('category', '(sin categoria)')}")
     print(f"Seguidores: {d.get('fan_count', 0)}")
     print(f"URL       : {d.get('link', '')}")
-    if perms.status_code < 400:
-        tasks = perms.json().get("tasks", [])
-        print(f"Permisos  : {', '.join(tasks) if tasks else '(ninguno visible)'}")
-        if "CREATE_CONTENT" not in tasks:
-            print("\nAVISO: falta CREATE_CONTENT. El token no podra publicar.")
-        else:
-            print("\nCREATE_CONTENT presente: el token puede publicar.")
+
+    faltan = [p for p in ("pages_manage_posts", "pages_read_engagement")
+              if scopes and p not in scopes]
+    if faltan:
+        print(f"\nAVISO: faltan permisos: {', '.join(faltan)}. No podra publicar.")
+    else:
+        print("\nPermisos de publicacion presentes. Listo para publicar.")
 
 
 def cmd_text(args, page_id: str, token: str) -> None:
@@ -261,6 +317,11 @@ def main() -> None:
 
     args = ap.parse_args()
     page_id, token = _load_env()
+
+    # whoami hace su propia resolucion; en dry-run no se toca la red.
+    if args.func is not cmd_whoami and not args.dry_run:
+        token = _resolve_page_token(page_id, token)
+
     args.func(args, page_id, token)
 
 
