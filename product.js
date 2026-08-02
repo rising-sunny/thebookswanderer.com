@@ -369,7 +369,7 @@
   ${shippingBlockHtml()}
   <ul class="pdp__meta">
     <li>Secure checkout with PayPal</li>
-    <li>Gift-ready packaging</li>
+    <li>Faulty or wrong items refunded in full</li>
     <li>Shipping calculated by destination</li>
     ${sku ? `<li id="pdpSku">SKU ${escapeHtml(sku)}</li>` : ""}
   </ul>

@@ -227,7 +227,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     <ul>
       <li>Category: {_esc_text(category)}</li>
       <li>Ships from partner warehouses (typically China origin unless noted)</li>
-      <li>Gift-ready packaging on boutique orders</li>
+      <li>Faulty or wrong items refunded in full within 30 days</li>
       <li>Secure checkout · shipping calculated by destination at cart</li>
     </ul>
   </section>
