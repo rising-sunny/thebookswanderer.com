@@ -93,7 +93,7 @@
 
     function productUrl(p) {
         const slug = encodeURIComponent(p.slug || "");
-        return slug ? `/product.html?slug=${slug}` : `/product.html?id=${p.id}`;
+        return slug ? `/products/${slug}` : `/#featured`;
     }
 
     function readCategoryFromUrl() {
@@ -339,7 +339,7 @@
     const affiliateGrid = document.getElementById("affiliateGrid");
 
     function renderAffiliateCard(p) {
-        const detail = `/pick.html?slug=${encodeURIComponent(p.slug)}`;
+        const detail = `/picks/${encodeURIComponent(p.slug)}`;
         const img = escapeHtml(p.imageUrl || "");
         const title = escapeHtml(p.shortTitle || p.title || "");
         const blurb = escapeHtml(p.blurb || "");

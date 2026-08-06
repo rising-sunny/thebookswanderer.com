@@ -60,8 +60,8 @@ def build_message(p: dict, *, base: str, campaign: str) -> str:
 
     slug = p.get("slug") or ""
     link = (
-        f"{base.rstrip('/')}/product.html?slug={slug}"
-        f"&utm_source=facebook&utm_medium=organic&utm_campaign={campaign}"
+        f"{base.rstrip('/')}/products/{slug}"
+        f"?utm_source=facebook&utm_medium=organic&utm_campaign={campaign}"
     )
 
     parts = [
@@ -153,7 +153,7 @@ def main() -> None:
             "text",
             msg,
             "--link",
-            f"{args.base.rstrip('/')}/product.html?slug={args.slug}",
+            f"{args.base.rstrip('/')}/products/{args.slug}",
         ]
     else:
         cmd += ["photo", img, "--message", msg]

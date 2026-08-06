@@ -60,6 +60,8 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree un
 ### Storefront
 
 - Catalog + categories: `index.html`, `app.js`
-- PDP: `product.html`, `product.js`
+- PDP: pretty URLs `/products/{slug}` (legacy `product.html?slug=` 301s), `product.js`
+- Affiliate picks: `/picks/{slug}` (legacy `pick.html?slug=` 301s)
+- Sitemap: dynamic `GET /sitemap.xml` from FastAPI (live catalog + lastmod)
 - Cart / checkout: `cart.html`, `checkout.html` (+ `cart.js`, `checkout.js`)
 - API: `server/main.py` (products, shipping quote, PayPal, CJ order)

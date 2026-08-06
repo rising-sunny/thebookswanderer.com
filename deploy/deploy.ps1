@@ -61,6 +61,9 @@ scp -o BatchMode=yes `
 if (Test-Path "$Root\server\ssr.py") {
     scp -o BatchMode=yes "$Root\server\ssr.py" "${HostName}:${RemotePath}/server/"
 }
+if (Test-Path "$Root\server\urls.py") {
+    scp -o BatchMode=yes "$Root\server\urls.py" "${HostName}:${RemotePath}/server/"
+}
 if (Test-Path "$Root\server\live.py") {
     scp -o BatchMode=yes "$Root\server\live.py" "${HostName}:${RemotePath}/server/"
 }

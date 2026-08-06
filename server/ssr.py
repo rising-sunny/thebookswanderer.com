@@ -317,8 +317,8 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     </div>
 </footer>
 <script src="/track.js?v=1" defer></script>
-<script src="/cart.js?v=2" defer></script>
-<script src="/product.js?v=23" defer></script>
+<script src="/cart.js?v=3" defer></script>
+<script src="/product.js?v=24" defer></script>
 </body>
 </html>
 """
@@ -410,7 +410,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     pairs_html = ""
     for x in pick.get("pairsWith") or []:
         href = x.get("href") or (
-            f"/product.html?slug={_esc(x.get('slug'))}" if x.get("slug") else "#"
+            f"/products/{_esc(x.get('slug'))}" if x.get("slug") else "#"
         )
         # href already needs raw path; escape attr only
         label = x.get("label") or x.get("slug") or "Related"
@@ -495,7 +495,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
             <p><strong>{_esc_text(disclosure)}</strong></p>
             <p class="affiliate-disclosure__detail">{_esc_text(cat.get("linkDisclosure") or "")}</p>
         </aside>
-        <div id="pickRoot" class="pdp__layout" data-ssr-pick="1">
+        <div id="pickRoot" class="pdp__layout" data-ssr-pick="1" data-slug="{_esc(pick.get('slug') or '')}">
             <article class="pdp-ssr" data-ssr="1">
                 <p class="eyebrow">{_esc_text(category)} · {_esc_text(merchant)}</p>
                 {f'<span class="badge badge--gold">{_esc_text(badge)}</span>' if badge else ""}
@@ -523,9 +523,9 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     </div>
 </footer>
 <script src="/track.js?v=1" defer></script>
-<script src="/cart.js?v=2" defer></script>
+<script src="/cart.js?v=3" defer></script>
 <script src="/affiliate-data.js?v=5" defer></script>
-<script src="/pick.js?v=4" defer></script>
+<script src="/pick.js?v=5" defer></script>
 </body>
 </html>
 """
@@ -547,7 +547,7 @@ def render_pick_not_found(slug: str = "") -> str:
 def _product_card_html(p: dict[str, Any]) -> str:
     title = p.get("title") or "Product"
     slug = p.get("slug") or ""
-    href = f"/product.html?slug={_esc(slug)}"
+    href = f"/products/{_esc(slug)}"
     img = p.get("image_url") or ""
     if img.startswith("/"):
         img = PUBLIC_BASE + img
@@ -580,7 +580,7 @@ def _product_card_html(p: dict[str, Any]) -> str:
 def _affiliate_card_html(p: dict[str, Any], *, paid_label: str = "paid link") -> str:
     title = p.get("shortTitle") or p.get("title") or "E-reader"
     slug = p.get("slug") or ""
-    detail = f"/pick.html?slug={_esc(slug)}"
+    detail = f"/picks/{_esc(slug)}"
     img = p.get("imageUrl") or ""
     blurb = p.get("blurb") or ""
     amazon = p.get("amazonUrl") or "#"

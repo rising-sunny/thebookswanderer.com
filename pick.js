@@ -20,8 +20,17 @@
     }
 
     function querySlug() {
+        const path = (window.location.pathname.match(/^\/picks\/([^/]+)\/?$/i) || [])[1];
+        if (path) return decodeURIComponent(path).trim().toLowerCase();
         const q = new URLSearchParams(window.location.search);
-        return (q.get("slug") || "").trim().toLowerCase();
+        const fromQuery = (q.get("slug") || "").trim().toLowerCase();
+        if (fromQuery) return fromQuery;
+        return (root && root.dataset && root.dataset.slug
+            ? root.dataset.slug
+            : ""
+        )
+            .trim()
+            .toLowerCase();
     }
 
     function galleryUrls(p) {
@@ -83,7 +92,7 @@
                 const href = x.href
                     ? String(x.href)
                     : x.slug
-                      ? `/product.html?slug=${encodeURIComponent(x.slug)}`
+                      ? `/products/${encodeURIComponent(x.slug)}`
                       : "#";
                 return `<a class="pick-pair" href="${esc(href)}">${esc(x.label || x.slug || "Related")}</a>`;
             })

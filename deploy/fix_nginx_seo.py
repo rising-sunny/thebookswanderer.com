@@ -60,6 +60,8 @@ def main() -> None:
     body = CONF.read_text(encoding="utf-8")
     assert "location = /pick.html" in body
     assert "location = /product.html" in body
+    assert "location /picks/" in body
+    assert "location = /sitemap.xml" in body
     assert "$host" in body
     assert "InternalHost" not in body
     print("OK", CONF)

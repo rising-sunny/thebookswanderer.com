@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fallback static sitemap for offline/static previews only.
+  Production serves a LIVE sitemap from FastAPI: GET /sitemap.xml
+  (products from DB + affiliate picks + lastmod). Prefer the dynamic one.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://thebookswanderer.com/</loc>
@@ -6,77 +11,87 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/pick.html?slug=kindle-paperwhite</loc>
+    <loc>https://thebookswanderer.com/about.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thebookswanderer.com/privacy.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://thebookswanderer.com/picks/kindle-paperwhite</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/pick.html?slug=kindle</loc>
+    <loc>https://thebookswanderer.com/picks/kindle</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=animal-book-clips</loc>
+    <loc>https://thebookswanderer.com/products/animal-book-clips</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=butterfly-metal-bookmark</loc>
+    <loc>https://thebookswanderer.com/products/butterfly-metal-bookmark</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=heart-book-page-holder</loc>
+    <loc>https://thebookswanderer.com/products/heart-book-page-holder</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=hollow-kitten-bookmark</loc>
+    <loc>https://thebookswanderer.com/products/hollow-kitten-bookmark</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=kindle-magnetic-sleeve</loc>
+    <loc>https://thebookswanderer.com/products/kindle-magnetic-sleeve</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=palace-kitten-bookmarks</loc>
+    <loc>https://thebookswanderer.com/products/palace-kitten-bookmarks</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=paper-butterfly-bookmark-set</loc>
+    <loc>https://thebookswanderer.com/products/paper-butterfly-bookmark-set</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=silicone-page-clip-bookmark</loc>
+    <loc>https://thebookswanderer.com/products/silicone-page-clip-bookmark</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=stacked-books-table-lamp</loc>
+    <loc>https://thebookswanderer.com/products/stacked-books-table-lamp</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=stained-glass-stickers</loc>
+    <loc>https://thebookswanderer.com/products/stained-glass-stickers</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=washi-sticker-book</loc>
+    <loc>https://thebookswanderer.com/products/washi-sticker-book</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=wooden-finger-book-holder</loc>
+    <loc>https://thebookswanderer.com/products/wooden-finger-book-holder</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thebookswanderer.com/product.html?slug=wooden-reading-tracker</loc>
+    <loc>https://thebookswanderer.com/products/wooden-reading-tracker</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
