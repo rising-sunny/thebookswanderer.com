@@ -30,6 +30,26 @@ cd server
 
 Official docs (online): https://developers.cjdropshipping.com/
 
+### Facebook Page posts (organic)
+
+Publish product promos from this repo (Graph API — not Ads MCP).
+
+| Path | What |
+|------|------|
+| [`server/scripts/fb_post.py`](server/scripts/fb_post.py) | text / photo / carousel / video |
+| [`server/scripts/post_product_fb.py`](server/scripts/post_product_fb.py) | promo from live catalog slug |
+| [`server/docs/FACEBOOK.md`](server/docs/FACEBOOK.md) | setup + commands |
+
+```powershell
+cd server
+# .env must have FB_PAGE_ID + FB_PAGE_TOKEN
+python scripts/fb_post.py whoami
+python scripts/post_product_fb.py hollow-kitten-bookmark --dry-run
+python scripts/post_product_fb.py hollow-kitten-bookmark
+```
+
+Meta **Ads** (campaigns) use a separate official MCP: `https://mcp.facebook.com/ads` — see FACEBOOK.md.
+
 ### Deploy
 
 See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree under `/var/www/thebookswanderer.com/`.
