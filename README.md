@@ -46,6 +46,9 @@ cd server
 python scripts/fb_post.py whoami
 python scripts/post_product_fb.py hollow-kitten-bookmark --dry-run
 python scripts/post_product_fb.py hollow-kitten-bookmark
+# Video promo (slideshow or product clip)
+python scripts/make_slideshow_video.py data/butter_imgs/d6.jpeg data/butter_imgs/d9.jpeg -o ../assets/products/butterfly-bookmark/promo.mp4
+python scripts/post_product_fb.py butterfly-metal-bookmark --video ../assets/products/butterfly-bookmark/promo.mp4
 ```
 
 Meta **Ads** (campaigns) use a separate official MCP: `https://mcp.facebook.com/ads` — see FACEBOOK.md.

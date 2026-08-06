@@ -61,6 +61,12 @@ python scripts/fb_post.py photo a.jpg b.jpg c.jpg --message "Swipe"
 # Video
 python scripts/fb_post.py video clip.mp4 --message "Caption" --title "Title"
 
+# Product + local video (slideshow or real demo)
+python scripts/post_product_fb.py butterfly-metal-bookmark --video ../assets/products/butterfly-bookmark/promo.mp4
+
+# Build a square slideshow from stills (needs ffmpeg)
+python scripts/make_slideshow_video.py img1.jpg img2.jpg img3.jpg -o promo.mp4 --seconds 2.5
+
 # Schedule (local server time; 10 min – 30 days)
 python scripts/fb_post.py text "Hello" --schedule "2026-08-10 10:00"
 

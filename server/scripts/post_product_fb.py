@@ -7,6 +7,7 @@ Usage (from server/, with .env + venv):
   python scripts/post_product_fb.py hollow-kitten-bookmark --dry-run
   python scripts/post_product_fb.py wooden-reading-tracker
   python scripts/post_product_fb.py kindle-magnetic-sleeve --campaign fb_organic_kindle
+  python scripts/post_product_fb.py butterfly-metal-bookmark --video path/to/promo.mp4
 
 Requires: FB_PAGE_ID, FB_PAGE_TOKEN (see docs/FACEBOOK.md)
 """
@@ -100,6 +101,17 @@ def main() -> None:
         action="store_true",
         help="Text + link only (no photo)",
     )
+    ap.add_argument(
+        "--video",
+        type=Path,
+        default=None,
+        help="Local MP4 path — posts as Page video with product caption",
+    )
+    ap.add_argument(
+        "--title",
+        default="",
+        help="Optional Facebook video title (defaults to product title)",
+    )
     args = ap.parse_args()
 
     campaign = args.campaign.strip() or f"fb_organic_{args.slug.replace('-', '_')}"
@@ -112,25 +124,37 @@ def main() -> None:
 
     msg = build_message(p, base=args.base, campaign=campaign)
     img = _abs_image(args.base, p.get("image_url") or "")
+    video_path = args.video.resolve() if args.video else None
 
     print("--- caption ---")
     print(msg)
     print("---")
-    if img and not args.text_only:
+    if video_path:
+        if not video_path.is_file():
+            sys.exit(f"Video not found: {video_path}")
+        print("video:", video_path)
+    elif img and not args.text_only:
         print("image:", img)
     else:
         print("image: (text-only)")
 
-    cmd = [sys.executable]
     if args.dry_run:
-        cmd.append(str(FB_POST))
-        # dry-run is global flag before subcommand
         cmd = [sys.executable, str(FB_POST), "--dry-run"]
     else:
         cmd = [sys.executable, str(FB_POST)]
 
-    if args.text_only or not img:
-        cmd += ["text", msg, "--link", f"{args.base.rstrip('/')}/product.html?slug={args.slug}"]
+    if video_path:
+        title = (args.title or p.get("title") or "").strip()
+        cmd += ["video", str(video_path), "--message", msg]
+        if title:
+            cmd += ["--title", title]
+    elif args.text_only or not img:
+        cmd += [
+            "text",
+            msg,
+            "--link",
+            f"{args.base.rstrip('/')}/product.html?slug={args.slug}",
+        ]
     else:
         cmd += ["photo", img, "--message", msg]
 
