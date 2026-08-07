@@ -54,6 +54,11 @@ def _meta_description(text: str, *, limit: int = 155) -> str:
     return (cut or s[: limit - 1]) + "..."
 
 
+DEFAULT_OG_IMAGE = f"{PUBLIC_BASE}/assets/og-default.jpg"
+DEFAULT_OG_W = 1200
+DEFAULT_OG_H = 630
+
+
 def _social_head(
     *,
     title: str,
@@ -62,11 +67,14 @@ def _social_head(
     image: str = "",
     og_type: str = "website",
     site_name: str = "The Books Wanderer",
+    image_alt: str = "",
 ) -> str:
     """Shared Open Graph + Twitter tags (aligned with title/description)."""
-    img = image or f"{PUBLIC_BASE}/assets/logo.png"
+    img = image or DEFAULT_OG_IMAGE
     if img.startswith("/"):
         img = PUBLIC_BASE + img
+    is_default = img.rstrip("/").endswith("og-default.jpg")
+    alt = image_alt or title
     lines = [
         f'<meta property="og:type" content="{_esc(og_type)}">',
         f'<meta property="og:site_name" content="{_esc(site_name)}">',
@@ -74,12 +82,27 @@ def _social_head(
         f'<meta property="og:description" content="{_esc(description)}">',
         f'<meta property="og:url" content="{_esc(canonical)}">',
         f'<meta property="og:image" content="{_esc(img)}">',
+        f'<meta property="og:image:alt" content="{_esc(alt)}">',
         f'<meta property="og:locale" content="en_US">',
         f'<meta name="twitter:card" content="summary_large_image">',
         f'<meta name="twitter:title" content="{_esc(title)}">',
         f'<meta name="twitter:description" content="{_esc(description)}">',
         f'<meta name="twitter:image" content="{_esc(img)}">',
+        f'<meta name="twitter:image:alt" content="{_esc(alt)}">',
     ]
+    if is_default:
+        lines.insert(
+            6,
+            f'<meta property="og:image:width" content="{DEFAULT_OG_W}">',
+        )
+        lines.insert(
+            7,
+            f'<meta property="og:image:height" content="{DEFAULT_OG_H}">',
+        )
+        lines.insert(
+            8,
+            '<meta property="og:image:type" content="image/jpeg">',
+        )
     return "\n    ".join(lines)
 
 
@@ -266,7 +289,9 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     <link rel="canonical" href="{_esc(canonical)}">
     {social}
     <meta name="theme-color" content="#f8f2e5">
-    <link rel="icon" href="/assets/logo.png" type="image/png">
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
@@ -461,7 +486,9 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     <link rel="canonical" href="{_esc(canonical)}">
     {social}
     <meta name="theme-color" content="#f8f2e5">
-    <link rel="icon" href="/assets/logo.png" type="image/png">
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
@@ -643,13 +670,17 @@ def inject_home_seo(
             embed + '\n<script src="affiliate-data.js',
             1,
         )
-    # Absolute OG image
+    # Ensure absolute OG / logo URLs when template used relative paths
     html_doc = html_doc.replace(
-        'content="assets/logo.png"',
-        f'content="{PUBLIC_BASE}/assets/logo.png"',
+        'content="assets/og-default.jpg"',
+        f'content="{PUBLIC_BASE}/assets/og-default.jpg"',
     )
     html_doc = html_doc.replace(
-        '"image": "assets/logo.png"',
+        'content="assets/logo.png"',
+        f'content="{PUBLIC_BASE}/assets/og-default.jpg"',
+    )
+    html_doc = html_doc.replace(
         f'"image": "{PUBLIC_BASE}/assets/logo.png"',
+        f'"image": "{PUBLIC_BASE}/assets/og-default.jpg"',
     )
     return html_doc

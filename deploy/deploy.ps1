@@ -33,9 +33,15 @@ scp -o BatchMode=yes `
 if (Test-Path "$Root\googleca903f9ea8fb8e9e.html") {
     scp -o BatchMode=yes "$Root\googleca903f9ea8fb8e9e.html" "${HostName}:${RemotePath}/"
 }
-scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
-if (Test-Path "$Root\assets\logo-email.png") {
-    scp -o BatchMode=yes "$Root\assets\logo-email.png" "${HostName}:${RemotePath}/assets/"
+# Brand / SEO images (logo optimized, OG 1200×630, favicons)
+$brandAssets = @(
+    "logo.png", "logo.webp", "logo-email.png", "og-default.jpg",
+    "favicon.ico", "favicon-32.png", "favicon-48.png", "apple-touch-icon.png"
+)
+foreach ($f in $brandAssets) {
+    if (Test-Path "$Root\assets\$f") {
+        scp -o BatchMode=yes "$Root\assets\$f" "${HostName}:${RemotePath}/assets/"
+    }
 }
 if (Test-Path "$Root\assets\products") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets/products"

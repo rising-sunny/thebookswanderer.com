@@ -63,5 +63,7 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree un
 - PDP: pretty URLs `/products/{slug}` (legacy `product.html?slug=` 301s), `product.js`
 - Affiliate picks: `/picks/{slug}` (legacy `pick.html?slug=` 301s)
 - Sitemap: dynamic `GET /sitemap.xml` from FastAPI (live catalog + lastmod)
+- Brand assets: optimized `assets/logo.webp` (CSS), `assets/og-default.jpg` (1200×630 OG/Twitter), favicons
+  - Rebuild: `python server/scripts/optimize_brand_assets.py`
 - Cart / checkout: `cart.html`, `checkout.html` (+ `cart.js`, `checkout.js`)
 - API: `server/main.py` (products, shipping quote, PayPal, CJ order)
