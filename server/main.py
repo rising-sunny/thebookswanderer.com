@@ -31,12 +31,22 @@ from ssr import (  # noqa: E402
     affiliate_by_slug,
     inject_home_seo,
     load_affiliate_catalog,
+    render_collection_not_found,
+    render_collection_page,
+    render_collections_index,
     render_pick_not_found,
     render_pick_page,
     render_product_not_found,
     render_product_page,
 )
-from urls import PUBLIC_BASE, pick_path, pick_url, product_path, product_url  # noqa: E402
+from urls import (  # noqa: E402
+    PUBLIC_BASE,
+    collection_url,
+    pick_path,
+    pick_url,
+    product_path,
+    product_url,
+)
 from live import router as live_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
@@ -341,7 +351,7 @@ async def pick_page_pretty(slug: str):
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 @app.api_route("/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home_page_ssr(db: Session = Depends(get_db)):
-    """Home with crawlable product + affiliate cards in the HTML."""
+    """Home with crawlable product + affiliate + category cards in the HTML."""
     template_path = Path(__file__).resolve().parent.parent / "index.html"
     try:
         raw = template_path.read_text(encoding="utf-8")
@@ -354,19 +364,72 @@ def home_page_ssr(db: Session = Depends(get_db)):
         .all()
     )
     products = [p.to_public() for p in rows]
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        counts[cat_service.normalize_category(p.category)] = (
+            counts.get(cat_service.normalize_category(p.category), 0) + 1
+        )
+    categories = []
+    for c in cat_service.all_categories():
+        categories.append({**c, "product_count": counts.get(c["slug"], 0)})
     aff = load_affiliate_catalog()
-    html_out = inject_home_seo(raw, products=products, affiliate=aff)
+    html_out = inject_home_seo(
+        raw, products=products, affiliate=aff, categories=categories
+    )
     return HTMLResponse(html_out)
+
+
+@app.get("/collections", response_class=HTMLResponse)
+def collections_index(db: Session = Depends(get_db)):
+    """Index of all storefront collections."""
+    rows = db.query(Product).filter(Product.active.is_(True)).all()
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        s = cat_service.normalize_category(p.category)
+        counts[s] = counts.get(s, 0) + 1
+    categories = [{**c, "product_count": counts.get(c["slug"], 0)} for c in cat_service.all_categories()]
+    canonical = f"{PUBLIC_BASE}/collections"
+    return HTMLResponse(render_collections_index(categories, canonical=canonical))
+
+
+@app.get("/collections/{slug}", response_class=HTMLResponse)
+def collection_page(slug: str, db: Session = Depends(get_db)):
+    """Category landing page with SSR product grid + JSON-LD."""
+    cat = cat_service.get_category(slug)
+    if not cat:
+        return HTMLResponse(render_collection_not_found(slug), status_code=404)
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.id.desc())
+        .all()
+    )
+    products = [
+        p.to_public()
+        for p in rows
+        if cat_service.normalize_category(p.category) == cat["slug"]
+    ]
+    all_cats = cat_service.all_categories()
+    canonical = collection_url(cat["slug"])
+    return HTMLResponse(
+        render_collection_page(
+            cat, products, canonical=canonical, all_cats=all_cats
+        )
+    )
 
 
 @app.get("/sitemap.xml")
 def sitemap_xml(db: Session = Depends(get_db)):
-    """Dynamic sitemap from live catalog (products + picks + static pages)."""
+    """Dynamic sitemap from live catalog (products + picks + collections)."""
     site_root = Path(__file__).resolve().parent.parent
     today = datetime.now(timezone.utc).date().isoformat()
     urls: list[tuple[str, str, str, str]] = []  # loc, lastmod, changefreq, priority
 
     urls.append((f"{PUBLIC_BASE}/", today, "weekly", "1.0"))
+    urls.append((f"{PUBLIC_BASE}/collections", today, "weekly", "0.85"))
+
+    for c in cat_service.all_categories():
+        urls.append((collection_url(c["slug"]), today, "weekly", "0.85"))
 
     for rel, prio in (
         ("about.html", "0.6"),

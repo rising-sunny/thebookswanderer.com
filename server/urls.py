@@ -29,3 +29,15 @@ def pick_path(slug: str) -> str:
 def pick_url(slug: str, *, base: str | None = None) -> str:
     root = (base or PUBLIC_BASE).rstrip("/")
     return f"{root}{pick_path(slug)}"
+
+
+def collection_path(slug: str) -> str:
+    s = (slug or "").strip()
+    if not s:
+        return "/collections"
+    return f"/collections/{quote(s, safe='-_.~')}"
+
+
+def collection_url(slug: str, *, base: str | None = None) -> str:
+    root = (base or PUBLIC_BASE).rstrip("/")
+    return f"{root}{collection_path(slug)}"

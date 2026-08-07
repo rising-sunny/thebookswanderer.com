@@ -65,5 +65,6 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree un
 - Sitemap: dynamic `GET /sitemap.xml` from FastAPI (live catalog + lastmod)
 - Brand assets: optimized `assets/logo.webp` (CSS), `assets/og-default.jpg` (1200×630 OG/Twitter), favicons
   - Rebuild: `python server/scripts/optimize_brand_assets.py`
+- Collections: `/collections` + `/collections/{slug}` (SSR, JSON-LD CollectionPage + ItemList)
 - Cart / checkout: `cart.html`, `checkout.html` (+ `cart.js`, `checkout.js`)
 - API: `server/main.py` (products, shipping quote, PayPal, CJ order)

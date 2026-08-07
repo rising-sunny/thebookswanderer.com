@@ -326,7 +326,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     <div class="container">
         <nav class="pdp__crumb" aria-label="Breadcrumb">
             <a href="/">Home</a> · <a href="/#featured">Shop</a>
-            {f' · <a href="/#featured?category={_esc(cat_slug)}">{_esc_text(category)}</a>' if cat_slug else ""}
+            {f' · <a href="/collections/{_esc(cat_slug)}">{_esc_text(category)}</a>' if cat_slug else ""}
             · <span id="pdpCrumb">{_esc_text(title)}</span>
         </nav>
         <div id="pdpRoot" class="pdp__layout" data-product-id="{_esc(product_id or "")}" data-slug="{_esc(slug)}">
@@ -571,6 +571,320 @@ def render_pick_not_found(slug: str = "") -> str:
 """
 
 
+def _site_header(*, back_href: str = "/#featured", back_label: str = "Back to shop") -> str:
+    return f"""
+<header class="header is-stuck" id="header">
+    <div class="container header__inner">
+        <a class="brand" href="/" aria-label="The Books Wanderer, home">
+            <span class="brand__emblem" aria-hidden="true"></span>
+            <span class="brand__name">
+                The Books Wanderer
+                <span class="brand__tagline">Literary boutique</span>
+            </span>
+        </a>
+        <nav class="nav" id="nav" aria-label="Primary" style="display:none"></nav>
+        <div class="actions">
+            <a class="icon-btn" href="{_esc(back_href)}" aria-label="{_esc(back_label)}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
+            </a>
+            <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+                <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
+            </a>
+        </div>
+    </div>
+</header>""".strip()
+
+
+def _site_footer(*, note: str = "") -> str:
+    note_html = f"<p class=\"footer__legal\">{_esc_text(note)}</p>" if note else ""
+    return f"""
+<footer class="footer" style="margin-top:var(--sp-8)">
+    <div class="container footer__bottom" style="border:0;padding-top:var(--sp-5)">
+        <p class="footer__quote">“For those who wander between pages.”</p>
+        <p class="footer__affiliate">As an Amazon Associate I earn from qualifying purchases.</p>
+        {note_html}
+        <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+    </div>
+</footer>""".strip()
+
+
+def render_collection_page(
+    cat: dict[str, Any],
+    products: list[dict[str, Any]],
+    *,
+    canonical: str,
+    all_cats: list[dict[str, Any]] | None = None,
+) -> str:
+    """SSR landing page for /collections/{slug}."""
+    name = cat.get("name") or "Collection"
+    h1 = cat.get("h1") or name
+    page_title = f"{name} | The Books Wanderer"
+    short = (cat.get("description") or "").strip()
+    meta_src = (cat.get("meta_description") or short or h1).strip()
+    meta_desc = _meta_description(meta_src)
+    intro_paras = cat.get("intro") or ([short] if short else [])
+    slug = cat.get("slug") or ""
+    n = len(products)
+    count_label = "No pieces yet" if n == 0 else ("1 piece" if n == 1 else f"{n} pieces")
+
+    intro_html = "".join(f"<p>{_esc_text(p)}</p>" for p in intro_paras if p)
+    cards = "\n".join(_product_card_html(p) for p in products) or (
+        '<p class="catalog-empty">Nothing in this collection yet — '
+        '<a href="/#featured">browse the full catalog</a>.</p>'
+    )
+
+    # Sibling collections for internal links
+    siblings = ""
+    for c in all_cats or []:
+        if c.get("slug") == slug:
+            continue
+        siblings += (
+            f'<a class="collection-chip" href="/collections/{_esc(c.get("slug"))}">'
+            f'{_esc_text(c.get("name") or c.get("slug"))}</a> '
+        )
+
+    # Prefer first product image for OG when available
+    og_img = ""
+    for p in products:
+        u = p.get("image_url") or ""
+        if u:
+            og_img = u if str(u).startswith("http") else PUBLIC_BASE + str(u)
+            break
+
+    item_list = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": h1,
+        "description": meta_src,
+        "url": canonical,
+        "isPartOf": {"@type": "WebSite", "name": "The Books Wanderer", "url": PUBLIC_BASE + "/"},
+        "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": n,
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "url": f"{PUBLIC_BASE}/products/{p.get('slug')}",
+                    "name": p.get("title") or p.get("slug"),
+                }
+                for i, p in enumerate(products)
+            ],
+        },
+    }
+    crumbs = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": PUBLIC_BASE + "/"},
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Collections",
+                "item": PUBLIC_BASE + "/collections",
+            },
+            {"@type": "ListItem", "position": 3, "name": name, "item": canonical},
+        ],
+    }
+    ld_page = json.dumps(item_list, ensure_ascii=False)
+    ld_crumbs = json.dumps(crumbs, ensure_ascii=False)
+    v = _css_ver()
+    social = _social_head(
+        title=page_title,
+        description=meta_desc,
+        canonical=canonical,
+        image=og_img,
+        og_type="website",
+        image_alt=h1,
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{_esc(page_title)}</title>
+    <meta name="description" content="{_esc(meta_desc)}">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="canonical" href="{_esc(canonical)}">
+    {social}
+    <meta name="theme-color" content="#f8f2e5">
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
+    <script type="application/ld+json">{ld_page}</script>
+    <script type="application/ld+json">{ld_crumbs}</script>
+</head>
+<body class="page-collection">
+<a class="skip-link" href="#main">Skip to content</a>
+{_site_header(back_href="/collections", back_label="All collections")}
+<main id="main">
+  <section class="section collection-hero">
+    <div class="container">
+      <nav class="pdp__crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a> · <a href="/collections">Collections</a> · <span>{_esc_text(name)}</span>
+      </nav>
+      <p class="eyebrow">Collection · {_esc_text(count_label)}</p>
+      <h1>{_esc_text(h1)}</h1>
+      <div class="collection-intro">
+        {intro_html}
+      </div>
+      {"<p class=\"collection-siblings\"><span class=\"eyebrow\">Also browse</span> " + siblings + "</p>" if siblings else ""}
+    </div>
+  </section>
+  <section class="section section--sunken" aria-labelledby="collectionGridTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow">In this collection</p>
+          <h2 id="collectionGridTitle">{_esc_text(name)}</h2>
+        </div>
+        <a class="link-more" href="/#featured">Full catalog</a>
+      </div>
+      <div class="products is-visible" id="collectionGrid">
+        {cards}
+      </div>
+    </div>
+  </section>
+</main>
+{_site_footer(note=name)}
+<script src="/track.js?v=1" defer></script>
+<script src="/cart.js?v=3" defer></script>
+</body>
+</html>
+"""
+
+
+def render_collections_index(
+    categories: list[dict[str, Any]],
+    *,
+    canonical: str,
+) -> str:
+    """SSR index of all collections."""
+    page_title = "Collections | The Books Wanderer"
+    meta_desc = _meta_description(
+        "Browse book accessories, reading-nook decor, and e-reader gear at "
+        "The Books Wanderer literary boutique."
+    )
+    cards = []
+    for c in categories:
+        slug = c.get("slug") or ""
+        n = int(c.get("product_count") or 0)
+        count = "Coming soon" if n == 0 else (f"{n} product" if n == 1 else f"{n} products")
+        tile = c.get("tile") or "linear-gradient(150deg, #2b5240, #10241a)"
+        cards.append(
+            f"""
+<a class="category" href="/collections/{_esc(slug)}" style="--tile: {_esc(tile)}">
+  <span class="category__count">{_esc_text(count)}</span>
+  <h2 class="category__title">{_esc_text(c.get("name") or slug)}</h2>
+  <p>{_esc_text(c.get("description") or "")}</p>
+</a>"""
+        )
+    item_list = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Collections",
+        "url": canonical,
+        "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": len(categories),
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "url": f"{PUBLIC_BASE}/collections/{c.get('slug')}",
+                    "name": c.get("name"),
+                }
+                for i, c in enumerate(categories)
+            ],
+        },
+    }
+    v = _css_ver()
+    social = _social_head(
+        title=page_title,
+        description=meta_desc,
+        canonical=canonical,
+        image_alt="The Books Wanderer collections",
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{_esc(page_title)}</title>
+    <meta name="description" content="{_esc(meta_desc)}">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="canonical" href="{_esc(canonical)}">
+    {social}
+    <meta name="theme-color" content="#f8f2e5">
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
+    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
+    <script type="application/ld+json">{json.dumps(item_list, ensure_ascii=False)}</script>
+</head>
+<body class="page-collection">
+<a class="skip-link" href="#main">Skip to content</a>
+{_site_header()}
+<main id="main">
+  <section class="section">
+    <div class="container">
+      <nav class="pdp__crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a> · <span>Collections</span>
+      </nav>
+      <p class="eyebrow">Browse by</p>
+      <h1>Collections</h1>
+      <p class="collection-intro">
+        Three small shelves: tools for paper books, pieces for the reading corner,
+        and sleeves for the e-readers we recommend.
+      </p>
+      <div class="categories" style="margin-top:var(--sp-6)">
+        {"".join(cards)}
+      </div>
+      <p style="margin-top:var(--sp-6)"><a class="link-more" href="/#featured">View full catalog</a></p>
+    </div>
+  </section>
+</main>
+{_site_footer()}
+<script src="/track.js?v=1" defer></script>
+<script src="/cart.js?v=3" defer></script>
+</body>
+</html>
+"""
+
+
+def render_collection_not_found(slug: str = "") -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>Collection not found | The Books Wanderer</title>
+<meta name="robots" content="noindex,follow">
+<link rel="stylesheet" href="/styles.css?v={_esc(_css_ver())}">
+</head><body class="container" style="padding:2rem">
+<h1>Collection not found</h1>
+<p>We could not find “{_esc_text(slug)}”.</p>
+<p><a href="/collections">All collections</a> · <a href="/#featured">Full catalog</a></p>
+</body></html>
+"""
+
+
+def _category_tile_html(c: dict[str, Any]) -> str:
+    n = int(c.get("product_count") or 0)
+    count = "Coming soon" if n == 0 else ("1 product" if n == 1 else f"{n} products")
+    tile = c.get("tile") or "linear-gradient(150deg, #2b5240, #10241a)"
+    slug = c.get("slug") or ""
+    return f"""
+<a class="category" href="/collections/{_esc(slug)}" style="--tile: {_esc(tile)}" data-ssr-cat="1">
+  <span class="category__count">{_esc_text(count)}</span>
+  <h3>{_esc_text(c.get("name") or slug)}</h3>
+  <p>{_esc_text(c.get("description") or "")}</p>
+</a>"""
+
+
 def _product_card_html(p: dict[str, Any]) -> str:
     title = p.get("title") or "Product"
     slug = p.get("slug") or ""
@@ -636,14 +950,16 @@ def inject_home_seo(
     *,
     products: list[dict[str, Any]],
     affiliate: dict[str, Any] | None = None,
+    categories: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Inject crawlable product + affiliate cards into the static index.html shell."""
+    """Inject crawlable product + affiliate + category cards into index.html."""
     aff = affiliate or load_affiliate_catalog()
     paid = aff.get("paidLinkLabel") or "paid link"
     prod_html = "\n".join(_product_card_html(p) for p in products)
     aff_html = "\n".join(
         _affiliate_card_html(p, paid_label=paid) for p in (aff.get("products") or [])
     )
+    cat_html = "\n".join(_category_tile_html(c) for c in (categories or []))
     embed = (
         f'<script type="application/json" id="affiliate-products-json">'
         f"{json.dumps(aff, ensure_ascii=False)}"
@@ -660,6 +976,17 @@ def inject_home_seo(
         html_doc = html_doc.replace(
             '<p class="catalog-loading">Loading e-reader picks…</p>',
             aff_html,
+            1,
+        )
+    if cat_html:
+        # Empty categories container — inject crawlable links to /collections/*
+        html_doc = html_doc.replace(
+            '<div class="categories reveal" id="categoryTiles" aria-busy="true">\n'
+            "                <!-- Filled from /api/categories -->\n"
+            "            </div>",
+            f'<div class="categories reveal is-visible" id="categoryTiles" aria-busy="false">\n'
+            f"{cat_html}\n"
+            f"            </div>",
             1,
         )
 
