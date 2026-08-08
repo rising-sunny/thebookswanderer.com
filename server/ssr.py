@@ -532,33 +532,38 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
             f'<a class="pick-pair" href="{_esc(href)}">{_esc_text(label)}</a> '
         )
 
-    # Sin bloque "offers" a proposito.
+    # No usar @type Product en picks de Amazon.
     #
-    # Estas paginas recomiendan un producto que vende Amazon, no nosotros, y no
-    # conocemos su precio: cambia a diario y el acuerdo de Amazon Associates no
-    # permite publicar precios obtenidos por nuestra cuenta. Antes se emitia un
-    # Offer con priceCurrency "USD" y sin "price", que es justo lo que Search
-    # Console reporto como "formato de precio no valido": moneda sin importe.
-    #
-    # Un Offer incompleto es peor que ninguno. Un Product sin offers no opta a
-    # resultados enriquecidos, pero es structured data valido y describe la
-    # pagina con honestidad: aqui no se compra nada.
+    # Estas paginas recomiendan un producto que vende Amazon, no nosotros: el
+    # precio cambia a diario y Associates no permite inventarlo. Un Product sin
+    # offers (o con Offer incompleto) lo reporta Search Console como product
+    # snippet invalido ("falta price en offers"). WebPage describe la pagina
+    # sin reclamar rich results de producto.
+    primary_img = (images[0] if images else None) or img or f"{PUBLIC_BASE}/assets/logo.png"
     json_ld: dict[str, Any] = {
         "@context": "https://schema.org",
-        "@type": "Product",
-        "name": title,
-        "description": desc,
-        "sku": pick.get("asin") or pick.get("slug"),
-        "brand": {"@type": "Brand", "name": "Amazon"},
+        "@type": "WebPage",
+        "name": page_title,
+        "description": meta_desc,
         "url": canonical,
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "The Books Wanderer",
+            "url": f"{PUBLIC_BASE}/",
+        },
+        "primaryImageOfPage": {
+            "@type": "ImageObject",
+            "url": primary_img,
+        },
+        "about": {
+            "@type": "Thing",
+            "name": title,
+            "description": desc,
+        },
     }
-    # "image" es obligatorio: sin imagen del pick, cae al logo de la marca.
-    if images:
-        json_ld["image"] = images[:5]
-    elif img:
-        json_ld["image"] = [img]
-    else:
-        json_ld["image"] = [f"{PUBLIC_BASE}/assets/logo.png"]
+    asin = (pick.get("asin") or "").strip()
+    if asin:
+        json_ld["about"]["identifier"] = asin
 
     ld = json.dumps(json_ld, ensure_ascii=False)
     v = _css_ver()
@@ -568,7 +573,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
         description=meta_desc,
         canonical=canonical,
         image=hero or img,
-        og_type="product",
+        og_type="website",
     )
 
     return f"""<!DOCTYPE html>
