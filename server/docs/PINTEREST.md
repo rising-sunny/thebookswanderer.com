@@ -1,78 +1,88 @@
-# Pinterest — The Books Wanderer (own app)
+# Pinterest — The Books Wanderer
 
-Publish product pins via **Pinterest API v5** with a **dedicated app** for this shop (not MathRelaxing’s app).
+Publish product pins via **Pinterest API v5**.
 
 | | |
 |---|---|
 | **Service** | [`server/services/pinterest.py`](../services/pinterest.py) |
 | **HTTP routes** | [`server/routers/pinterest.py`](../routers/pinterest.py) |
 | **CLI** | [`server/scripts/pinterest_cli.py`](../scripts/pinterest_cli.py) |
-| **Token file** | `server/data/.pinterest_token.json` (or `PINTEREST_TOKEN_FILE`) |
+| **Token file** | `server/data/.pinterest_token.json` (or `PINTEREST_TOKEN_FILE`) — **TBW only**, never MathRelaxing’s token |
 
 ---
 
-## One-time: create a new Pinterest app (option B)
+## Recommended: option A (reuse MathRelaxing’s approved app)
 
-1. Open [Pinterest Developers](https://developers.pinterest.com/) while logged into the **The Books Wanderer** business account (or the Google/Pinterest account that owns that profile).
-2. **Create app** → name it e.g. `The Books Wanderer` / `TBW Store`.
-3. Under **Configure** / OAuth / Redirect URIs, add **exactly**:
+A **new** Pinterest app can sit in review for weeks. MathRelaxing already has a working production app. Reuse that app’s **client id + secret**, add TBW’s redirect URI, then OAuth **as the The Books Wanderer Pinterest account**.
+
+```
+App (MathRelaxing developer app, already approved)
+  + OAuth while logged into The Books Wanderer
+  = pins / boards on TBW’s profile
+```
+
+### 1. Pinterest Developers (same app as MathRelaxing)
+
+1. Open [developers.pinterest.com](https://developers.pinterest.com/) → the **existing** MathRelaxing app.
+2. **Redirect URIs** — keep MathRelaxing’s and **add**:
    ```
    https://thebookswanderer.com/api/pinterest/oauth/callback
    ```
-4. Request / enable scopes (trial or standard as available):
-   - `boards:read`, `boards:write`
-   - `pins:read`, `pins:write`
-   - `user_accounts:read`, `user_accounts:write`
-5. Copy **App ID** → `PINTEREST_CLIENT_ID`
-6. Copy **App secret** → `PINTEREST_CLIENT_SECRET`
+3. Confirm scopes include:  
+   `boards:read,boards:write,pins:read,pins:write,user_accounts:read,user_accounts:write`
+4. Copy **App ID** / **App secret** into TBW `.env` (same values as MathRelaxing’s `PINTEREST_CLIENT_ID` / `PINTEREST_CLIENT_SECRET`).
 
-Do **not** reuse MathRelaxing’s client id/secret if you want a clean separation.
+Do **not** copy MathRelaxing’s `PINTEREST_TOKEN_FILE` / `.pinterest_token.json`. TBW must get its own token via OAuth below.
 
----
-
-## Env (`server/.env`)
+### 2. Env on TBW (`server/.env` and VPS)
 
 ```env
-PINTEREST_CLIENT_ID=
-PINTEREST_CLIENT_SECRET=
+PINTEREST_CLIENT_ID=<same as mathrelaxing>
+PINTEREST_CLIENT_SECRET=<same as mathrelaxing>
 PINTEREST_REDIRECT_URI=https://thebookswanderer.com/api/pinterest/oauth/callback
 PINTEREST_SCOPES=boards:read,boards:write,pins:read,pins:write,user_accounts:read,user_accounts:write
 PINTEREST_API_BASE=https://api.pinterest.com/v5
-# Optional overrides:
-# PINTEREST_TOKEN_FILE=/var/www/thebookswanderer.com/server/data/.pinterest_token.json
-# PINTEREST_STATE_SECRET=long-random-string
+# Token path defaults to server/data/.pinterest_token.json
 ```
 
-`SECRET_KEY` (already used for admin APIs) protects OAuth start / status / pin endpoints.
-
-On the VPS, put the same vars in `/var/www/thebookswanderer.com/server/.env`, then:
-
 ```bash
+# on VPS after editing .env
 systemctl restart thebookswanderer
 ```
 
----
+`SECRET_KEY` (existing admin key) protects OAuth start / status / pin endpoints.
 
-## Connect the TBW Pinterest account (OAuth)
+### 3. Connect The Books Wanderer account (OAuth)
 
-1. In the browser: **log out** of MathRelaxing / any other Pinterest profile (or use a private window).
+1. Browser **private window** (or log out of MathRelaxing on Pinterest).
 2. Log in as **The Books Wanderer**.
-3. Open (replace with your real `SECRET_KEY` from `.env`):
+3. Open:
 
    ```
    https://thebookswanderer.com/api/pinterest/oauth/start?admin_key=YOUR_SECRET_KEY
    ```
 
-4. Approve the permissions.
-5. You should land on a “Pinterest connected” page; token is written to `server/data/.pinterest_token.json`.
+4. Approve permissions → “Pinterest connected”.
+5. Check account:
 
-Or print the same URL locally:
+   ```powershell
+   cd server
+   python scripts/pinterest_cli.py whoami
+   ```
 
-```powershell
-cd server
-.\.venv\Scripts\Activate.ps1
-python scripts/pinterest_cli.py oauth-url
-```
+   Username / business name should be **TBW**, not MathRelaxing.
+
+---
+
+## Option B (later): dedicated TBW app
+
+When you want a separate app and can wait for review:
+
+1. Create app at [developers.pinterest.com](https://developers.pinterest.com/).
+2. Redirect: `https://thebookswanderer.com/api/pinterest/oauth/callback`
+3. Replace `PINTEREST_CLIENT_ID` / `SECRET` in `.env`, restart, re-run OAuth.
+
+Same code paths; only credentials change.
 
 ---
 
@@ -104,20 +114,15 @@ python scripts/pinterest_cli.py pin-product hollow-kitten-bookmark --board-id BO
 
 ---
 
-## Claim the website (optional, separate from API)
+## Claim the website (optional)
 
-In Pinterest Business → **Settings → Claimed accounts → Websites**:
-
-1. Add `thebookswanderer.com`
-2. Choose meta tag or HTML file verification
-3. Deploy the tag/file on TBW and confirm
-
-This proves domain ownership (rich pins / branding). It does **not** replace OAuth for the API.
+Pinterest Business → Claimed accounts → Websites → `thebookswanderer.com`  
+(meta tag or HTML file). Separate from OAuth; good for domain verification / rich pins.
 
 ---
 
 ## Security
 
-- Never commit `.pinterest_token.json` or real client secrets.
-- Prefer a long `SECRET_KEY`; do not paste OAuth start URLs in public chats.
-- Rotate app secret in Developers if it leaks.
+- Never commit tokens or client secrets.
+- Never reuse MathRelaxing’s **access token** on TBW.
+- Prefer private OAuth start URLs (`admin_key` is a secret).
