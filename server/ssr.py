@@ -121,6 +121,130 @@ def _ship_countries() -> list[str]:
         return ["GB", "US"]
 
 
+# Transit bands from shipping-returns.html (carrier working-day guide).
+# shippingRate uses maxValue (Google allows value OR maxValue) because the
+# live quote is destination + variant via CJ — a single flat value would lie.
+_SHIP_TRANSIT_BANDS: list[dict[str, Any]] = [
+    {
+        "codes": ["GB", "ES", "IT", "FR", "PT", "PL", "IE", "JP", "NZ", "AT", "DK", "FI"],
+        "transit_min": 4,
+        "transit_max": 11,
+        "rate_max_usd": 18.0,
+    },
+    {
+        "codes": ["US", "SG", "CH", "NO", "SE", "AU"],
+        "transit_min": 5,
+        "transit_max": 11,
+        "rate_max_usd": 18.0,
+    },
+    {
+        "codes": ["CA", "DE", "NL", "BE"],
+        "transit_min": 7,
+        "transit_max": 15,
+        "rate_max_usd": 22.0,
+    },
+    {
+        "codes": ["CL", "MX", "BR", "AR", "CO", "PE", "KR", "AE"],
+        "transit_min": 12,
+        "transit_max": 60,
+        "rate_max_usd": 35.0,
+    },
+]
+
+
+def _merchant_return_policy() -> dict[str, Any]:
+    """JSON-LD MerchantReturnPolicy aligned with shipping-returns.html.
+
+    Change-of-mind: 14 days from delivery. For most of the catalogue we do not
+    ask the customer to post the item back (KeepProduct + FreeReturn). Damaged
+    goods: 30-day replace/refund without return — FreeReturn still fits.
+    """
+    return {
+        "@type": "MerchantReturnPolicy",
+        "applicableCountry": _ship_countries(),
+        "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+        "merchantReturnDays": 14,
+        "returnMethod": "https://schema.org/KeepProduct",
+        "returnFees": "https://schema.org/FreeReturn",
+        "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
+    }
+
+
+def _shipping_details() -> list[dict[str, Any]]:
+    """OfferShippingDetails per transit band for countries we actually ship to."""
+    allowed = set(_ship_countries())
+    details: list[dict[str, Any]] = []
+    covered: set[str] = set()
+    for band in _SHIP_TRANSIT_BANDS:
+        codes = [c for c in band["codes"] if c in allowed]
+        if not codes:
+            continue
+        covered.update(codes)
+        details.append(
+            {
+                "@type": "OfferShippingDetails",
+                "shippingDestination": {
+                    "@type": "DefinedRegion",
+                    "addressCountry": codes,
+                },
+                "shippingRate": {
+                    "@type": "MonetaryAmount",
+                    # Ceiling, not a quote — exact amount is calculated at PDP/cart.
+                    "maxValue": float(band["rate_max_usd"]),
+                    "currency": "USD",
+                },
+                "deliveryTime": {
+                    "@type": "ShippingDeliveryTime",
+                    "handlingTime": {
+                        "@type": "QuantitativeValue",
+                        "minValue": 1,
+                        "maxValue": 3,
+                        "unitCode": "DAY",
+                    },
+                    "transitTime": {
+                        "@type": "QuantitativeValue",
+                        "minValue": int(band["transit_min"]),
+                        "maxValue": int(band["transit_max"]),
+                        "unitCode": "DAY",
+                    },
+                },
+            }
+        )
+    # Any SHIP_DESTINATIONS code not in a band still needs a row (wide window).
+    leftover = sorted(allowed - covered)
+    if leftover:
+        details.append(
+            {
+                "@type": "OfferShippingDetails",
+                "shippingDestination": {
+                    "@type": "DefinedRegion",
+                    "addressCountry": leftover,
+                },
+                "shippingRate": {
+                    "@type": "MonetaryAmount",
+                    "maxValue": 35.0,
+                    "currency": "USD",
+                },
+                "deliveryTime": {
+                    "@type": "ShippingDeliveryTime",
+                    "handlingTime": {
+                        "@type": "QuantitativeValue",
+                        "minValue": 1,
+                        "maxValue": 3,
+                        "unitCode": "DAY",
+                    },
+                    "transitTime": {
+                        "@type": "QuantitativeValue",
+                        "minValue": 7,
+                        "maxValue": 60,
+                        "unitCode": "DAY",
+                    },
+                },
+            }
+        )
+    return details
+
+
 def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     """Full HTML document for a store product (CJ catalog)."""
     title = detail.get("title") or "Product"
@@ -217,25 +341,15 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
             "availability": "https://schema.org/InStock",
             "itemCondition": "https://schema.org/NewCondition",
             "seller": {"@type": "Organization", "name": "The Books Wanderer"},
-            # Refleja shipping-returns.html tal cual. Si esa pagina cambia,
-            # esto cambia con ella: publicar aqui condiciones distintas de las
-            # que lee el comprador seria una promesa falsa, no un dato SEO.
-            "hasMerchantReturnPolicy": {
-                "@type": "MerchantReturnPolicy",
-                "applicableCountry": _ship_countries(),
-                "returnPolicyCategory":
-                    "https://schema.org/MerchantReturnFiniteReturnWindow",
-                "merchantReturnDays": 14,
-                "returnMethod": "https://schema.org/ReturnByMail",
-                "returnFees": "https://schema.org/ReturnShippingFees",
-                "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
-            },
+            # Merchant listings (GSC): return policy + shipping bands.
+            # Policy text source of truth: shipping-returns.html.
+            "hasMerchantReturnPolicy": _merchant_return_policy(),
+            "shippingDetails": _shipping_details(),
         }
-        # Sin "shippingDetails" a proposito: el flete se calcula por destino y
-        # por variante contra el transportista, asi que no hay una tarifa unica
-        # que declarar. Inventar una plana para contentar a Search Console
-        # pondria en los resultados de Google un precio que el checkout no va a
-        # cobrar. Google lo marca como no critico.
+    # mpn helps the "identifier / brand" merchant signal (no GTIN from CJ).
+    mpn = str(detail.get("cj_sku") or detail.get("sku") or "").strip()
+    if mpn:
+        json_ld_product["mpn"] = mpn
 
     json_ld_breadcrumb = {
         "@context": "https://schema.org",
