@@ -121,6 +121,45 @@ Pinterest Business → Claimed accounts → Websites → `thebookswanderer.com`
 
 ---
 
+## Auto-pin: daily drip + launch on new product
+
+| Mode | When | Behaviour |
+|------|------|-----------|
+| **Launch** | `POST /api/admin/products` or `import_cj_product.py` | Pins new product to category board (+ shop board if different) |
+| **Drip** | Cron once/day | Pins `PINTEREST_PINS_PER_DAY` (default 1) active products not pinned in `PINTEREST_REPIN_COOLDOWN_DAYS` (default 45) |
+
+Tracking table: `pinterest_pins` (slug, board, pin_id, kind=`launch`|`drip`, status).
+
+### Env
+
+```env
+PINTEREST_AUTO_PIN_ENABLED=1
+PINTEREST_LAUNCH_PIN_ENABLED=1
+PINTEREST_LAUNCH_ALSO_SHOP=1
+PINTEREST_PINS_PER_DAY=1
+PINTEREST_REPIN_COOLDOWN_DAYS=45
+```
+
+### Cron (VPS)
+
+```cron
+# 14:00 UTC ≈ mid-morning US / afternoon EU — adjust to taste
+0 14 * * * cd /var/www/thebookswanderer.com/server && /var/www/thebookswanderer.com/server/.venv/bin/python scripts/pinterest_auto_pin.py >> /var/log/tbw-pinterest-auto.log 2>&1
+```
+
+### Manual
+
+```bash
+cd /var/www/thebookswanderer.com/server
+.venv/bin/python scripts/pinterest_auto_pin.py --dry-run
+.venv/bin/python scripts/pinterest_auto_pin.py
+.venv/bin/python scripts/pinterest_auto_pin.py --limit 2
+```
+
+Launch pin is best-effort: a Pinterest failure does **not** roll back product import.
+
+---
+
 ## Security
 
 - Never commit tokens or client secrets.

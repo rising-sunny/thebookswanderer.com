@@ -254,3 +254,19 @@ class NewsletterSubscriber(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     source: Mapped[str] = mapped_column(String(40), default="homepage")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PinterestPin(Base):
+    """Track pins created for store products (launch + daily drip)."""
+
+    __tablename__ = "pinterest_pins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(Integer, index=True, default=0)
+    product_slug: Mapped[str] = mapped_column(String(120), index=True, default="")
+    board_id: Mapped[str] = mapped_column(String(40), default="")
+    pin_id: Mapped[str] = mapped_column(String(40), default="", index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="drip")  # launch | drip
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active | failed
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, index=True)

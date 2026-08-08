@@ -1189,10 +1189,21 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(product)
+
+    # Launch pin (best-effort — never fail the import if Pinterest is down).
+    pinterest_launch: dict | None = None
+    try:
+        from services import pinterest_jobs as pin_jobs
+
+        pinterest_launch = await pin_jobs.pin_product_launch(db, product)
+    except Exception as exc:  # noqa: BLE001
+        pinterest_launch = {"ok": False, "error": str(exc)}
+
     return {
         "ok": True,
         "product": product.to_detail(),
         "variants": len(product.active_variants()),
+        "pinterest_launch": pinterest_launch,
     }
 
 

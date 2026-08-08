@@ -29,7 +29,16 @@ def get_db():
 
 
 def init_db() -> None:
-    from models import LiveEvent, Order, OrderItem, Product, ProductVariant  # noqa: F401
+    from models import (  # noqa: F401
+        EmailOptOut,
+        LiveEvent,
+        NewsletterSubscriber,
+        Order,
+        OrderItem,
+        PinterestPin,
+        Product,
+        ProductVariant,
+    )
     from sqlalchemy import inspect, text
 
     Base.metadata.create_all(bind=engine)

@@ -68,6 +68,9 @@ cd server
 python scripts/pinterest_cli.py whoami
 python scripts/pinterest_cli.py boards
 python scripts/pinterest_cli.py pin-product hollow-kitten-bookmark --board-id <ID> --dry-run
+# Daily drip (cron on VPS) + launch pin on new product import
+python scripts/pinterest_auto_pin.py --dry-run
+python scripts/pinterest_auto_pin.py
 ```
 
 ### Deploy

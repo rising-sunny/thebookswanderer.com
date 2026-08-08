@@ -200,6 +200,18 @@ def main() -> None:
     db.refresh(product)
     print("OK product", product.id, product.slug, "variants", len(product.active_variants()))
     print("lifestyle", len(lifestyle), "price", default_price)
+
+    # Launch pin (optional; skip with PINTEREST_LAUNCH_PIN_ENABLED=0)
+    try:
+        import asyncio
+
+        from services import pinterest_jobs as pin_jobs
+
+        launch = asyncio.run(pin_jobs.pin_product_launch(db, product))
+        print("pinterest_launch", json.dumps(launch, default=str))
+    except Exception as exc:  # noqa: BLE001
+        print("pinterest_launch failed:", exc)
+
     db.close()
 
 
