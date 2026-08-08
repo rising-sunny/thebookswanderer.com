@@ -48,11 +48,13 @@ from urls import (  # noqa: E402
     product_url,
 )
 from live import router as live_router  # noqa: E402
+from routers.pinterest import router as pinterest_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
 
 app = FastAPI(title="The Books Wanderer API", version="0.1.0")
 app.include_router(live_router)
+app.include_router(pinterest_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -53,6 +53,23 @@ python scripts/post_product_fb.py butterfly-metal-bookmark --video ../assets/pro
 
 Meta **Ads** (campaigns) use a separate official MCP: `https://mcp.facebook.com/ads` — see FACEBOOK.md.
 
+### Pinterest (own app)
+
+| Path | What |
+|------|------|
+| [`server/docs/PINTEREST.md`](server/docs/PINTEREST.md) | Create app + OAuth + commands |
+| [`server/scripts/pinterest_cli.py`](server/scripts/pinterest_cli.py) | whoami / boards / pin-product |
+
+```powershell
+cd server
+# .env: PINTEREST_CLIENT_ID + PINTEREST_CLIENT_SECRET (TBW app, not MathRelaxing)
+# Connect once (browser as TBW Pinterest account):
+#   /api/pinterest/oauth/start?admin_key=<SECRET_KEY>
+python scripts/pinterest_cli.py whoami
+python scripts/pinterest_cli.py boards
+python scripts/pinterest_cli.py pin-product hollow-kitten-bookmark --board-id <ID> --dry-run
+```
+
 ### Deploy
 
 See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree under `/var/www/thebookswanderer.com/`.

@@ -1,5 +1,8 @@
 server/.env
 server/data/*.db
+server/data/.pinterest_token.json
+server/data/.pinterest_token.json.tmp
+server/data/.pinterest*.json
 server/__pycache__/
 server/**/__pycache__/
 server/.venv/

@@ -85,8 +85,18 @@ scp -o BatchMode=yes `
     "$Root\server\services\categories.py" `
     "$Root\server\services\email.py" `
     "$Root\server\services\meta_capi.py" `
+    "$Root\server\services\pinterest.py" `
     "${HostName}:${RemotePath}/server/services/"
 Assert-Ok "services upload"
+if (Test-Path "$Root\server\routers") {
+    ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/server/routers"
+    Assert-Ok "mkdir server/routers"
+    scp -o BatchMode=yes `
+        "$Root\server\routers\__init__.py" `
+        "$Root\server\routers\pinterest.py" `
+        "${HostName}:${RemotePath}/server/routers/"
+    Assert-Ok "routers upload"
+}
 if (Test-Path "$Root\server\ssr.py") {
     scp -o BatchMode=yes "$Root\server\ssr.py" "${HostName}:${RemotePath}/server/"
     Assert-Ok "ssr.py upload"
