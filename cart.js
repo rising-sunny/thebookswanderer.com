@@ -203,7 +203,7 @@
                         : "";
                 return `
 <article class="cart-line" data-pid="${l.product_id}" data-vid="${escapeHtml(vidAttr)}">
-  <a class="cart-line__media" href="/product.html?slug=${encodeURIComponent(l.slug || "")}">
+  <a class="cart-line__media" href="/products/${encodeURIComponent(l.slug || "")}">
     ${
         l.image_url
             ? `<img src="${escapeHtml(l.image_url)}" alt="${escapeHtml(l.product_title || l.title || "")}" loading="lazy">`
@@ -213,7 +213,7 @@
   <div class="cart-line__body">
     <p class="cart-line__cat">${escapeHtml(l.category || "")}</p>
     <h2 class="cart-line__title">
-      <a href="/product.html?slug=${encodeURIComponent(l.slug || "")}">${escapeHtml(l.product_title || l.title)}</a>
+      <a href="/products/${encodeURIComponent(l.slug || "")}">${escapeHtml(l.product_title || l.title)}</a>
     </h2>
     ${l.variant_name ? `<p class="cart-line__var">${escapeHtml(l.variant_name)}</p>` : ""}
     <p class="cart-line__unit">${money(l.unit_price)} <small>USD each</small></p>

@@ -349,7 +349,7 @@ button {
     aspect-ratio: 1;
     border-radius: var(--r-pill);
     border: 1.5px solid var(--green-800);
-    background-image: url("assets/logo.png");
+    background-image: url("assets/logo.webp");
     /* Recorte calculado para mostrar SOLO la ilustración:
        deja fuera el wordmark del PNG y el borde circular original. */
     background-size: 167%;
@@ -616,7 +616,7 @@ body.nav-is-open {
     width: min(100%, 440px);
     aspect-ratio: 1;
     border-radius: var(--r-pill);
-    background-image: url("assets/logo.png");
+    background-image: url("assets/logo.webp");
     background-size: 167%;
     background-position: 37.5% 27.5%;
     background-repeat: no-repeat;
@@ -899,6 +899,41 @@ body.nav-is-open {
 }
 
 .catalog-loading,
+/* Collection landing pages (/collections, /collections/{slug}) */
+.page-collection .collection-hero {
+    padding-bottom: var(--sp-4);
+}
+.page-collection .collection-intro {
+    max-width: 42rem;
+    color: var(--ink-600, #3d342c);
+    line-height: 1.65;
+}
+.page-collection .collection-intro p + p {
+    margin-top: 0.85rem;
+}
+.page-collection .collection-siblings {
+    margin-top: var(--sp-4);
+}
+.page-collection .collection-chip {
+    display: inline-block;
+    margin: 0.25rem 0.35rem 0.25rem 0;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--line, rgba(0,0,0,.12));
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.page-collection .collection-chip:hover {
+    border-color: var(--green-800, #1b3728);
+    background: rgba(27, 55, 40, 0.06);
+}
+.page-collection .category__title {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    margin: 0.35rem 0;
+}
+
 .catalog-empty {
     grid-column: 1 / -1;
     margin: 0;
@@ -2093,7 +2128,7 @@ a.add-to-cart {
 .editorial__art {
     aspect-ratio: 1;
     border-radius: var(--r-lg);
-    background-image: url("assets/logo.png");
+    background-image: url("assets/logo.webp");
     background-size: 172%;
     background-position: 36% 24%;
     background-repeat: no-repeat;

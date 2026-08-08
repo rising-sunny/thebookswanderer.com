@@ -50,12 +50,17 @@ if (Test-Path "$Root\googleca903f9ea8fb8e9e.html") {
     scp -o BatchMode=yes "$Root\googleca903f9ea8fb8e9e.html" "${HostName}:${RemotePath}/"
     Assert-Ok "search console file upload"
 }
-scp -o BatchMode=yes "$Root\assets\logo.png" "${HostName}:${RemotePath}/assets/"
-Assert-Ok "logo upload"
-if (Test-Path "$Root\assets\logo-email.png") {
-    scp -o BatchMode=yes "$Root\assets\logo-email.png" "${HostName}:${RemotePath}/assets/"
-    Assert-Ok "email logo upload"
+# Brand / SEO images (logo optimized, OG 1200×630, favicons)
+$brandAssets = @(
+    "logo.png", "logo.webp", "logo-email.png", "og-default.jpg",
+    "favicon.ico", "favicon-32.png", "favicon-48.png", "apple-touch-icon.png"
+)
+foreach ($f in $brandAssets) {
+    if (Test-Path "$Root\assets\$f") {
+        scp -o BatchMode=yes "$Root\assets\$f" "${HostName}:${RemotePath}/assets/"
+    }
 }
+Assert-Ok "brand assets upload"
 if (Test-Path "$Root\assets\products") {
     ssh -o BatchMode=yes $HostName "mkdir -p $RemotePath/assets/products"
     Assert-Ok "mkdir assets/products"
@@ -85,6 +90,9 @@ Assert-Ok "services upload"
 if (Test-Path "$Root\server\ssr.py") {
     scp -o BatchMode=yes "$Root\server\ssr.py" "${HostName}:${RemotePath}/server/"
     Assert-Ok "ssr.py upload"
+}
+if (Test-Path "$Root\server\urls.py") {
+    scp -o BatchMode=yes "$Root\server\urls.py" "${HostName}:${RemotePath}/server/"
 }
 if (Test-Path "$Root\server\live.py") {
     scp -o BatchMode=yes "$Root\server\live.py" "${HostName}:${RemotePath}/server/"

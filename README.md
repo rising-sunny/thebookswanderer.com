@@ -30,6 +30,29 @@ cd server
 
 Official docs (online): https://developers.cjdropshipping.com/
 
+### Facebook Page posts (organic)
+
+Publish product promos from this repo (Graph API — not Ads MCP).
+
+| Path | What |
+|------|------|
+| [`server/scripts/fb_post.py`](server/scripts/fb_post.py) | text / photo / carousel / video |
+| [`server/scripts/post_product_fb.py`](server/scripts/post_product_fb.py) | promo from live catalog slug |
+| [`server/docs/FACEBOOK.md`](server/docs/FACEBOOK.md) | setup + commands |
+
+```powershell
+cd server
+# .env must have FB_PAGE_ID + FB_PAGE_TOKEN
+python scripts/fb_post.py whoami
+python scripts/post_product_fb.py hollow-kitten-bookmark --dry-run
+python scripts/post_product_fb.py hollow-kitten-bookmark
+# Video promo (slideshow or product clip)
+python scripts/make_slideshow_video.py data/butter_imgs/d6.jpeg data/butter_imgs/d9.jpeg -o ../assets/products/butterfly-bookmark/promo.mp4
+python scripts/post_product_fb.py butterfly-metal-bookmark --video ../assets/products/butterfly-bookmark/promo.mp4
+```
+
+Meta **Ads** (campaigns) use a separate official MCP: `https://mcp.facebook.com/ads` — see FACEBOOK.md.
+
 ### Deploy
 
 See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree under `/var/www/thebookswanderer.com/`.
@@ -37,6 +60,11 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree un
 ### Storefront
 
 - Catalog + categories: `index.html`, `app.js`
-- PDP: `product.html`, `product.js`
+- PDP: pretty URLs `/products/{slug}` (legacy `product.html?slug=` 301s), `product.js`
+- Affiliate picks: `/picks/{slug}` (legacy `pick.html?slug=` 301s)
+- Sitemap: dynamic `GET /sitemap.xml` from FastAPI (live catalog + lastmod)
+- Brand assets: optimized `assets/logo.webp` (CSS), `assets/og-default.jpg` (1200×630 OG/Twitter), favicons
+  - Rebuild: `python server/scripts/optimize_brand_assets.py`
+- Collections: `/collections` + `/collections/{slug}` (SSR, JSON-LD CollectionPage + ItemList)
 - Cart / checkout: `cart.html`, `checkout.html` (+ `cart.js`, `checkout.js`)
 - API: `server/main.py` (products, shipping quote, PayPal, CJ order)

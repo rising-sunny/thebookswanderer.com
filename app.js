@@ -93,7 +93,7 @@
 
     function productUrl(p) {
         const slug = encodeURIComponent(p.slug || "");
-        return slug ? `/product.html?slug=${slug}` : `/product.html?id=${p.id}`;
+        return slug ? `/products/${slug}` : `/#featured`;
     }
 
     function readCategoryFromUrl() {
@@ -181,7 +181,7 @@
                 const tile = escapeHtml(c.tile || "linear-gradient(150deg, #2b5240, #10241a)");
                 return `
 <a class="category${activeCategory === c.slug ? " is-active" : ""}"
-   href="#featured"
+   href="/collections/${escapeHtml(c.slug)}"
    data-category="${escapeHtml(c.slug)}"
    style="--tile: ${tile}">
   <span class="category__count">${escapeHtml(countLabel)}</span>
@@ -320,11 +320,12 @@
         }
         const catBtn = e.target.closest("[data-category]");
         if (!catBtn) return;
-        // Only handle filter chips / category tiles, not product cards
-        if (
-            !catBtn.classList.contains("category") &&
-            !catBtn.classList.contains("catalog-filter")
-        ) {
+        // Collection tiles → real SEO pages; filter chips stay on home
+        if (catBtn.classList.contains("category")) {
+            // Let the browser follow href="/collections/{slug}"
+            return;
+        }
+        if (!catBtn.classList.contains("catalog-filter")) {
             return;
         }
         e.preventDefault();
@@ -339,7 +340,7 @@
     const affiliateGrid = document.getElementById("affiliateGrid");
 
     function renderAffiliateCard(p) {
-        const detail = `/pick.html?slug=${encodeURIComponent(p.slug)}`;
+        const detail = `/picks/${encodeURIComponent(p.slug)}`;
         const img = escapeHtml(p.imageUrl || "");
         const title = escapeHtml(p.shortTitle || p.title || "");
         const blurb = escapeHtml(p.blurb || "");

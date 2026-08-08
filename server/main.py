@@ -11,7 +11,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from datetime import datetime, timezone
+from xml.sax.saxutils import escape as xml_escape
+
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
@@ -28,14 +31,23 @@ from ssr import (  # noqa: E402
     affiliate_by_slug,
     inject_home_seo,
     load_affiliate_catalog,
+    render_collection_not_found,
+    render_collection_page,
+    render_collections_index,
     render_pick_not_found,
     render_pick_page,
     render_product_not_found,
     render_product_page,
 )
+from urls import (  # noqa: E402
+    PUBLIC_BASE,
+    collection_url,
+    pick_path,
+    pick_url,
+    product_path,
+    product_url,
+)
 from live import router as live_router  # noqa: E402
-
-PUBLIC_BASE = os.getenv("PUBLIC_BASE_URL", "https://thebookswanderer.com").rstrip("/")
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
 
@@ -257,19 +269,36 @@ async def get_product_by_slug(slug: str, db: Session = Depends(get_db)):
     return p.to_detail()
 
 
-# ── SEO: server-rendered product HTML (not the empty static JS shell) ──
+# ── SEO: pretty URLs, 301 from query shells, dynamic sitemap ──
 
 
-@app.api_route("/product.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
-async def product_page_ssr(
+def _iso_date(dt: datetime | None) -> str:
+    if not dt:
+        return datetime.now(timezone.utc).date().isoformat()
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).date().isoformat()
+
+
+def _file_mtime_iso(*candidates: Path) -> str:
+    for p in candidates:
+        try:
+            if p.is_file():
+                return datetime.fromtimestamp(
+                    p.stat().st_mtime, tz=timezone.utc
+                ).date().isoformat()
+        except OSError:
+            continue
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+@app.api_route("/product.html", methods=["GET", "HEAD"])
+async def product_page_legacy(
     slug: str | None = Query(None),
     id: int | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    """
-    HTML for /product.html?slug=… with real title, description, and body text.
-    Required for Google Search Console: the static file only says “Loading product…”.
-    """
+    """Legacy query URL → permanent redirect to /products/{slug}."""
     p: Product | None = None
     if slug and slug.strip():
         p = (
@@ -283,41 +312,46 @@ async def product_page_ssr(
             p = cand
     if not p:
         return HTMLResponse(render_product_not_found(slug or ""), status_code=404)
-    await _ensure_product_media(p, db)
-    detail = p.to_detail()
-    canonical = f"{PUBLIC_BASE}/product.html?slug={p.slug}"
-    return HTMLResponse(render_product_page(detail, canonical=canonical))
+    return RedirectResponse(url=product_path(p.slug), status_code=301)
 
 
 @app.get("/products/{slug}", response_class=HTMLResponse)
 async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
-    """Cleaner SEO path; same content as product.html?slug=."""
+    """Canonical product PDP (SSR)."""
     p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
     if not p:
         return HTMLResponse(render_product_not_found(slug), status_code=404)
     await _ensure_product_media(p, db)
     detail = p.to_detail()
-    # Prefer query URL already in sitemap; pretty URL sets canonical to that for consistency
-    canonical = f"{PUBLIC_BASE}/product.html?slug={p.slug}"
+    canonical = product_url(p.slug)
     return HTMLResponse(render_product_page(detail, canonical=canonical))
 
 
-@app.api_route("/pick.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
-async def pick_page_ssr(slug: str | None = Query(None)):
-    """SSR Amazon affiliate pick — static pick.html is a JS shell (Soft 404 risk)."""
+@app.api_route("/pick.html", methods=["GET", "HEAD"])
+async def pick_page_legacy(slug: str | None = Query(None)):
+    """Legacy query URL → permanent redirect to /picks/{slug}."""
     if not slug or not slug.strip():
         return HTMLResponse(render_pick_not_found(""), status_code=404)
     pick = affiliate_by_slug(slug.strip())
     if not pick:
         return HTMLResponse(render_pick_not_found(slug), status_code=404)
-    canonical = f"{PUBLIC_BASE}/pick.html?slug={pick['slug']}"
+    return RedirectResponse(url=pick_path(pick["slug"]), status_code=301)
+
+
+@app.get("/picks/{slug}", response_class=HTMLResponse)
+async def pick_page_pretty(slug: str):
+    """Canonical Amazon affiliate pick PDP (SSR)."""
+    pick = affiliate_by_slug(slug.strip())
+    if not pick:
+        return HTMLResponse(render_pick_not_found(slug), status_code=404)
+    canonical = pick_url(pick["slug"])
     return HTMLResponse(render_pick_page(pick, canonical=canonical))
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 @app.api_route("/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home_page_ssr(db: Session = Depends(get_db)):
-    """Home with crawlable product + affiliate cards in the HTML."""
+    """Home with crawlable product + affiliate + category cards in the HTML."""
     template_path = Path(__file__).resolve().parent.parent / "index.html"
     try:
         raw = template_path.read_text(encoding="utf-8")
@@ -330,9 +364,132 @@ def home_page_ssr(db: Session = Depends(get_db)):
         .all()
     )
     products = [p.to_public() for p in rows]
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        counts[cat_service.normalize_category(p.category)] = (
+            counts.get(cat_service.normalize_category(p.category), 0) + 1
+        )
+    categories = []
+    for c in cat_service.all_categories():
+        categories.append({**c, "product_count": counts.get(c["slug"], 0)})
     aff = load_affiliate_catalog()
-    html_out = inject_home_seo(raw, products=products, affiliate=aff)
+    html_out = inject_home_seo(
+        raw, products=products, affiliate=aff, categories=categories
+    )
     return HTMLResponse(html_out)
+
+
+@app.get("/collections", response_class=HTMLResponse)
+def collections_index(db: Session = Depends(get_db)):
+    """Index of all storefront collections."""
+    rows = db.query(Product).filter(Product.active.is_(True)).all()
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        s = cat_service.normalize_category(p.category)
+        counts[s] = counts.get(s, 0) + 1
+    categories = [{**c, "product_count": counts.get(c["slug"], 0)} for c in cat_service.all_categories()]
+    canonical = f"{PUBLIC_BASE}/collections"
+    return HTMLResponse(render_collections_index(categories, canonical=canonical))
+
+
+@app.get("/collections/{slug}", response_class=HTMLResponse)
+def collection_page(slug: str, db: Session = Depends(get_db)):
+    """Category landing page with SSR product grid + JSON-LD."""
+    cat = cat_service.get_category(slug)
+    if not cat:
+        return HTMLResponse(render_collection_not_found(slug), status_code=404)
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.id.desc())
+        .all()
+    )
+    products = [
+        p.to_public()
+        for p in rows
+        if cat_service.normalize_category(p.category) == cat["slug"]
+    ]
+    all_cats = cat_service.all_categories()
+    canonical = collection_url(cat["slug"])
+    return HTMLResponse(
+        render_collection_page(
+            cat, products, canonical=canonical, all_cats=all_cats
+        )
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap_xml(db: Session = Depends(get_db)):
+    """Dynamic sitemap from live catalog (products + picks + collections)."""
+    site_root = Path(__file__).resolve().parent.parent
+    today = datetime.now(timezone.utc).date().isoformat()
+    urls: list[tuple[str, str, str, str]] = []  # loc, lastmod, changefreq, priority
+
+    urls.append((f"{PUBLIC_BASE}/", today, "weekly", "1.0"))
+    urls.append((f"{PUBLIC_BASE}/collections", today, "weekly", "0.85"))
+
+    for c in cat_service.all_categories():
+        urls.append((collection_url(c["slug"]), today, "weekly", "0.85"))
+
+    for rel, prio in (
+        ("about.html", "0.6"),
+        ("contact.html", "0.5"),
+        ("shipping-returns.html", "0.5"),
+        ("privacy.html", "0.3"),
+    ):
+        path = site_root / rel
+        if path.is_file():
+            urls.append(
+                (
+                    f"{PUBLIC_BASE}/{rel}",
+                    _file_mtime_iso(path),
+                    "monthly",
+                    prio,
+                )
+            )
+
+    aff_path = site_root / "affiliate-products.json"
+    aff_mod = _file_mtime_iso(aff_path)
+    for pick in load_affiliate_catalog().get("products") or []:
+        slug = (pick.get("slug") or "").strip()
+        if not slug:
+            continue
+        urls.append((pick_url(slug), aff_mod, "weekly", "0.9"))
+
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.slug.asc())
+        .all()
+    )
+    for p in rows:
+        urls.append(
+            (
+                product_url(p.slug),
+                _iso_date(p.created_at),
+                "weekly",
+                "0.8",
+            )
+        )
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, lastmod, freq, prio in urls:
+        lines.append("  <url>")
+        lines.append(f"    <loc>{xml_escape(loc)}</loc>")
+        lines.append(f"    <lastmod>{xml_escape(lastmod)}</lastmod>")
+        lines.append(f"    <changefreq>{freq}</changefreq>")
+        lines.append(f"    <priority>{prio}</priority>")
+        lines.append("  </url>")
+    lines.append("</urlset>")
+    body = "\n".join(lines) + "\n"
+    return Response(
+        content=body,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @app.get("/api/products/{product_id}")

@@ -9,8 +9,19 @@
     if (!root) return;
 
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get("slug") || "";
-    const id = params.get("id") || "";
+    function pathSlug(prefix) {
+        const m = window.location.pathname.match(
+            new RegExp("^/" + prefix + "/([^/]+)/?$", "i")
+        );
+        return m ? decodeURIComponent(m[1]) : "";
+    }
+    // Prefer pretty path /products/{slug}, then ?slug=, then SSR data-slug
+    const slug =
+        pathSlug("products") ||
+        params.get("slug") ||
+        (root.dataset && root.dataset.slug) ||
+        "";
+    const id = params.get("id") || root.dataset.productId || "";
 
     let product = null;
     let selectedVariantId = null;
