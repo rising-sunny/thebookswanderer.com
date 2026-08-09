@@ -74,7 +74,13 @@ async def create_checkout(
                     "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
                     "brand_name": brand_name,
                     "locale": "en-US",
-                    "landing_page": "LOGIN",
+                    # NO_PREFERENCE lets PayPal choose the first screen per buyer:
+                    # login for someone with an account, the card form for someone
+                    # without one. LOGIN sent everybody to a sign-in wall, and
+                    # BILLING would do the reverse and tax returning PayPal users.
+                    # Needs "PayPal account optional" on in the merchant profile,
+                    # and PayPal still decides per buyer whether guest is offered.
+                    "landing_page": "NO_PREFERENCE",
                     "user_action": "PAY_NOW",
                     "return_url": return_url,
                     "cancel_url": cancel_url,
