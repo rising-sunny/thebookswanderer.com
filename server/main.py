@@ -87,6 +87,11 @@ def _ship_retail(cost_usd: float) -> float:
         return 0.0
     return round(float(cost_usd) * SHIP_MARKUP, 2)
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
+# How much dearer a carrier may be before we stop trading money for speed.
+# CJ's cheapest line is not always the sane pick: to Malaysia it is $1.89 for
+# 15-30 days when $4.26 buys 4-5 days. To the US the cheapest already is the
+# fastest, so this changes nothing there.
+SHIP_UPGRADE_MAX_USD = float(os.getenv("SHIPPING_UPGRADE_MAX_USD", "3.0"))
 
 app = FastAPI(title="The Books Wanderer API", version="0.1.0")
 app.include_router(live_router)
@@ -682,8 +687,34 @@ SHIP_DESTINATIONS: list[dict[str, str]] = [
     {"code": "JP", "name": "Japan"},
     {"code": "KR", "name": "South Korea"},
     {"code": "SG", "name": "Singapore"},
+    {"code": "MY", "name": "Malaysia"},
     {"code": "AE", "name": "United Arab Emirates"},
 ]
+
+
+def _transit_ceiling(option: dict) -> int:
+    """Slowest day count in a CJ `logisticAging` string such as "4-6" or "15-30".
+
+    Anything unparseable sorts last, so a carrier that does not declare a
+    transit time never wins on speed.
+    """
+    days = re.findall(r"\d+", str(option.get("logisticAging") or ""))
+    return max(int(d) for d in days) if days else 10**6
+
+
+def _pick_freight(options: list[dict]) -> dict:
+    """Cheapest carrier, upgraded to a faster one when the surcharge is small.
+
+    Sorting on price alone quotes month-long lines in Asia. Anything within
+    SHIP_UPGRADE_MAX_USD of the cheapest counts as affordable; among those the
+    fastest wins, and ties go back to the cheaper carrier.
+    """
+    def price(option: dict) -> float:
+        return float(option.get("logisticPrice") or 0)
+
+    ceiling = price(min(options, key=price)) + SHIP_UPGRADE_MAX_USD
+    affordable = [o for o in options if price(o) <= ceiling]
+    return min(affordable, key=lambda o: (_transit_ceiling(o), price(o)))
 
 
 @app.get("/api/shipping/destinations")
@@ -753,7 +784,7 @@ async def product_shipping_quote(
         }
 
     ranked = sorted(options, key=lambda o: float(o.get("logisticPrice") or 0))
-    best = ranked[0]
+    best = _pick_freight(options)
     ship_cost = float(best.get("logisticPrice") or 0)
     ship_retail = _ship_retail(ship_cost)
 
@@ -821,7 +852,7 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
                 f"We don't have a delivery route to {country} for this order yet.",
             )
 
-        best = min(options, key=lambda o: float(o.get("logisticPrice") or 0))
+        best = _pick_freight(options)
         cost = float(best.get("logisticPrice") or 0)
         retail_shipping += _ship_retail(cost)
         eta_bits.append(str(best.get("logisticAging") or ""))

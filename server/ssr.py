@@ -143,8 +143,11 @@ _SHIP_TRANSIT_BANDS: list[dict[str, Any]] = [
         "transit_max": 15,
         "rate_max_usd": 22.0,
     },
+    # MY sits here, not with SG, despite being closer to the CN origin: the quote
+    # picks the cheapest carrier and for MY that is a 15-30 day line, while SG
+    # gets 5-10 days for a similar price.
     {
-        "codes": ["CL", "MX", "BR", "AR", "CO", "PE", "KR", "AE"],
+        "codes": ["CL", "MX", "BR", "AR", "CO", "PE", "KR", "AE", "MY"],
         "transit_min": 12,
         "transit_max": 60,
         "rate_max_usd": 35.0,
