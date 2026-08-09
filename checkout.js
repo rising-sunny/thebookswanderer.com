@@ -13,6 +13,7 @@
     const orderId = params.get("order_id") || "";
 
     let destinations = [];
+    let geoCountry = ""; // IP guess, only used when the buyer has no saved choice
     let quote = null;
     let quoteStatus = "idle"; // idle | loading | ok | error
     let preview = null;
@@ -131,6 +132,22 @@
         }
     }
 
+    async function loadGeoCountry() {
+        // Without this the summary anchors on the product price and jumps once
+        // the buyer picks a country -- shipping is a large share of the total
+        // here, so that jump reads as a bait and switch.
+        try {
+            const res = await fetch("/api/geo/country", {
+                headers: { Accept: "application/json" },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            geoCountry = data.country || "";
+        } catch (_) {
+            /* a missing guess just leaves the selector empty, as before */
+        }
+    }
+
     async function loadPreview() {
         const items = Cart.read();
         if (!items.length) {
@@ -238,9 +255,9 @@
 
         const savedCountry = (() => {
             try {
-                return localStorage.getItem(Cart.SHIP_KEY) || "";
+                return localStorage.getItem(Cart.SHIP_KEY) || geoCountry;
             } catch (_) {
-                return "";
+                return geoCountry;
             }
         })();
 
@@ -276,7 +293,7 @@
   <form class="checkout-form" id="checkoutForm" novalidate>
     <header class="cart-head">
       <h1>Checkout</h1>
-      <p class="cart-head__meta">Secure payment with PayPal</p>
+      <p class="cart-head__meta">Secure payment — PayPal or card</p>
     </header>
 
     <fieldset class="checkout-fieldset">
@@ -331,7 +348,7 @@
     <p class="checkout-error" id="coError" hidden></p>
 
     <button class="btn checkout-pay" type="submit" id="coSubmit">
-      Pay with PayPal
+      Pay with PayPal or card
     </button>
     <a class="btn btn--ghost" href="/cart.html">Back to cart</a>
   </form>
@@ -352,7 +369,7 @@
       <span>Total</span>
       <strong id="coGrand">${money(preview.product_total)}</strong>
     </div>
-    <p class="cart-summary__note">You’ll complete payment securely on PayPal. Shipping is recalculated on our server before charge.</p>
+    <p class="cart-summary__note">You’ll complete payment securely on PayPal, where you can pay by debit or credit card. Shipping is recalculated on our server before charge.</p>
   </aside>
 </div>`;
 
@@ -448,7 +465,7 @@
             submitting = false;
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = "Pay with PayPal";
+                btn.textContent = "Pay with PayPal or card";
             }
         }
     }
@@ -477,7 +494,11 @@
 
         root.innerHTML = `<p class="catalog-loading">Preparing checkout…</p>`;
         try {
-            await Promise.all([loadDestinations(), loadPreview()]);
+            await Promise.all([
+                loadDestinations(),
+                loadPreview(),
+                loadGeoCountry(),
+            ]);
             renderForm();
             Cart.paintBadge();
             try {

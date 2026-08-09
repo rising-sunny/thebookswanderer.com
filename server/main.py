@@ -722,6 +722,22 @@ def shipping_destinations():
     return {"destinations": SHIP_DESTINATIONS}
 
 
+@app.get("/api/geo/country")
+def geo_country(request: Request):
+    """Best-effort country for prefilling the checkout selector.
+
+    Returns null unless the visitor resolves to a market we actually ship to.
+    Guessing wrong is worse than not guessing: the selector drives the freight
+    quote, so a bad prefill shows a total for the wrong country.
+    """
+    from services import geo as geo_service
+
+    ip = geo_service.extract_client_ip(request) or ""
+    code = (geo_service.lookup(ip).get("country") or "").upper()
+    known = {d["code"] for d in SHIP_DESTINATIONS}
+    return {"country": code if code in known else None}
+
+
 @app.get("/api/products/{product_id}/shipping")
 async def product_shipping_quote(
     product_id: int,
