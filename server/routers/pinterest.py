@@ -102,6 +102,7 @@ async def status(_: None = Depends(_require_admin)):
         "scopes": pin.scope_list(),
         "token_file": str(pin.token_path()),
         "expires_at": token.get("expires_at") if token else None,
+        "token_health": pin.token_health(),
         "account": account,
     }
 

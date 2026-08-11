@@ -41,6 +41,8 @@ async def main() -> int:
     args = ap.parse_args()
 
     if args.dry_run:
+        from services import pinterest as pin
+
         init_db()
         db = SessionLocal()
         try:
@@ -52,6 +54,7 @@ async def main() -> int:
                         "enabled": jobs.auto_pin_enabled(),
                         "pins_per_day": jobs.pins_per_day(),
                         "cooldown_days": jobs.repin_cooldown_days(),
+                        "token": pin.token_health(),
                         "candidates": [
                             {
                                 "slug": p.slug,

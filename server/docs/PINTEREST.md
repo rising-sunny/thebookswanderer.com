@@ -132,20 +132,35 @@ Tracking table: `pinterest_pins` (slug, board, pin_id, kind=`launch`|`drip`, sta
 
 ### Env
 
+New products are picked up automatically: every run re-queries active products
+and sorts **never-pinned first**, so anything you add jumps to the front of the
+queue. It only needs an image (own `image_url` or a variant's) — products
+without one are skipped silently.
+
 ```env
 PINTEREST_AUTO_PIN_ENABLED=1
 PINTEREST_LAUNCH_PIN_ENABLED=1
 PINTEREST_LAUNCH_ALSO_SHOP=1
 PINTEREST_PINS_PER_DAY=1
 PINTEREST_REPIN_COOLDOWN_DAYS=45
+PINTEREST_REAUTH_WARN_DAYS=14
 ```
 
-### Cron (VPS)
+### Cron (VPS) — must run as `www-data`
 
 ```cron
 # 14:00 UTC ≈ mid-morning US / afternoon EU — adjust to taste
-0 14 * * * cd /var/www/thebookswanderer.com/server && /var/www/thebookswanderer.com/server/.venv/bin/python scripts/pinterest_auto_pin.py >> /var/log/tbw-pinterest-auto.log 2>&1
+0 14 * * * cd /var/www/thebookswanderer.com/server && sudo -u www-data /var/www/thebookswanderer.com/server/.venv/bin/python scripts/pinterest_auto_pin.py >> /var/log/tbw-pinterest-auto.log 2>&1
 ```
+
+> **Do not drop the `sudo -u www-data`.** The app runs as `www-data`. A refresh
+> triggered by a root-owned cron used to replace `.pinterest_token.json` with a
+> `root:root 0600` file, after which the app could no longer read its own token
+> — `read_token()` swallows the `PermissionError` and every call just looks like
+> "not connected". `write_token()` now restores the previous owner as a second
+> line of defence, but the cron user is the real fix.
+>
+> Redirection to the log stays outside `sudo`, so the log file remains root-owned.
 
 ### Manual
 
@@ -157,6 +172,25 @@ cd /var/www/thebookswanderer.com/server
 ```
 
 Launch pin is best-effort: a Pinterest failure does **not** roll back product import.
+
+### Two expiry clocks
+
+| Token | Lifetime | Renewal |
+|---|---|---|
+| **Access** | 30 days | Automatic — refreshed 24 h before expiry |
+| **Refresh** | 60 days | **Manual OAuth only.** Nothing renews it for you |
+
+When the refresh token dies, everything returns 401 and auto-pin stops. The
+daily job calls `check_token_health()` first and emails `MAIL_NOTIFY_TO` once a
+day starting `PINTEREST_REAUTH_WARN_DAYS` (14) before the deadline, then daily
+while expired. Fix = redo step 3 (OAuth) above.
+
+Check anytime — neither returns secrets:
+
+```bash
+.venv/bin/python scripts/pinterest_auto_pin.py --dry-run   # includes "token" block
+curl "https://thebookswanderer.com/api/pinterest/status?admin_key=..."  # "token_health"
+```
 
 ---
 

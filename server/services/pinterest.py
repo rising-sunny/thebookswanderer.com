@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
@@ -15,6 +16,8 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException
+
+logger = logging.getLogger("pinterest")
 
 DEFAULT_API_BASE = "https://api.pinterest.com/v5"
 OAUTH_AUTHORIZE_URL = "https://www.pinterest.com/oauth/"
@@ -65,6 +68,14 @@ def token_path() -> Path:
         return Path(raw)
     # Prefer server/data next to the DB (writable on VPS, gitignored).
     return Path(__file__).resolve().parent.parent / "data" / ".pinterest_token.json"
+
+
+def reauth_warn_days() -> int:
+    """Days before the refresh token dies that we start warning."""
+    try:
+        return max(1, int(os.getenv("PINTEREST_REAUTH_WARN_DAYS", "14")))
+    except ValueError:
+        return 14
 
 
 def state_secret() -> str:
@@ -135,24 +146,60 @@ def read_token() -> dict[str, Any] | None:
         return None
 
 
+def _file_owner(path: Path) -> tuple[int, int] | None:
+    """(uid, gid) of an existing file, or None. No-op on Windows."""
+    if not hasattr(os, "chown"):
+        return None
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_uid, st.st_gid)
+
+
+def _restore_owner(target: Path, owner: tuple[int, int] | None) -> None:
+    """Keep the token file owned by whoever owned it before.
+
+    The web app runs as www-data and the cron as root. Without this, a
+    root-driven refresh replaces the file with a root:root 0600 one and the
+    app silently loses access to its own token (read_token swallows the
+    PermissionError and every call then looks like "not connected").
+    Only root can hand a file to another user, so this is a no-op otherwise.
+    """
+    if not owner or not hasattr(os, "chown") or not hasattr(os, "geteuid"):
+        return
+    if os.geteuid() != 0:
+        return
+    try:
+        os.chown(target, owner[0], owner[1])
+    except OSError:
+        logger.warning("could not restore token ownership to uid=%s gid=%s", *owner)
+
+
 def write_token(data: dict[str, Any]) -> None:
     path = token_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(data)
     payload["saved_at"] = datetime.now(timezone.utc).isoformat()
+    now = int(time.time())
     if payload.get("expires_in"):
-        payload["expires_at"] = int(time.time()) + int(payload["expires_in"])
+        payload["expires_at"] = now + int(payload["expires_in"])
+    # Pinterest sends this only on the initial grant; keep it absolute so the
+    # hard re-OAuth deadline stays visible to monitoring.
+    if payload.get("refresh_token_expires_in"):
+        payload["refresh_token_expires_at"] = now + int(
+            payload["refresh_token_expires_in"]
+        )
+
+    owner = _file_owner(path)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     try:
         os.chmod(tmp, 0o600)
     except OSError:
         pass
+    _restore_owner(tmp, owner)
     os.replace(tmp, path)
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass
 
 
 async def exchange_code(code: str) -> dict[str, Any]:
@@ -201,6 +248,15 @@ async def refresh_token(token: dict[str, Any]) -> dict[str, Any]:
     # Keep refresh_token if Pinterest omits it on refresh.
     if not new_token.get("refresh_token") and refresh:
         new_token["refresh_token"] = refresh
+    # Pinterest does not re-issue the refresh token on every refresh. Carry the
+    # original deadline over, otherwise it vanishes after the first refresh and
+    # we lose all warning before re-OAuth becomes mandatory.
+    if not new_token.get("refresh_token_expires_in") and not new_token.get(
+        "refresh_token_expires_at"
+    ):
+        previous = token.get("refresh_token_expires_at")
+        if previous:
+            new_token["refresh_token_expires_at"] = previous
     write_token(new_token)
     return new_token
 
@@ -214,6 +270,47 @@ async def access_token() -> str:
     if expires_at and expires_at - int(time.time()) < 24 * 60 * 60:
         token = await refresh_token(token)
     return str(token["access_token"])
+
+
+def token_health() -> dict[str, Any]:
+    """Expiry snapshot for monitoring. Never returns secrets.
+
+    Two clocks matter: the access token (auto-refreshed) and the refresh
+    token (hard deadline — only a manual OAuth round trip resets it).
+    """
+    token = read_token()
+    if not token or not token.get("access_token"):
+        return {
+            "connected": False,
+            "reauth_required": True,
+            "reason": "no_token",
+        }
+
+    now = int(time.time())
+    access_at = int(token.get("expires_at") or 0)
+    refresh_at = int(token.get("refresh_token_expires_at") or 0)
+
+    def days_left(ts: int) -> float | None:
+        return round((ts - now) / 86400, 1) if ts else None
+
+    refresh_days = days_left(refresh_at)
+    return {
+        "connected": True,
+        "has_refresh_token": bool(token.get("refresh_token")),
+        "access_expires_at": access_at or None,
+        "access_expires_in_days": days_left(access_at),
+        # No expires_at means write_token never saw expires_in: the access
+        # token would never auto-refresh and dies silently.
+        "access_autorefresh": bool(access_at),
+        "refresh_expires_at": refresh_at or None,
+        "refresh_expires_in_days": refresh_days,
+        "refresh_expiry_known": bool(refresh_at),
+        "reauth_required": bool(refresh_at and refresh_at <= now),
+        "reauth_warning": bool(
+            refresh_days is not None and 0 < refresh_days <= reauth_warn_days()
+        ),
+        "warn_days": reauth_warn_days(),
+    }
 
 
 async def api_request(method: str, path: str, **kwargs: Any) -> Any:

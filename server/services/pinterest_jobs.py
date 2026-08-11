@@ -4,7 +4,8 @@ from __future__ import annotations
 import logging
 import os
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -270,6 +271,103 @@ def select_drip_candidates(db: Session, *, limit: int) -> list[Product]:
     return [s[2] for s in scored[:limit]]
 
 
+def _reauth_marker() -> Path:
+    """One-notice-per-day marker, kept next to the token file."""
+    return pin.token_path().with_name(".pinterest_reauth_notice")
+
+
+def _notified_today() -> bool:
+    try:
+        return _reauth_marker().read_text(encoding="utf-8").strip() == date.today().isoformat()
+    except OSError:
+        return False
+
+
+def _mark_notified_today() -> None:
+    try:
+        marker = _reauth_marker()
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(date.today().isoformat(), encoding="utf-8")
+    except OSError:
+        # Worst case we send one extra email — never break the drip over this.
+        logger.warning("could not write reauth marker")
+
+
+async def check_token_health(*, notify: bool = True) -> dict[str, Any]:
+    """Email a warning before the refresh token dies.
+
+    The access token refreshes itself, but the refresh token has a hard
+    deadline that only a manual OAuth round trip resets. Without this the
+    whole pipeline just starts returning 401s one morning with no warning.
+    """
+    health = pin.token_health()
+    if not pin.is_configured():
+        return health
+
+    urgent = bool(health.get("reauth_required"))
+    warning = bool(health.get("reauth_warning"))
+    health["notified"] = False
+    if not (urgent or warning):
+        return health
+
+    if urgent:
+        logger.error("pinterest refresh token expired — re-OAuth required")
+    else:
+        logger.warning(
+            "pinterest refresh token expires in %s days",
+            health.get("refresh_expires_in_days"),
+        )
+
+    if not notify or _notified_today():
+        return health
+
+    from services import email as mail
+
+    if not mail.configured():
+        logger.warning("pinterest re-auth needed but SMTP is not configured")
+        return health
+
+    recipients = mail._notify_owner()
+    if not recipients:
+        return health
+
+    days = health.get("refresh_expires_in_days")
+    if urgent:
+        subject = "Pinterest disconnected — auto-pin is down"
+        headline = (
+            "The Pinterest refresh token has expired. Auto-pin and launch pins "
+            "are failing until the account is reconnected."
+        )
+    else:
+        subject = f"Pinterest: reconnect within {days} days"
+        headline = (
+            f"The Pinterest refresh token expires in {days} days. When it does, "
+            "auto-pin stops until you reconnect by hand."
+        )
+
+    body = (
+        f"{headline}\n\n"
+        "Fix (about two minutes):\n"
+        "  1. Open a private browser window, log in as The Books Wanderer.\n"
+        f"  2. Visit {pin.public_base()}/api/pinterest/oauth/start?admin_key=YOUR_SECRET_KEY\n"
+        "  3. Approve the permissions.\n\n"
+        "Then confirm:\n"
+        "  cd /var/www/thebookswanderer.com/server\n"
+        "  .venv/bin/python scripts/pinterest_cli.py whoami\n"
+    )
+
+    try:
+        sent = await mail.send_email(to=recipients, subject=subject, text=body)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("could not send pinterest re-auth warning: %s", exc)
+        return health
+
+    if sent:
+        health["notified"] = True
+        _mark_notified_today()
+    return health
+
+
 async def run_daily_drip(*, limit: int | None = None) -> dict[str, Any]:
     """Pick products and pin them (default 1/day)."""
     from database import SessionLocal, init_db
@@ -277,13 +375,22 @@ async def run_daily_drip(*, limit: int | None = None) -> dict[str, Any]:
     if not auto_pin_enabled():
         return {"ok": True, "skipped": True, "reason": "auto_disabled"}
 
+    # Runs first: if the refresh token is about to die we want the warning out
+    # even on a day with no candidates to pin.
+    token = await check_token_health()
+
     n = pins_per_day() if limit is None else limit
     init_db()
     db = SessionLocal()
     try:
         candidates = select_drip_candidates(db, limit=n)
         if not candidates:
-            return {"ok": True, "pinned": [], "message": "no_candidates"}
+            return {
+                "ok": True,
+                "pinned": [],
+                "message": "no_candidates",
+                "token": token,
+            }
         out: list[dict[str, Any]] = []
         for product in candidates:
             board = board_id_for_category(product.category)
@@ -301,6 +408,7 @@ async def run_daily_drip(*, limit: int | None = None) -> dict[str, Any]:
             "ok": all(r.get("ok") for r in out) if out else True,
             "pinned": out,
             "count": len(out),
+            "token": token,
         }
     finally:
         db.close()
