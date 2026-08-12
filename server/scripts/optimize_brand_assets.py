@@ -3,15 +3,20 @@
 Rebuild optimized brand assets from sources under assets/.
 
 Inputs (expected):
-  assets/logo.png              full brand mark (any large PNG)
+  assets/brand/logo-master.png       full-resolution brand mark — NEVER written
   assets/social/facebook-cover.jpg   wide brand banner
 
 Outputs:
   assets/logo.png              512² palette PNG (~150–200 KB)
   assets/logo.webp             512² WebP for CSS emblems (~30 KB)
+  assets/logo-hero.webp        full-res WebP for the homepage medallion
   assets/favicon*.png / .ico
   assets/apple-touch-icon.png
   assets/og-default.jpg        1200×630 social share image
+
+The master lives outside the output set on purpose: this script used to read
+assets/logo.png and then overwrite it, so every run re-encoded its own 512px
+output and the original resolution was lost for good.
 
 Usage (from repo root):
   python server/scripts/optimize_brand_assets.py
@@ -27,13 +32,21 @@ ASSETS = ROOT / "assets"
 
 
 def main() -> None:
-    src = ASSETS / "logo.png"
+    src = ASSETS / "brand" / "logo-master.png"
     cover_path = ASSETS / "social" / "facebook-cover.jpg"
     if not src.is_file():
-        raise SystemExit(f"Missing {src}")
+        raise SystemExit(
+            f"Missing {src} — restore the full-resolution master before running. "
+            "Do not point this at assets/logo.png; that is an output."
+        )
 
     im = Image.open(src).convert("RGB")
     print(f"logo source: {im.size} {src.stat().st_size // 1024} KB")
+
+    # Homepage medallion renders the mark at ~735 CSS px (and double that on
+    # retina), so the 512px emblem asset was being upscaled and looked soft.
+    im.save(ASSETS / "logo-hero.webp", format="WEBP", quality=88, method=6)
+    print(f"  logo-hero.webp {(ASSETS / 'logo-hero.webp').stat().st_size // 1024} KB {im.size}")
 
     logo512 = im.resize((512, 512), Image.Resampling.LANCZOS)
     logo512.convert("P", palette=Image.Palette.ADAPTIVE, colors=192).save(

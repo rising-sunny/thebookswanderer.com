@@ -519,7 +519,7 @@ def render_product_page(
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=23{_esc(v)}">
+    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
     <script type="application/ld+json">{ld_product}</script>
     <script type="application/ld+json">{ld_crumbs}</script>
 </head>
@@ -592,7 +592,7 @@ def render_product_not_found(slug: str = "") -> str:
   <title>Product not found | The Books Wanderer</title>
   <meta name="robots" content="noindex,follow">
   <meta name="description" content="This product is not available in The Books Wanderer catalog.">
-  <link rel="stylesheet" href="/styles.css?v=23{_esc(_css_ver())}">
+  <link rel="stylesheet" href="/styles.css?v={_esc(_css_ver())}">
 </head>
 <body class="page-product">
   <main class="container" style="padding:3rem 1rem">
@@ -738,7 +738,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=23{_esc(v)}">
+    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
     <script type="application/ld+json">{ld}</script>
     <script type="application/json" id="affiliate-products-json">{embed}</script>
 </head>

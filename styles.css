@@ -616,7 +616,9 @@ body.nav-is-open {
     width: min(100%, 440px);
     aspect-ratio: 1;
     border-radius: var(--r-pill);
-    background-image: url("assets/logo.webp");
+    /* Full-res asset: this renders the mark near 735 CSS px, so the 512px
+       emblem file was being upscaled. Same framing, so the crop is unchanged. */
+    background-image: url("assets/logo-hero.webp");
     background-size: 167%;
     background-position: 37.5% 27.5%;
     background-repeat: no-repeat;
@@ -2128,7 +2130,7 @@ a.add-to-cart {
 .editorial__art {
     aspect-ratio: 1;
     border-radius: var(--r-lg);
-    background-image: url("assets/logo.webp");
+    background-image: url("assets/logo-hero.webp");
     background-size: 172%;
     background-position: 36% 24%;
     background-repeat: no-repeat;
