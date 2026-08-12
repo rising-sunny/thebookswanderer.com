@@ -221,6 +221,36 @@ hace que el post no se lea como un anuncio disfrazado.
 
 ---
 
+## Post 9 — LED Reading Book Light (vídeo + anuncio de envío gratis)
+
+**Vídeo:** `assets/ad-tbw-02-led.mp4` (18,6 s, 1080×1920, sin audio)
+**Enlace:** `https://thebookswanderer.com/products/led-reading-book-light`
+**Publicar también como Reel:** el alcance orgánico del vídeo es varias veces el de una foto.
+
+> Reading in bed without turning the room into daylight. 🌙
+>
+> The LED Reading Book Light is a flat panel that lies over the page and lights it from the
+> edge. No beam at the ceiling, no lamp on the nightstand, no reaching across someone to find
+> a switch.
+>
+> 14.5 × 17 cm, nine printed designs, and it tucks into the book it is lighting.
+>
+> $17.99 — and shipping is now free worldwide, on everything. We put the cost inside the price
+> instead of springing it on you at the last step, which is where most shops hide it.
+>
+> 👉 https://thebookswanderer.com/products/led-reading-book-light
+>
+> #readinginbed #booklover #bookish #readingnook #bookaccessories
+
+**Dos noticias en un post:** producto nuevo y cambio de política de envíos. El envío gratis va
+al final y explicado, no como reclamo — el tono de la Página es explicar el porqué, y aquí el
+porqué (no esconder el coste hasta el último paso) es en sí mismo el argumento de venta.
+
+**Por qué en vídeo:** es el primer producto con metraje real de uso. Se ve el panel encendido
+sobre la página en la oscuridad, que es exactamente lo que una foto de catálogo no transmite.
+
+---
+
 ## Después de publicarlos
 
 1. **Responde a cada comentario.** Una Página con respuestas del dueño convierte mejor que una
