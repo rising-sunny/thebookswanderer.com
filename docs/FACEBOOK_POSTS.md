@@ -148,6 +148,46 @@ esos comentarios los ve cualquiera que llegue desde un anuncio.
 
 ---
 
+## Post 7 — Set de marcapáginas Palace Kitten (con enlace directo al producto)
+
+**Imagen:** la del catálogo — `cf.cjdropshipping.com/quick/product/95fa8fc4-9ef7-464a-9480-553bc92b6a70.jpg`
+**Enlace:** `https://thebookswanderer.com/products/palace-kitten-bookmarks`
+**Cuándo:** cuando ya haya al menos dos o tres posts publicados. Un post con enlace saliente
+como primera publicación de la Página rinde peor.
+
+> Thirty cats, one book. 🐈‍⬛📖
+>
+> The Palace Kitten set is thirty paper bookmarks — palace cats among plum blossom and red
+> walls, each one a different scene. Slip one between the pages, or fan the whole set across
+> the desk and pick a mood.
+>
+> Thirty is a lot of bookmarks. That's rather the point: one for the book you're reading, one
+> for the one you abandoned in chapter three, and twenty-eight to leave inside things you lend
+> to people.
+>
+> $7.99 for the full set 👇
+> https://thebookswanderer.com/products/palace-kitten-bookmarks
+>
+> #bookmarks #booklover #bookish #readingnook #bookaccessories #guofeng
+
+**Por qué este producto y no otro:** de todo el catálogo es el que mejor señal tiene en el
+tracking — 3 vistas, 3 añadidos al carrito. La muestra es minúscula y no demuestra nada por sí
+sola, pero es lo único que se acerca a una validación real, y un post orgánico es la forma
+barata de confirmarlo antes de gastar en anuncios.
+
+**Nota sobre el enlace:** Facebook reduce el alcance de los posts con enlaces salientes frente
+a los de solo imagen. Dos formas de mitigarlo:
+
+- Publicar la imagen como post normal y poner el enlace **en el primer comentario**. Conserva
+  alcance, aunque pierde clics.
+- Publicarlo con enlace directo, como está arriba, y aceptar menos alcance a cambio de tráfico
+  que sí llega a la ficha.
+
+Para un catálogo de trece productos y cero ventas, yo probaría el enlace directo: ahora mismo
+hacen más falta visitas a la ficha que impresiones.
+
+---
+
 ## Después de publicarlos
 
 1. **Responde a cada comentario.** Una Página con respuestas del dueño convierte mejor que una

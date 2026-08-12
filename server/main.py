@@ -485,6 +485,17 @@ def sitemap_xml(db: Session = Depends(get_db)):
     for c in cat_service.all_categories():
         urls.append((collection_url(c["slug"]), today, "weekly", "0.85"))
 
+    # Guides live as static directories so nginx serves /guides/<slug>/ directly.
+    for guide_dir in sorted((site_root / "guides").glob("*/index.html")):
+        urls.append(
+            (
+                f"{PUBLIC_BASE}/guides/{guide_dir.parent.name}/",
+                _file_mtime_iso(guide_dir),
+                "monthly",
+                "0.7",
+            )
+        )
+
     for rel, prio in (
         ("about.html", "0.6"),
         ("contact.html", "0.5"),
