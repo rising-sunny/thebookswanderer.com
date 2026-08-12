@@ -59,6 +59,13 @@ async def worst_freight(cj, product, vid: str) -> float | None:
 async def main() -> int:
     ap = argparse.ArgumentParser(description="Re-price catalogue with shipping included")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--slug",
+        action="append",
+        help="Limit to these products. WARNING: this adds an allowance to the "
+        "CURRENT price, so re-running it over already-priced products doubles "
+        "the allowance. After the initial pass, always target new slugs only.",
+    )
     args = ap.parse_args()
 
     from database import SessionLocal, init_db
@@ -72,9 +79,13 @@ async def main() -> int:
     db = SessionLocal()
     changed = 0
     try:
-        products = (
-            db.query(Product).filter(Product.active.is_(True)).order_by(Product.id).all()
-        )
+        query = db.query(Product).filter(Product.active.is_(True))
+        if args.slug:
+            query = query.filter(Product.slug.in_(args.slug))
+        products = query.order_by(Product.id).all()
+        if args.slug and not products:
+            print("no active product matched " + ", ".join(args.slug))
+            return 1
         print(
             "%-30s %8s %8s %9s %9s"
             % ("product", "now", "freight", "allowance", "all-in")

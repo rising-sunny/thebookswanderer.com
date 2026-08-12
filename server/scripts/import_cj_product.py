@@ -36,6 +36,59 @@ def cj_token(api_key: str) -> str:
     return tok
 
 
+def _round99(value: float) -> float:
+    import math
+
+    return math.floor(value) + 0.99
+
+
+def _ship_allowance(vid: str, *, from_country: str = "CN") -> float:
+    """Worst freight across the advertised markets, grossed up for PayPal.
+
+    Same basis as scripts/reprice_all_in.py. Returns 0 when shipping is still
+    charged at checkout, or when CJ cannot quote the variant.
+    """
+    free = (os.getenv("FREE_SHIPPING", "1") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if not free or not vid:
+        return 0.0
+
+    import asyncio
+
+    from services import cj
+
+    markup = float(os.getenv("SHIPPING_MARKUP", "1.15"))
+    paypal_pct = float(os.getenv("PAYPAL_FEE_PCT", "0.0349"))
+
+    async def worst() -> float:
+        found = 0.0
+        for country in ("US", "GB", "AU"):
+            try:
+                options = await cj.freight_calculate(
+                    start_country=from_country,
+                    end_country=country,
+                    products=[{"vid": vid, "quantity": 1}],
+                )
+            except Exception:  # noqa: BLE001
+                options = []
+            await asyncio.sleep(1.3)  # CJ allows one request per second
+            if options:
+                found = max(
+                    found, min(float(o.get("logisticPrice") or 0) for o in options)
+                )
+        return found
+
+    try:
+        freight = asyncio.run(worst())
+    except Exception:  # noqa: BLE001
+        return 0.0
+    return (freight * markup) / (1 - paypal_pct) if freight else 0.0
+
+
 def cj_query(token: str, sku: str) -> dict:
     url = f"https://developers.cjdropshipping.com/api2.0/v1/product/query?productSku={sku}"
     req = urllib.request.Request(url, headers={"CJ-Access-Token": token})
@@ -115,11 +168,19 @@ def main() -> None:
     from services import pricing as pricing_service
 
     default_cost = float(default.get("variantSellPrice") or details.get("sellPrice") or 0)
+    # Shipping is priced into the product, so the allowance has to land before
+    # the launch pin fires — a pin created at the pre-allowance price cannot be
+    # edited afterwards (Pinterest gates PATCH behind the pin_edit feature).
+    ship_allowance = _ship_allowance(default.get("vid") or "", from_country="CN")
     default_price = (
         args.price
         if args.price is not None
-        else pricing_service.retail_from_cost(default_cost)
+        else _round99(
+            pricing_service.retail_from_cost(default_cost) + ship_allowance
+        )
     )
+    if ship_allowance:
+        print(f"shipping allowance ${ship_allowance:.2f} folded into the price")
     default_img = (
         default.get("variantImage")
         or details.get("bigImage")
