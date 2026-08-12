@@ -245,7 +245,35 @@ def _shipping_details() -> list[dict[str, Any]]:
     return details
 
 
-def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
+def _related_block_html(related: list[dict[str, Any]]) -> str:
+    """"You may also like" row. Empty string when there is nothing to show."""
+    if not related:
+        return ""
+    cards = "".join(_product_card_html(p) for p in related)
+    return f"""
+<section class="section" aria-labelledby="relatedTitle" style="padding-top:var(--sp-7)">
+    <div class="container">
+        <div class="section__head">
+            <div>
+                <p class="eyebrow">More for readers</p>
+                <h2 id="relatedTitle">You may also like</h2>
+            </div>
+            <a class="link-more" href="/collections">
+                All collections
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+            </a>
+        </div>
+        <div class="products">{cards}</div>
+    </div>
+</section>"""
+
+
+def render_product_page(
+    detail: dict[str, Any],
+    *,
+    canonical: str,
+    related: list[dict[str, Any]] | None = None,
+) -> str:
     """Full HTML document for a store product (CJ catalog)."""
     title = detail.get("title") or "Product"
     page_title = f"{title} | The Books Wanderer"
@@ -266,6 +294,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
     cat_slug = detail.get("category_slug") or ""
     slug = detail.get("slug") or ""
     product_id = detail.get("id")
+    related_html = _related_block_html(related or [])
     variants = detail.get("variants") or []
     lifestyle = detail.get("lifestyle_images") or detail.get("images") or []
 
@@ -528,6 +557,7 @@ def render_product_page(detail: dict[str, Any], *, canonical: str) -> str:
             {ssr_body}
         </div>
     </div>
+    {related_html}
 </main>
 <footer class="footer" style="margin-top:var(--sp-8)">
     <div class="container">

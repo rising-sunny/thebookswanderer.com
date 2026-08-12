@@ -317,6 +317,55 @@ async def product_page_legacy(
     return RedirectResponse(url=product_path(p.slug), status_code=301)
 
 
+def _related_products(product: Product, db: Session, *, limit: int = 4) -> list[dict]:
+    """Siblings for the PDP's "You may also like" block.
+
+    Product pages otherwise link to nothing but nav and footer, which leaves
+    every PDP a dead end for crawlers and shoppers alike.
+
+    Selection walks a ring: each product links to the ones that follow it in
+    id order, wrapping around. Picking "newest N" instead would funnel every
+    link into the same few products and starve the rest.
+    """
+    everything = (
+        db.query(Product).filter(Product.active.is_(True)).order_by(Product.id).all()
+    )
+    if len(everything) < 2:
+        return []
+
+    def ring_from(pool: list[Product]) -> list[Product]:
+        """Products after `product` in `pool`, wrapping to the start."""
+        if not pool:
+            return []
+        after = [c for c in pool if c.id > product.id]
+        before = [c for c in pool if c.id < product.id]
+        return after + before
+
+    same = [c for c in everything if c.category == product.category]
+    other = [c for c in everything if c.category != product.category]
+
+    picked: list[Product] = []
+    seen: set[int] = {product.id}
+    # Same category first, then the rest so a thin category still fills the row.
+    for candidate in ring_from(same) + ring_from(other):
+        if candidate.id in seen:
+            continue
+        card_ok = (candidate.image_url or "").strip() or candidate.active_variants()
+        if not card_ok:
+            continue
+        seen.add(candidate.id)
+        picked.append(candidate)
+        if len(picked) >= limit:
+            break
+
+    out: list[dict] = []
+    for candidate in picked:
+        card = candidate.to_public()
+        if card.get("image_url"):
+            out.append(card)
+    return out
+
+
 @app.get("/products/{slug}", response_class=HTMLResponse)
 async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
     """Canonical product PDP (SSR)."""
@@ -326,7 +375,10 @@ async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
     await _ensure_product_media(p, db)
     detail = p.to_detail()
     canonical = product_url(p.slug)
-    return HTMLResponse(render_product_page(detail, canonical=canonical))
+    related = _related_products(p, db)
+    return HTMLResponse(
+        render_product_page(detail, canonical=canonical, related=related)
+    )
 
 
 @app.api_route("/pick.html", methods=["GET", "HEAD"])
