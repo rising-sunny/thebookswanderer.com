@@ -50,6 +50,23 @@ from urls import (  # noqa: E402
 from live import router as live_router  # noqa: E402
 from routers.pinterest import router as pinterest_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
+
+# Shipping is priced into the product instead of charged at checkout. CJ is
+# still queried for the delivery estimate — only the amount is zeroed, so
+# flipping FREE_SHIPPING=0 restores charged shipping without a code change.
+FREE_SHIPPING = (os.getenv("FREE_SHIPPING", "1") or "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+
+
+def _ship_retail(cost_usd: float) -> float:
+    """What the customer is charged for shipping."""
+    if FREE_SHIPPING:
+        return 0.0
+    return round(float(cost_usd) * SHIP_MARKUP, 2)
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
 
 app = FastAPI(title="The Books Wanderer API", version="0.1.0")
@@ -690,7 +707,7 @@ async def product_shipping_quote(
     ranked = sorted(options, key=lambda o: float(o.get("logisticPrice") or 0))
     best = ranked[0]
     ship_cost = float(best.get("logisticPrice") or 0)
-    ship_retail = round(ship_cost * SHIP_MARKUP, 2)
+    ship_retail = _ship_retail(ship_cost)
 
     return {
         "available": True,
@@ -710,9 +727,7 @@ async def product_shipping_quote(
                 "name": o.get("logisticName"),
                 "eta_days": o.get("logisticAging"),
                 "cost_usd": round(float(o.get("logisticPrice") or 0), 2),
-                "retail_usd": round(
-                    float(o.get("logisticPrice") or 0) * SHIP_MARKUP, 2
-                ),
+                "retail_usd": _ship_retail(float(o.get("logisticPrice") or 0)),
             }
             for o in ranked[:6]
         ],
@@ -758,7 +773,7 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
 
         best = min(options, key=lambda o: float(o.get("logisticPrice") or 0))
         cost = float(best.get("logisticPrice") or 0)
-        retail_shipping += cost * SHIP_MARKUP
+        retail_shipping += _ship_retail(cost)
         eta_bits.append(str(best.get("logisticAging") or ""))
         chosen_names.append(str(best.get("logisticName") or ""))
 
@@ -770,9 +785,7 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
                         "name": o.get("logisticName"),
                         "eta_days": o.get("logisticAging"),
                         "cost_usd": round(float(o.get("logisticPrice") or 0), 2),
-                        "retail_usd": round(
-                            float(o.get("logisticPrice") or 0) * SHIP_MARKUP, 2
-                        ),
+                        "retail_usd": _ship_retail(float(o.get("logisticPrice") or 0)),
                     }
                     for o in sorted(
                         options, key=lambda x: float(x.get("logisticPrice") or 0)

@@ -170,6 +170,33 @@ def _merchant_return_policy() -> dict[str, Any]:
     }
 
 
+def _free_shipping() -> bool:
+    """Mirrors main.FREE_SHIPPING. Deferred import: main imports ssr."""
+    try:
+        from main import FREE_SHIPPING
+
+        return bool(FREE_SHIPPING)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _shipping_rate(band: dict[str, Any]) -> dict[str, Any]:
+    """What Google is told shipping costs.
+
+    With shipping priced into the product this must be a flat 0, not a
+    ceiling — a merchant listing that advertises a rate we never charge is
+    worse than no rate at all.
+    """
+    if _free_shipping():
+        return {"@type": "MonetaryAmount", "value": 0, "currency": "USD"}
+    return {
+        "@type": "MonetaryAmount",
+        # Ceiling, not a quote — exact amount is calculated at PDP/cart.
+        "maxValue": float(band["rate_max_usd"]),
+        "currency": "USD",
+    }
+
+
 def _shipping_details() -> list[dict[str, Any]]:
     """OfferShippingDetails per transit band for countries we actually ship to."""
     allowed = set(_ship_countries())
@@ -187,12 +214,7 @@ def _shipping_details() -> list[dict[str, Any]]:
                     "@type": "DefinedRegion",
                     "addressCountry": codes,
                 },
-                "shippingRate": {
-                    "@type": "MonetaryAmount",
-                    # Ceiling, not a quote — exact amount is calculated at PDP/cart.
-                    "maxValue": float(band["rate_max_usd"]),
-                    "currency": "USD",
-                },
+                "shippingRate": _shipping_rate(band),
                 "deliveryTime": {
                     "@type": "ShippingDeliveryTime",
                     "handlingTime": {
@@ -220,11 +242,7 @@ def _shipping_details() -> list[dict[str, Any]]:
                     "@type": "DefinedRegion",
                     "addressCountry": leftover,
                 },
-                "shippingRate": {
-                    "@type": "MonetaryAmount",
-                    "maxValue": 35.0,
-                    "currency": "USD",
-                },
+                "shippingRate": _shipping_rate({"rate_max_usd": 35.0}),
                 "deliveryTime": {
                     "@type": "ShippingDeliveryTime",
                     "handlingTime": {

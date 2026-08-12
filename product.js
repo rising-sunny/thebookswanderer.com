@@ -231,7 +231,7 @@
         return `
 <div class="pdp__variants pdp__shipping" id="pdpShipping">
   <h2 class="pdp__variants-title">Shipping</h2>
-  <p class="pdp__variants-label">Paid separately — rate depends on destination</p>
+  <p class="pdp__variants-label"><strong>Free worldwide</strong> — pick your country for the delivery estimate</p>
   <label class="pdp__ship-label" for="pdpCountry">Ship to</label>
   <select id="pdpCountry" class="pdp__ship-select" aria-label="Destination country">
     <option value="">Choose country…</option>
@@ -379,9 +379,9 @@
   ${lifestyleBox}
   ${shippingBlockHtml()}
   <ul class="pdp__meta">
+    <li>Free shipping worldwide — no cost added at checkout</li>
     <li>Secure checkout with PayPal</li>
     <li>Faulty or wrong items refunded in full</li>
-    <li>Shipping calculated by destination</li>
     ${sku ? `<li id="pdpSku">SKU ${escapeHtml(sku)}</li>` : ""}
   </ul>
 </div>
