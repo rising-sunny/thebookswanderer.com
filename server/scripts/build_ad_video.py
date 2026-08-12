@@ -44,7 +44,7 @@ TEXTOS = {
         "tagline": "For those who wander between pages",
         "cierre1": "Small things",
         "cierre2": "that make reading a ritual",
-        "cierre3": "Shipping priced per destination",
+        "cierre3": "Free worldwide shipping",
     },
     # Con acentos: drawtext + DejaVu los renderiza sin problema, comprobado.
     # Escribirlos sin tilde para "evitar riesgos" delata el texto como generado
@@ -54,7 +54,7 @@ TEXTOS = {
         "tagline": "Para quienes vagan entre páginas",
         "cierre1": "Objetos pequeños",
         "cierre2": "que hacen del leer un ritual",
-        "cierre3": "Envío calculado según destino",
+        "cierre3": "Envío gratis a todo el mundo",
     },
 }
 T = TEXTOS["en"]
@@ -104,6 +104,28 @@ def catalogo(slugs: list[str]) -> list[dict]:
     return salida
 
 
+def variantes(slug: str) -> tuple[list[dict], str]:
+    """One product's designs as separate clips.
+
+    A single-product ad has nothing to cut between, so the colourways carry
+    the montage: the label under each frame is the design, not the price,
+    which appears once at the end instead of on every frame.
+    """
+    with urllib.request.urlopen(f"{BASE}/api/products/by-slug/{slug}", timeout=30) as r:
+        p = json.load(r)
+    salida = []
+    for v in p.get("variants") or []:
+        url = (v.get("image_url") or "").strip()
+        if not url:
+            continue
+        if url.startswith("/"):
+            url = BASE + url
+        salida.append({"title": v.get("name") or "", "price": None, "url": url})
+    if not salida:
+        raise SystemExit(f"{slug} has no variant images")
+    return salida, p.get("title") or slug
+
+
 def portada(dst: Path) -> None:
     # Anclado al centro del alto para que sirva en 4:5 y en 9:16.
     c = H // 2
@@ -122,10 +144,10 @@ def portada(dst: Path) -> None:
        "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
 
 
-def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
+def producto(img: Path, titulo: str, precio: float | None, dst: Path) -> None:
     t = titulo.replace(":", r"\:").replace("'", "")
     # El backslash escapa el $ para drawtext, no para el shell: aqui no hay shell.
-    p = f"${precio:.2f}".replace("$", r"\$")
+    p = f"${precio:.2f}".replace("$", r"\$") if precio is not None else ""
     n = int(DUR * FPS)
     # En 9:16 las fotos de catalogo (casi cuadradas) perderian medio producto al
     # recortarlas, asi que se encajan enteras sobre fondo crema. En 4:5 el
@@ -137,15 +159,27 @@ def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
         )
     else:
         encaje = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+    # Sin precio la banda es mas baja y el nombre va centrado en ella: una caja
+    # de 300 px con una sola linea deja un hueco negro evidente.
+    if p:
+        banda = (
+            f"drawbox=x=0:y={H-300}:w={W}:h=300:color=black@0.45:t=fill,"
+            f"drawtext=fontfile={SERIF_B}:text='{t}':fontcolor=white:fontsize=50:"
+            f"x=(w-tw)/2:y={H-232},"
+            f"drawtext=fontfile={SANS_B}:text='{p}':fontcolor={GOLD_LIGHT}:"
+            f"fontsize=62:x=(w-tw)/2:y={H-152},"
+        )
+    else:
+        banda = (
+            f"drawbox=x=0:y={H-190}:w={W}:h=190:color=black@0.45:t=fill,"
+            f"drawtext=fontfile={SERIF_B}:text='{t}':fontcolor=white:fontsize=52:"
+            f"x=(w-tw)/2:y={H-128},"
+        )
     vf = (
         f"{encaje}"
         f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:x='iw/2-(iw/zoom/2)':"
         f"y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS},"
-        f"drawbox=x=0:y={H-300}:w={W}:h=300:color=black@0.45:t=fill,"
-        f"drawtext=fontfile={SERIF_B}:text='{t}':fontcolor=white:fontsize=50:"
-        f"x=(w-tw)/2:y={H-232},"
-        f"drawtext=fontfile={SANS_B}:text='{p}':fontcolor={GOLD_LIGHT}:"
-        f"fontsize=62:x=(w-tw)/2:y={H-152},"
+        f"{banda}"
         f"fade=t=in:st=0:d=0.3:c={CREAM_HEX},"
         f"fade=t=out:st={DUR-0.3:.2f}:d=0.3:c={CREAM_HEX}"
     )
@@ -153,6 +187,50 @@ def producto(img: Path, titulo: str, precio: float, dst: Path) -> None:
     ff("-loop", "1", "-i", str(img), "-vf", vf, "-t", str(DUR),
        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
        "-r", str(FPS), str(dst))
+
+
+def metraje(src: Path, dst: Path, *, start: float, dur: float) -> None:
+    """Real product footage, normalised to the output frame.
+
+    Audio is dropped rather than reconciled: the brand cards are silent, the
+    concat demuxer needs identical streams, and Meta autoplays muted anyway.
+    """
+    if H / W > 1.5:
+        encaje = (
+            f"scale={W}:{H}:force_original_aspect_ratio=decrease:flags=lanczos,"
+            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={CREAM}"
+        )
+    else:
+        encaje = (
+            f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={W}:{H}"
+        )
+    vf = f"{encaje},fade=t=in:st=0:d=0.4:c={CREAM_HEX},fade=t=out:st={dur-0.5:.2f}:d=0.5:c={CREAM_HEX}"
+    ff("-ss", str(start), "-i", str(src), "-t", str(dur), "-an", "-vf", vf,
+       "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+       "-r", str(FPS), str(dst))
+
+
+def cierre_producto(dst: Path, titulo: str, precio: float) -> None:
+    """Closing card for a single-product ad: name, price, free shipping, URL."""
+    c = H // 2
+    t = titulo.replace(":", r"\:").replace("'", "")
+    p = f"${precio:.2f}".replace("$", r"\$")
+    vf = (
+        f"drawtext=fontfile={SERIF_B}:text='{t}':fontcolor={GREEN}:"
+        f"fontsize=64:x=(w-tw)/2:y={c-175},"
+        f"drawtext=fontfile={SANS_B}:text='{p}':fontcolor={GOLD}:"
+        f"fontsize=92:x=(w-tw)/2:y={c-75},"
+        f"drawbox=x=(iw-180)/2:y={c+50}:w=180:h=4:color={GOLD}@0.9:t=fill,"
+        f"drawtext=fontfile={SERIF}:text='{T['cierre3']}':fontcolor=0x2B5240:"
+        f"fontsize=42:x=(w-tw)/2:y={c+100},"
+        f"drawtext=fontfile={SANS_B}:text='thebookswanderer.com':fontcolor={GOLD}:"
+        f"fontsize=46:x=(w-tw)/2:y={c+185},"
+        f"fade=t=in:st=0:d=0.4:c={CREAM_HEX}"
+    )
+    ff("-f", "lavfi", "-i", f"color=c={CREAM}:s={W}x{H}:d=3.0:r={FPS}",
+       "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
+       "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
 
 
 def cierre(dst: Path) -> None:
@@ -184,15 +262,31 @@ def main() -> None:
     ap.add_argument("--lang", choices=sorted(TEXTOS), default="en",
                     help="Idioma de la portada y el cierre. Los nombres de "
                          "producto no se traducen: la web esta en ingles.")
+    ap.add_argument("--video", help="Metraje real. Sustituye a los clips de "
+                                    "catalogo: portada + video + cierre.")
+    ap.add_argument("--slug", help="Producto del cierre cuando se usa --video.")
+    ap.add_argument("--clip-start", type=float, default=0.0)
+    ap.add_argument("--clip-dur", type=float, default=16.0)
     args = ap.parse_args()
 
     global W, H, T
     W, H = FORMATOS[args.format]
     T = TEXTOS[args.lang]
 
-    productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
-    if not productos:
-        raise SystemExit("Ningun producto valido.")
+    productos: list[dict] = []
+    remate = None
+    if args.video:
+        if not args.slug:
+            raise SystemExit("--video necesita --slug para el cierre")
+        with urllib.request.urlopen(
+            f"{BASE}/api/products/by-slug/{args.slug}", timeout=30
+        ) as r:
+            info = json.load(r)
+        remate = (info.get("title") or args.slug, float(info.get("price_usd") or 0))
+    else:
+        productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
+        if not productos:
+            raise SystemExit("Ningun producto valido.")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -200,12 +294,19 @@ def main() -> None:
         clips.mkdir()
 
         portada(clips / "00.mp4")
-        for i, p in enumerate(productos, start=1):
-            img = tmp / f"{i}.jpg"
-            urllib.request.urlretrieve(p["url"], img)
-            producto(img, p["title"], p["price"], clips / f"{i:02d}.mp4")
-            print(f"  {i:02d} {p['title']:<34} ${p['price']:.2f}")
-        cierre(clips / "99.mp4")
+        if args.video:
+            metraje(Path(args.video), clips / "01.mp4",
+                    start=args.clip_start, dur=args.clip_dur)
+            print(f"  metraje {args.video} [{args.clip_start}s +{args.clip_dur}s]")
+            cierre_producto(clips / "99.mp4", remate[0], remate[1])
+            print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
+        else:
+            for i, p in enumerate(productos, start=1):
+                img = tmp / f"{i}.jpg"
+                urllib.request.urlretrieve(p["url"], img)
+                producto(img, p["title"], p["price"], clips / f"{i:02d}.mp4")
+                print(f"  {i:02d} {p['title']:<34} ${p['price']:.2f}")
+            cierre(clips / "99.mp4")
 
         lista = tmp / "list.txt"
         lista.write_text(
