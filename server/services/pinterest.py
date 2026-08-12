@@ -70,6 +70,16 @@ def token_path() -> Path:
     return Path(__file__).resolve().parent.parent / "data" / ".pinterest_token.json"
 
 
+def free_shipping() -> bool:
+    """Mirrors main.FREE_SHIPPING; read from env so this stays import-free."""
+    return (os.getenv("FREE_SHIPPING", "1") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def reauth_warn_days() -> int:
     """Days before the refresh token dies that we start warning."""
     try:
@@ -381,7 +391,13 @@ def product_pin_payload(detail: dict[str, Any]) -> dict[str, Any]:
     if len(desc) > 440:
         desc = desc[:437].rstrip() + "..."
     price = detail.get("price_usd")
-    price_bit = f" From ${float(price):.2f} USD." if price is not None else ""
+    if price is None:
+        price_bit = ""
+    elif free_shipping():
+        # Shipping is inside the price, so say so — it is the whole selling point.
+        price_bit = f" From ${float(price):.2f} USD with free worldwide shipping."
+    else:
+        price_bit = f" From ${float(price):.2f} USD."
     cta = " Shop at The Books Wanderer — literary boutique for readers."
     link = f"{public_base()}/products/{slug}?utm_source=pinterest&utm_medium=organic&utm_campaign=pin"
     img = (detail.get("image_url") or "").strip()
