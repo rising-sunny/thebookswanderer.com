@@ -188,6 +188,39 @@ hacen más falta visitas a la ficha que impresiones.
 
 ---
 
+## Post 8 — La guía (primer post que no vende nada)
+
+**Imagen:** `assets/products/finger-book-holder/cover.png` (sin usar hasta ahora)
+**Enlace:** `https://thebookswanderer.com/guides/hold-a-book-open-one-handed/`
+
+> You cannot hold a paperback open and a cup of coffee at the same time. ☕📖
+>
+> That is the whole problem, and it turns out there are about six answers to it — so we wrote
+> them all down, including the ones that cost nothing.
+>
+> What is in the guide:
+> • The thumb bridge, and why your hand cramps after ten minutes
+> • Household weights that work at a table and nowhere else
+> • Finger holders vs page clips — which suits a desk, which suits a train
+> • Why cracking the spine to make a book lie flat is a one-way decision
+>
+> No email wall, no sign-up. Just the guide.
+>
+> 👉 https://thebookswanderer.com/guides/hold-a-book-open-one-handed/
+>
+> #readingtips #booklover #bookish #amreading #readingnook
+
+**Por qué este y no otro producto:** de los diez posts publicados hasta ahora, siete son de
+producto, y los diez tienen cero likes y cero comentarios. Un octavo post de producto sería más
+de lo mismo. Este no vende nada: ofrece algo útil y gratis, que es lo que la gente guarda y
+comparte. El enlace lleva a una página que a su vez enlaza siete productos, así que la ruta
+comercial sigue existiendo — solo que no es lo primero que ve el lector.
+
+Mencionar que la guía incluye las soluciones gratuitas es deliberado. Es cierto, y es lo que
+hace que el post no se lea como un anuncio disfrazado.
+
+---
+
 ## Después de publicarlos
 
 1. **Responde a cada comentario.** Una Página con respuestas del dueño convierte mejor que una
