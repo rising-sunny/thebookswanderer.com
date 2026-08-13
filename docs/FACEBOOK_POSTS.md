@@ -251,6 +251,40 @@ sobre la página en la oscuridad, que es exactamente lo que una foto de catálog
 
 ---
 
+## Post 10 — Cambio de política de envíos (corrige al Post 5)
+
+**Imagen:** `assets/logo.png` sobre fondo crema, o una foto del rincón de lectura
+**Sin enlace de producto:** es un post de política, no de venta
+
+> Shipping is now free. Everywhere we ship, with no minimum to reach first. 📦
+>
+> Here is how it works, because "free shipping" usually hides something. The cost of postage is
+> included in the price on the product page. That number is the number you pay — nothing is
+> added at checkout and there is no surprise line at the last step.
+>
+> We used to show shipping separately, calculated per destination. It was honest, and it was
+> also the moment a small purchase stopped feeling small. A few dollars of postage appearing at
+> the end reads as a catch, even when it isn't one.
+>
+> Delivery estimates still come live from the carrier and still appear before you buy. That part
+> has not changed, and it is not going to.
+>
+> 📚 thebookswanderer.com
+>
+> #freeshipping #onlineshopping #booklover #bookish #smallbusiness
+
+**Por qué este post ahora:** el Post 5 sigue publicado y dice literalmente "$7.99" y "shipping
+is priced per destination". Las dos cosas dejaron de ser ciertas. Una Página que contradice a
+su propia tienda es peor que una Página callada, y quien lo lea después de ver los precios
+nuevos va a pensar que subieron a escondidas.
+
+**Sobre la subida de precios:** el dueño decidió no mencionarla, y el post se sostiene igual
+porque no la niega — dice explícitamente que el coste del envío está *incluido en el precio*,
+que es exactamente lo que pasó. La diferencia entre omitir y engañar está en esa frase: si
+alguna vez se cambia por "no te cobramos el envío" a secas, el post pasa a ser falso.
+
+---
+
 ## Después de publicarlos
 
 1. **Responde a cada comentario.** Una Página con respuestas del dueño convierte mejor que una
