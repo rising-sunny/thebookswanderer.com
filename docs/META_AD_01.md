@@ -227,3 +227,132 @@ solución sería traducir el sitio, no cambiar el anuncio.
 
 España es UE, así que el ad set lleva `dsa_beneficiary` y `dsa_payor`
 declarados. GB y US no los necesitan.
+
+---
+
+# Anuncio 04 — Butterfly Metal Bookmark (producto único)
+
+**Estado:** **no creado todavía.** Especificado y con script listo; falta
+ejecutarlo desde la máquina donde vive el vídeo. Ver "Qué bloquea la creación".
+**Fecha del spec:** 2026-08-26
+**Cuenta:** `1696378237957660` — **distinta** de la de los anuncios 01-03
+**Página:** `1200587819810293`
+**Destino:** `https://thebookswanderer.com/products/butterfly-metal-bookmark`
+**Creatividad:** `WASK-AI-CREATIVE-4310.mp4` (generada con WASK, no con
+`build_ad_video.py`)
+
+Se crea con:
+
+```
+python scripts/create_meta_campaign.py \
+    --account 1696378237957660 \
+    --link https://thebookswanderer.com/products/butterfly-metal-bookmark \
+    --video "C:/Users/sunse/Downloads/WASK-AI-CREATIVE-4310.mp4" \
+    --daily-budget 5
+```
+
+Los cuatro objetos nacen en `PAUSED`, igual que los anteriores.
+
+---
+
+## 1. Qué cambia respecto a 01-03
+
+Los tres primeros anuncios llevaban al catálogo entero con un vídeo de seis
+productos. Éste lleva a **una sola ficha de producto**. Es un test distinto:
+antes se medía qué país responde, ahora se mide si un producto concreto
+sostiene su propio anuncio.
+
+Eso obliga a un cambio de copy. El titular ya no puede ser *"Reading
+accessories, from $7.99"* porque la página de aterrizaje no es una tienda, es
+una mariposa de metal a $8.99. Prometer un catálogo y entregar un producto es
+la clase de desajuste que hunde la conversión sin que el CTR lo delate.
+
+## 2. Economía
+
+| | |
+|---|---|
+| Coste CJ por unidad | $1.45 (las cuatro variantes cuestan lo mismo) |
+| Precio de venta | $8.99 — `retail_from_cost(1.45)`, suelo de banda |
+| Variantes | Romantic Dance, Changting Mountain, Song of Flames, Moonlight Encounter |
+
+El precio no es una elección de marketing: sale de `server/services/pricing.py`,
+donde la banda de coste $1.00-$2.00 impone un suelo de $8.99 para que los SKU
+baratos no colapsen todos al mínimo de $6.99.
+
+## 3. País: GB, otra vez
+
+Se mantiene Reino Unido por las mismas razones medidas del anuncio 01 — envío
+de $4.20, plazo de 4-9 días, competencia activa vendiendo marcapáginas
+metálicos — y por una razón nueva: es el único mercado donde ya hay una
+campaña anterior con la que comparar. Cambiar producto **y** país a la vez no
+dejaría atribuir la diferencia a ninguno de los dos.
+
+GB tampoco es UE, así que el ad set no necesita `dsa_beneficiary` / `dsa_payor`.
+
+## 4. Objetivo: sigue siendo tráfico
+
+`OUTCOME_TRAFFIC` con optimización a `LANDING_PAGE_VIEWS`, como en 01-03.
+
+La venta del 17/08 **no cambia esto**: fue en TPT (MathRelaxing), no en The
+Books Wanderer, así que el píxel de TBW sigue sin compras que alimenten
+`OFFSITE_CONVERSIONS`. La migración sigue esperando a ~50 conversiones
+semanales reales en este sitio.
+
+Recordatorio de la API: `promoted_object` con solo `pixel_id` es rechazado en
+campañas de tráfico (`error_subcode 1885014`). El script lo omite.
+
+## 5. La trampa de la moneda
+
+La cuenta `1696378237957660` es nueva en esta documentación y **no se conoce su
+moneda**. Eso importa más de lo que parece.
+
+`daily_budget` se envía en unidades menores, salvo en monedas sin subunidad. En
+CLP —la moneda de la cuenta de los anuncios 01-03— `5000` son 5.000 pesos. En
+USD, `5000` serían **50 dólares**: diez veces el presupuesto previsto, gastados
+antes de que nadie lo mire.
+
+Por eso `create_meta_campaign.py` consulta `currency` de la cuenta **antes** de
+convertir, y `--daily-budget` se expresa siempre en unidades enteras (`5` = 5
+USD, o 5 CLP si fuese en pesos). El script aborta si Meta no devuelve la moneda.
+
+## 6. Qué bloquea la creación
+
+1. **El vídeo no es accesible desde el entorno remoto.**
+   `C:\Users\sunse\Downloads\WASK-AI-CREATIVE-4310.mp4` está en la máquina
+   Windows del dueño. La sesión de Claude corre en un contenedor Linux
+   efímero. Por eso el script se ejecuta localmente en vez de subirse el vídeo
+   al repo.
+
+2. **El MCP de Meta Ads sigue sin autenticar.** Requiere OAuth en navegador
+   (`/mcp` → `meta-ads` → Authenticate), imposible en sesión no interactiva.
+   El script esquiva esto usando la Graph API con `META_ADS_TOKEN`, igual que
+   hizo el anuncio 01 cuando `ads_creative_upload_video` no estaba disponible.
+
+3. **Falta verificar la cuenta nueva:** moneda, método de pago y que la Página
+   `1200587819810293` esté vinculada a ese ad account. El script imprime
+   `account_status` y avisa si no es `1`.
+
+## 7. Copy propuesto
+
+**Texto principal:**
+> A bookmark that looks like it belongs in the book.
+>
+> Cut from metal, thin enough to close the cover on it, and heavy enough that
+> it doesn't wander out of the page in a bag.
+>
+> Four designs. Shipping is priced per destination and the real delivery
+> estimate shows before you buy.
+
+**Titular:** Butterfly Metal Bookmark — $8.99
+**Descripción:** Four designs. Pick one, or keep the set.
+**Botón:** SHOP_NOW
+
+Sin envío gratis, sin plazos inventados, sin valoraciones: exactamente las
+afirmaciones que hubo que retirar del sitio en `9858c4a` y `c2e82c9`. Meta
+revisa el copy contra la landing page, y un desajuste ahí es motivo de rechazo.
+
+Todo el copy es ajustable por CLI (`--message`, `--headline`, `--description`)
+sin tocar el script.
+
+**Nunca activar desde el panel de sugerencias de Ads Manager**: su slider viene
+por defecto en $10.000/día.
