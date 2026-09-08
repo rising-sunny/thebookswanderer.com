@@ -202,7 +202,7 @@ def sonda(src: Path) -> tuple[int, int, float]:
 
 
 def metraje(src: Path, dst: Path, *, start: float, dur: float,
-            titulo: str | None = None) -> float:
+            titulo: str | None = None) -> tuple[float, int | None]:
     """Real product footage, normalised to the output frame.
 
     Audio is dropped rather than reconciled: the brand cards are silent, the
@@ -213,6 +213,7 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
     # clip termina de golpe contra la tarjeta de cierre.
     dur = min(dur, max(0.5, total - start))
     alto = 2 * round(W * ih / iw / 2)
+    pie = None
     if alto < H:
         # Metraje mas cuadrado que el marco: bandas en vez de un recorte que se
         # comeria medio producto. Van en verde de marca, no en crema: el fondo
@@ -220,6 +221,7 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
         # caja de television vieja. La banda de abajo es mayor porque ahi se
         # apilan los controles de Reels y TikTok.
         arriba = 2 * round((H - alto) * 0.42 / 2)
+        pie = arriba + alto
         encaje = (f"scale={W}:{alto}:flags=lanczos,"
                   f"pad={W}:{H}:0:{arriba}:color={GREEN_BG}")
         # El nombre vive en la banda de arriba porque el feed se ve en silencio
@@ -249,7 +251,7 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
     ff("-ss", str(start), "-i", str(src), "-t", str(dur), "-an", "-vf", vf,
        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
        "-r", str(FPS), str(dst))
-    return dur
+    return dur, pie
 
 
 def cierre_producto(dst: Path, titulo: str, precio: float) -> None:
@@ -291,6 +293,25 @@ def cierre(dst: Path) -> None:
     ff("-f", "lavfi", "-i", f"color=c={CREAM}:s={W}x{H}:d=2.8:r={FPS}",
        "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
        "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
+
+
+def franja_envio(pie: int | None) -> str:
+    """Franja de envio gratis, fija durante todo el anuncio.
+
+    Se apoya en el borde inferior del metraje, no en el del cuadro: pegada
+    abajo del todo caeria bajo los controles de Reels y TikTok, que ocupan
+    los ultimos ~400 px. Sin bandas (formato feed) va sobre el metraje, a un
+    margen del borde.
+    """
+    alto = 2 * round(H * 0.048 / 2)
+    fuente = round(alto * 0.44)
+    y = pie if pie is not None else H - alto - 48
+    # drawtext no sabe espaciar letras y se separan a mano: apretada la franja
+    # parece un boton, espaciada parece un sello.
+    texto = "F R E E   S H I P P I N G"
+    return (f"drawbox=x=0:y={y}:w={W}:h={alto}:color={GOLD}@1:t=fill,"
+            f"drawtext=fontfile={SANS_B}:text='{texto}':fontcolor={CREAM_HEX}:"
+            f"fontsize={fuente}:x=(w-tw)/2:y={y}+({alto}-th)/2")
 
 
 def lado_chapa() -> int:
@@ -381,9 +402,9 @@ def main() -> None:
 
         portada(clips / "00.mp4")
         if args.video:
-            usado = metraje(Path(args.video), clips / "01.mp4",
-                            start=args.clip_start, dur=args.clip_dur,
-                            titulo=remate[0])
+            usado, pie = metraje(Path(args.video), clips / "01.mp4",
+                                 start=args.clip_start, dur=args.clip_dur,
+                                 titulo=remate[0])
             print(f"  metraje {args.video} [{args.clip_start}s +{usado:.1f}s]")
             cierre_producto(clips / "99.mp4", remate[0], remate[1])
             print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
@@ -406,11 +427,13 @@ def main() -> None:
             chapa = tmp / "chapa.png"
             lado = esquina_precio(remate[1], chapa)
             ff("-f", "concat", "-safe", "0", "-i", str(lista), "-i", str(chapa),
-               "-filter_complex", f"[0:v][1:v]overlay=x=main_w-{lado}:y=0",
+               "-filter_complex",
+               f"[0:v][1:v]overlay=x=main_w-{lado}:y=0,{franja_envio(pie)}",
                *salida)
         else:
             # En modo catalogo cada producto lleva su precio en su rotulo; una
             # sola cifra fija en la esquina mentiria sobre cinco de los seis.
+            # La franja se va con ella: el cierre ya promete el envio gratis.
             ff("-f", "concat", "-safe", "0", "-i", str(lista), *salida)
 
     dur = subprocess.run(
