@@ -4,6 +4,7 @@ Static site + FastAPI (CJ Dropshipping + PayPal), same VPS pattern as mathrelaxi
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 from pathlib import Path
@@ -60,6 +61,23 @@ FREE_SHIPPING = (os.getenv("FREE_SHIPPING", "1") or "").strip().lower() in (
     "yes",
     "on",
 )
+
+
+log = logging.getLogger("tbw.shop")
+
+# What the shopper sees when the fulfilment provider cannot quote freight.
+# The provider's own error is logged, never returned: it can name the supplier
+# and expose operational detail that has no place in a storefront.
+SHIPPING_UNAVAILABLE_MSG = (
+    "We can't calculate delivery for this address right now. It's a problem on "
+    "our side, not with your details. Please try again in a few minutes, or "
+    "email hello@thebookswanderer.com and we'll complete the order for you."
+)
+
+
+def _log_freight_failure(exc: Exception, *, origin: str, country: str) -> None:
+    """Record the provider's real error where the owner can find it."""
+    log.error("freight quote failed %s -> %s: %s", origin, country, exc)
 
 
 def _ship_retail(cost_usd: float) -> float:
@@ -677,6 +695,7 @@ async def product_shipping_quote(
             products=[{"vid": vid, "quantity": quantity}],
         )
     except cj_service.CJError as exc:
+        _log_freight_failure(exc, origin=origin, country=country)
         return {
             "available": False,
             "country_code": country,
@@ -686,7 +705,7 @@ async def product_shipping_quote(
             "product_total": product_total,
             "shipping_total": None,
             "grand_total": None,
-            "message": str(exc) or "Could not quote shipping",
+            "message": SHIPPING_UNAVAILABLE_MSG,
             "options": [],
         }
 
@@ -763,12 +782,14 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
                 zip_code=body.zip_code,
             )
         except cj_service.CJError as exc:
-            raise HTTPException(502, f"CJ freight error: {exc}") from exc
+            _log_freight_failure(exc, origin=origin, country=country)
+            raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG) from exc
 
         if not options:
+            log.warning("no freight route %s -> %s for cart", origin, country)
             raise HTTPException(
                 400,
-                f"No shipping options from {origin} to {country} for this cart",
+                f"We don't have a delivery route to {country} for this order yet.",
             )
 
         best = min(options, key=lambda o: float(o.get("logisticPrice") or 0))
@@ -905,6 +926,8 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         ),
         db,
     )
+    if quote.get("shipping_total") is None:
+        raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG)
     shipping_total = float(quote["shipping_total"])
     grand_total = round(product_total + shipping_total, 2)
     logistic_name = body.logistic_name or quote.get("logistic_name") or "CJPacket"
