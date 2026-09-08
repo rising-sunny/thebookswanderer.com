@@ -226,9 +226,20 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
         # y la mayoria se va antes de la tarjeta de cierre.
         if titulo and arriba >= 150:
             t = titulo.replace(":", r"\:").replace("'", "")
+            # Se apoya en el pie de la banda y encoge hasta caber a la
+            # izquierda de la chapa del precio. La diagonal de la chapa baja
+            # hacia la derecha, asi que cuanto mas abajo va el nombre, mas
+            # sitio le queda; centrado en la banda se le metia encima.
+            lado = lado_chapa()
+            for fs in range(52, 29, -2):
+                y = arriba - fs - 26
+                limite = W if y >= lado else W - lado + y - 12
+                # 0.62 em es el avance medio de DejaVu Serif Bold. Estimar
+                # basta: el margen de 12 px absorbe el error.
+                if W / 2 + 0.62 * fs * len(t) / 2 <= limite:
+                    break
             encaje += (f",drawtext=fontfile={SERIF_B}:text='{t}':"
-                       f"fontcolor={CREAM_HEX}:fontsize=52:x=(w-tw)/2:"
-                       f"y={(arriba - 52) // 2}")
+                       f"fontcolor={CREAM_HEX}:fontsize={fs}:x=(w-tw)/2:y={y}")
     else:
         encaje = (
             f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
@@ -280,6 +291,51 @@ def cierre(dst: Path) -> None:
     ff("-f", "lavfi", "-i", f"color=c={CREAM}:s={W}x{H}:d=2.8:r={FPS}",
        "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
        "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
+
+
+def lado_chapa() -> int:
+    """Lado de la chapa del precio. Lo consultan quien la dibuja y el rotulo
+    del nombre, que tiene que apartarse de ella."""
+    return 2 * round(W / 2.7 / 2)
+
+
+def esquina_precio(precio: float, dst: Path) -> int:
+    """Chapa triangular con el precio, pegada a la esquina superior derecha.
+
+    Se genera una vez como PNG y luego se superpone: hacerla con filtros vivos
+    obliga a geq a evaluar la expresion en cada fotograma del anuncio entero.
+
+    Sin PIL, que no esta en el VPS: el triangulo es un cuadrado de color al que
+    geq le recorta la mitad por la diagonal, y el precio va en un lienzo
+    transparente aparte porque drawtext no sabe girar y hay que pasarlo por
+    `rotate`.
+
+    El texto se centra en el BARICENTRO del triangulo, (2L/3, L/3), no en el
+    centro del cuadrado: centrado en el cuadrado la mitad se saldria por la
+    hipotenusa y quedaria flotando fuera de la chapa.
+    """
+    lado = lado_chapa()
+    fuente = round(lado * 0.15)
+    p = f"${precio:.2f}".replace("$", r"\$")
+    desplazo = lado // 6
+    fc = (
+        # a = distancia a la diagonal, saturada: da un borde con antialias en
+        # vez del escalon que dejaria un if(gte(X,Y),255,0).
+        f"[0:v]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+        f"a='clip((X-Y)*255,0,255)'[tri];"
+        # color= no propaga su alfa al convertir a rgba: el lienzo sale negro
+        # opaco y la chapa acaba con un rectangulo detras del precio. El alfa
+        # se pone despues, y rotate rellena con `none` para no reponerlo.
+        f"[1:v]format=rgba,colorchannelmixer=aa=0,"
+        f"drawtext=fontfile={SANS_B}:text='{p}':"
+        f"fontcolor={CREAM_HEX}:fontsize={fuente}:x=(w-tw)/2:y=(h-th)/2,"
+        f"rotate=PI/4:c=none:ow=rotw(PI/4):oh=roth(PI/4)[txt];"
+        f"[tri][txt]overlay=x=(W-w)/2+{desplazo}:y=(H-h)/2-{desplazo}"
+    )
+    ff("-f", "lavfi", "-i", f"color=c={GOLD}:s={lado}x{lado}",
+       "-f", "lavfi", "-i", f"color=c=black@0:s={lado}x{round(lado * 0.28)}",
+       "-filter_complex", fc, "-frames:v", "1", str(dst))
+    return lado
 
 
 def main() -> None:
@@ -343,9 +399,19 @@ def main() -> None:
         lista.write_text(
             "".join(f"file '{c}'\n" for c in sorted(clips.glob("*.mp4")))
         )
-        ff("-f", "concat", "-safe", "0", "-i", str(lista),
-           "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-           "-movflags", "+faststart", "-r", str(FPS), args.out)
+        salida = ["-c:v", "libx264", "-preset", "veryfast",
+                  "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                  "-r", str(FPS), args.out]
+        if remate:
+            chapa = tmp / "chapa.png"
+            lado = esquina_precio(remate[1], chapa)
+            ff("-f", "concat", "-safe", "0", "-i", str(lista), "-i", str(chapa),
+               "-filter_complex", f"[0:v][1:v]overlay=x=main_w-{lado}:y=0",
+               *salida)
+        else:
+            # En modo catalogo cada producto lleva su precio en su rotulo; una
+            # sola cifra fija en la esquina mentiria sobre cinco de los seis.
+            ff("-f", "concat", "-safe", "0", "-i", str(lista), *salida)
 
     dur = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
