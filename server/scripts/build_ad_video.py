@@ -65,6 +65,7 @@ CREAM_HEX = "0xF8F2E5"
 GREEN = "0x1B3728"
 GOLD = "0xA97C22"
 GOLD_LIGHT = "0xE2C47C"
+GREEN_BG = "#1B3728"
 
 FONTS = Path("/usr/share/fonts/truetype/dejavu")
 SERIF = FONTS / "DejaVuSerif.ttf"
@@ -189,17 +190,45 @@ def producto(img: Path, titulo: str, precio: float | None, dst: Path) -> None:
        "-r", str(FPS), str(dst))
 
 
-def metraje(src: Path, dst: Path, *, start: float, dur: float) -> None:
+def sonda(src: Path) -> tuple[int, int, float]:
+    """Ancho, alto y duracion del metraje. Los tres hacen falta antes de filtrar."""
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=width,height:format=duration", "-of", "csv=p=0", str(src)],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    w, h = (int(x) for x in out[0].split(",")[:2])
+    return w, h, float(out[1])
+
+
+def metraje(src: Path, dst: Path, *, start: float, dur: float,
+            titulo: str | None = None) -> float:
     """Real product footage, normalised to the output frame.
 
     Audio is dropped rather than reconciled: the brand cards are silent, the
     concat demuxer needs identical streams, and Meta autoplays muted anyway.
     """
-    if H / W > 1.5:
-        encaje = (
-            f"scale={W}:{H}:force_original_aspect_ratio=decrease:flags=lanczos,"
-            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={CREAM}"
-        )
+    iw, ih, total = sonda(src)
+    # Pedir mas metraje del que hay deja el fade de salida sin disparar y el
+    # clip termina de golpe contra la tarjeta de cierre.
+    dur = min(dur, max(0.5, total - start))
+    alto = 2 * round(W * ih / iw / 2)
+    if alto < H:
+        # Metraje mas cuadrado que el marco: bandas en vez de un recorte que se
+        # comeria medio producto. Van en verde de marca, no en crema: el fondo
+        # de estas fotos es negro y el crema alrededor lo enmarcaba como una
+        # caja de television vieja. La banda de abajo es mayor porque ahi se
+        # apilan los controles de Reels y TikTok.
+        arriba = 2 * round((H - alto) * 0.42 / 2)
+        encaje = (f"scale={W}:{alto}:flags=lanczos,"
+                  f"pad={W}:{H}:0:{arriba}:color={GREEN_BG}")
+        # El nombre vive en la banda de arriba porque el feed se ve en silencio
+        # y la mayoria se va antes de la tarjeta de cierre.
+        if titulo and arriba >= 150:
+            t = titulo.replace(":", r"\:").replace("'", "")
+            encaje += (f",drawtext=fontfile={SERIF_B}:text='{t}':"
+                       f"fontcolor={CREAM_HEX}:fontsize=52:x=(w-tw)/2:"
+                       f"y={(arriba - 52) // 2}")
     else:
         encaje = (
             f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
@@ -209,6 +238,7 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float) -> None:
     ff("-ss", str(start), "-i", str(src), "-t", str(dur), "-an", "-vf", vf,
        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
        "-r", str(FPS), str(dst))
+    return dur
 
 
 def cierre_producto(dst: Path, titulo: str, precio: float) -> None:
@@ -295,9 +325,10 @@ def main() -> None:
 
         portada(clips / "00.mp4")
         if args.video:
-            metraje(Path(args.video), clips / "01.mp4",
-                    start=args.clip_start, dur=args.clip_dur)
-            print(f"  metraje {args.video} [{args.clip_start}s +{args.clip_dur}s]")
+            usado = metraje(Path(args.video), clips / "01.mp4",
+                            start=args.clip_start, dur=args.clip_dur,
+                            titulo=remate[0])
+            print(f"  metraje {args.video} [{args.clip_start}s +{usado:.1f}s]")
             cierre_producto(clips / "99.mp4", remate[0], remate[1])
             print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
         else:
