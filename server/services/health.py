@@ -32,9 +32,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 HEARTBEAT_FILE = DATA_DIR / "heartbeat.json"
 CART_LOG = Path("/var/log/tbw-cart-reminders.log")
 
-# Mas de esto sin latido = la sonda externa no llega. GitHub retrasa los cron
-# hasta 10-15 min en horas punta, asi que 10 min de cadencia + margen.
-HEARTBEAT_STALE_S = 25 * 60
+# Mas de esto sin latido = la sonda externa no llega. La sonda corre cada 30
+# min (limite del plan Free en repos privados) y GitHub retrasa los cron hasta
+# 10-15 min en horas punta: 30 + 15 + margen.
+HEARTBEAT_STALE_S = 65 * 60
 
 _cache: dict[str, tuple[float, Any]] = {}
 

@@ -4,15 +4,21 @@
 # lo supo. Un monitor dentro del servidor no puede detectar eso — cuando el
 # servidor cae, el monitor cae con el. Esta sonda corre en GitHub, fuera.
 #
-# Que hace cada 10 minutos:
+# Que hace cada 30 minutos:
 #   1. Pide /api/health y exige HTTP 200 con "ok":true.
 #   2. Si falla, el job falla -> GitHub manda email al dueno del repo.
 #      (Settings -> Notifications -> Actions: "Send notifications for failed
 #      workflows" debe estar activo; lo esta por defecto.)
 #   3. Si va bien, deja un latido en el servidor que /admin/live muestra.
 #
+# Por que 30 y no 10: GitHub cobra cada job con minimo de 1 minuto, y en un
+# repo PRIVADO el plan Free da 2.000 min/mes. Cada 10 min = 4.320 runs = mas
+# del doble; las sondas se agotarian a mitad de mes y dejarian de correr sin
+# avisar. Cada 30 min = 1.440, cabe. Si el repo se hace publico, los minutos
+# son ilimitados y se puede bajar a 5.
+#
 # El cron de GitHub es "best effort": en horas punta se retrasa 10-15 min.
-# Por eso el panel considera el latido caducado a los 25, no a los 10.
+# Por eso el panel considera el latido caducado a los 65, no a los 30.
 #
 # Secreto necesario: HEARTBEAT_TOKEN (Settings -> Secrets -> Actions), con el
 # mismo valor que HEARTBEAT_TOKEN en server/.env del VPS.
@@ -21,7 +27,7 @@ name: uptime
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions: {}
