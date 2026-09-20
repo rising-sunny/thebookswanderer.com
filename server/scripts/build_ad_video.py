@@ -202,7 +202,8 @@ def sonda(src: Path) -> tuple[int, int, float]:
 
 
 def metraje(src: Path, dst: Path, *, start: float, dur: float,
-            titulo: str | None = None) -> tuple[float, int | None]:
+            titulo: str | None = None, entra: bool = True,
+            sale: bool = True) -> tuple[float, int | None]:
     """Real product footage, normalised to the output frame.
 
     Audio is dropped rather than reconciled: the brand cards are silent, the
@@ -247,7 +248,15 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
             f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
             f"crop={W}:{H}"
         )
-    vf = f"{encaje},fade=t=in:st=0:d=0.4:c={CREAM_HEX},fade=t=out:st={dur-0.5:.2f}:d=0.5:c={CREAM_HEX}"
+    # Encadenando varios tramos, solo el primero entra desde crema y solo el
+    # ultimo sale hacia el: fundir en cada corte mete destellos de crema en
+    # mitad del cuerpo del anuncio.
+    filtros = [encaje]
+    if entra:
+        filtros.append(f"fade=t=in:st=0:d=0.4:c={CREAM_HEX}")
+    if sale:
+        filtros.append(f"fade=t=out:st={dur - 0.5:.2f}:d=0.5:c={CREAM_HEX}")
+    vf = ",".join(filtros)
     ff("-ss", str(start), "-i", str(src), "-t", str(dur), "-an", "-vf", vf,
        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
        "-r", str(FPS), str(dst))
@@ -314,6 +323,29 @@ def franja_envio(pie: int | None) -> str:
             f"fontsize={fuente}:x=(w-tw)/2:y={y}+({alto}-th)/2")
 
 
+def tramos(spec: str) -> list[tuple[float, float]]:
+    """'inicio:duracion,inicio:duracion' -> [(2.75, 4.75), (10.35, 2.25)].
+
+    El metraje del proveedor casi nunca se puede usar entero: trae rotulos,
+    marcas de agua o, como en el tracker, un grabado personalizado que la
+    tienda no vende. Recortar a mano cada trozo y concatenarlo aparte es la
+    alternativa, y se pierde a la primera revision del anuncio.
+    """
+    salida = []
+    for trozo in spec.split(","):
+        trozo = trozo.strip()
+        if not trozo:
+            continue
+        try:
+            ini, dur = (float(x) for x in trozo.split(":"))
+        except ValueError:
+            raise SystemExit(f"tramo invalido: {trozo!r} (formato inicio:duracion)")
+        salida.append((ini, dur))
+    if not salida:
+        raise SystemExit("--segments no define ningun tramo")
+    return salida
+
+
 def lado_chapa() -> int:
     """Lado de la chapa del precio. Lo consultan quien la dibuja y el rotulo
     del nombre, que tiene que apartarse de ella."""
@@ -372,6 +404,10 @@ def main() -> None:
     ap.add_argument("--video", help="Metraje real. Sustituye a los clips de "
                                     "catalogo: portada + video + cierre.")
     ap.add_argument("--slug", help="Producto del cierre cuando se usa --video.")
+    ap.add_argument("--segments", help="Tramos del metraje, "
+                                    "'inicio:duracion' separados por comas. "
+                                    "Para saltarse lo que no se puede enseñar. "
+                                    "Por defecto, --clip-start/--clip-dur.")
     ap.add_argument("--clip-start", type=float, default=0.0)
     ap.add_argument("--clip-dur", type=float, default=16.0)
     args = ap.parse_args()
@@ -402,10 +438,14 @@ def main() -> None:
 
         portada(clips / "00.mp4")
         if args.video:
-            usado, pie = metraje(Path(args.video), clips / "01.mp4",
-                                 start=args.clip_start, dur=args.clip_dur,
-                                 titulo=remate[0])
-            print(f"  metraje {args.video} [{args.clip_start}s +{usado:.1f}s]")
+            cortes = (tramos(args.segments) if args.segments
+                      else [(args.clip_start, args.clip_dur)])
+            for n, (ini, largo) in enumerate(cortes, start=1):
+                usado, pie = metraje(
+                    Path(args.video), clips / f"{n:02d}.mp4",
+                    start=ini, dur=largo, titulo=remate[0],
+                    entra=(n == 1), sale=(n == len(cortes)))
+                print(f"  metraje {args.video} [{ini}s +{usado:.1f}s]")
             cierre_producto(clips / "99.mp4", remate[0], remate[1])
             print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
         else:
