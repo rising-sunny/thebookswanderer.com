@@ -180,7 +180,7 @@ def check_uptimerobot() -> dict:
     ratios = (mon.get("custom_uptime_ratio") or "").split("-")
     r7 = ratios[1] if len(ratios) > 1 else "?"
     r30 = ratios[2] if len(ratios) > 2 else "?"
-    detail = f"uptime {r7}% (7d) / {r30}% (30d) — checked every {int(mon.get(interval, 0)) // 60} min"
+    detail = f"uptime {r7}% (7d) / {r30}% (30d) — checked every {int(mon.get('interval', 0)) // 60} min"
     return {"ok": status == 2, "value": labels.get(status, str(status)), "detail": detail}
 
 
