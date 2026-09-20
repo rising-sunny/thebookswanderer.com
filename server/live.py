@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine, get_db
 from models import LiveEvent
 from services import geo
+from services import health as health_service
 
 log = logging.getLogger("tbw.live")
 
@@ -460,6 +461,31 @@ async def snapshot(request: Request, db: Session = Depends(get_db)):
     if not _is_admin(request):
         raise HTTPException(status_code=401, detail="auth required")
     return _build_snapshot(db)
+
+
+@router.get("/admin/live/health")
+async def live_health(request: Request):
+    """Chequeos internos + ultimo latido externo. Ver services/health.py."""
+    if not _is_admin(request):
+        raise HTTPException(status_code=401, detail="auth required")
+    return health_service.snapshot()
+
+
+@router.post("/api/admin/heartbeat")
+async def heartbeat(request: Request):
+    """Latido de la sonda externa (.github/workflows/uptime.yml).
+
+    Token en cabecera, no en la URL: las URLs acaban en logs de nginx y de
+    GitHub, las cabeceras no. Sin token configurado el endpoint no existe a
+    efectos practicos, para que nadie pueda fingir latidos.
+    """
+    expected = (os.getenv("HEARTBEAT_TOKEN") or "").strip()
+    given = (request.headers.get("x-heartbeat-token") or "").strip()
+    if not expected or not secrets.compare_digest(given, expected):
+        raise HTTPException(status_code=401, detail="bad token")
+    source = (request.headers.get("x-heartbeat-source") or "external")[:80]
+    health_service.record_heartbeat(source)
+    return {"ok": True}
 
 
 @router.get("/admin/live/stream")
