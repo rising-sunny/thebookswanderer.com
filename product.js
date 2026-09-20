@@ -4,6 +4,29 @@
 (function () {
     "use strict";
 
+    // CJ's CDN honours Alibaba OSS image processing, so we ask it for a
+    // card-sized WebP instead of the full-resolution original. On the worst
+    // image on the home page that is 743 KB down to 34 KB.
+    function cjImg(url, w) {
+        if (!url || url.indexOf("cjdropshipping.com") === -1) return url;
+        if (url.indexOf("x-oss-process") !== -1) return url;
+        return url + (url.indexOf("?") === -1 ? "?" : "&") +
+            "x-oss-process=image/resize,w_" + w + "/format,webp";
+    }
+
+    function cjSrcset(url, widths) {
+        if (!url || url.indexOf("cjdropshipping.com") === -1) return "";
+        return widths.map(function (w) { return cjImg(url, w) + " " + w + "w"; }).join(", ");
+    }
+
+    function cjImgAttrs(url, sizes, widths) {
+        if (!url) return 'src=""';
+        if (url.indexOf("cjdropshipping.com") === -1) return 'src="' + url + '"';
+        var set = widths.map(function (w) { return cjImg(url, w) + " " + w + "w"; }).join(", ");
+        return 'src="' + cjImg(url, widths[widths.length - 1]) + '" srcset="' + set +
+            '" sizes="' + sizes + '"';
+    }
+
     const root = document.getElementById("pdpRoot");
     const crumb = document.getElementById("pdpCrumb");
     if (!root) return;
@@ -149,7 +172,7 @@
           ? `<p class="pdp__add-status" id="pdpAddStatus"><strong>${escapeHtml(v?.name || "This option")}</strong> — ${inCart} already in cart</p>`
           : `<p class="pdp__add-status" id="pdpAddStatus" hidden></p>`
   }
-  <a class="btn btn--ghost" href="/#featured">Continue shopping</a>
+  <a class="btn btn--ghost" href="/products/">Continue shopping</a>
 </div>`;
     }
 
@@ -311,7 +334,7 @@
   data-variant-id="${opt.id}"
   aria-selected="${opt.id === selectedVariantId ? "true" : "false"}"
   title="${escapeHtml(opt.name)}">
-  <img src="${escapeHtml(opt.image_url || product.image_url || "")}" alt="${escapeHtml(opt.name)}" loading="lazy">
+  <img ${cjImgAttrs(escapeHtml(opt.image_url || product.image_url || ""), "90px", [200, 400])} alt="${escapeHtml(opt.name)}" loading="lazy" decoding="async">
   <span>${escapeHtml(opt.name)}</span>
 </button>`
         )
@@ -333,7 +356,7 @@
         .map(
             (src, i) => `
 <button type="button" class="pdp__variant pdp__life-shot" data-life-src="${escapeHtml(src)}" aria-label="View lifestyle photo ${i + 1}">
-  <img src="${escapeHtml(src)}" alt="Product in use, photo ${i + 1}" loading="lazy">
+  <img ${cjImgAttrs(escapeHtml(src), "(max-width: 780px) 45vw, 380px", [400, 600])} alt="Product in use, photo ${i + 1}" loading="lazy" decoding="async">
 </button>`
         )
         .join("")}
@@ -387,7 +410,7 @@
 </div>
 <div class="pdp__gallery">
   <div class="pdp__stage">
-    <img id="pdpMain" src="${escapeHtml(main)}" alt="${escapeHtml(title)}${v?.name ? " — " + escapeHtml(v.name) : ""}">
+    <img id="pdpMain" ${cjImgAttrs(escapeHtml(main), "(max-width: 780px) 92vw, 480px", [400, 600, 900])} alt="${escapeHtml(title)}${v?.name ? " — " + escapeHtml(v.name) : ""}">
   </div>
 </div>`;
 
@@ -638,7 +661,12 @@
             btn.addEventListener("click", () => {
                 const src = btn.getAttribute("data-life-src");
                 const mainImg = document.getElementById("pdpMain");
-                if (mainImg && src) mainImg.src = src;
+                // srcset wins over src, so swapping only src would keep the
+                // previous photo on screen. Rebuild both.
+                if (mainImg && src) {
+                    mainImg.srcset = cjSrcset(src, [400, 600, 900]);
+                    mainImg.src = cjImg(src, 900);
+                }
                 root.querySelectorAll(".pdp__life-shot").forEach((b) =>
                     b.classList.remove("is-selected")
                 );
@@ -686,7 +714,7 @@
 
     async function load() {
         if (!slug && !id) {
-            root.innerHTML = `<p class="catalog-empty">Product not found. <a href="/#featured">Back to shop</a></p>`;
+            root.innerHTML = `<p class="catalog-empty">Product not found. <a href="/products/">Back to shop</a></p>`;
             return;
         }
         try {
@@ -722,7 +750,7 @@
                 root.removeAttribute("aria-busy");
                 return;
             }
-            root.innerHTML = `<p class="catalog-empty">Could not load this product. <a href="/#featured">Back to shop</a></p>`;
+            root.innerHTML = `<p class="catalog-empty">Could not load this product. <a href="/products/">Back to shop</a></p>`;
         }
     }
 

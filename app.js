@@ -5,6 +5,24 @@
 (function () {
     "use strict";
 
+    // CJ's CDN honours Alibaba OSS image processing, so we ask it for a
+    // card-sized WebP instead of the full-resolution original. On the worst
+    // image on the home page that is 743 KB down to 34 KB.
+    function cjImg(url, w) {
+        if (!url || url.indexOf("cjdropshipping.com") === -1) return url;
+        if (url.indexOf("x-oss-process") !== -1) return url;
+        return url + (url.indexOf("?") === -1 ? "?" : "&") +
+            "x-oss-process=image/resize,w_" + w + "/format,webp";
+    }
+
+    function cjImgAttrs(url, sizes, widths) {
+        if (!url) return 'src=""';
+        if (url.indexOf("cjdropshipping.com") === -1) return 'src="' + url + '"';
+        var set = widths.map(function (w) { return cjImg(url, w) + " " + w + "w"; }).join(", ");
+        return 'src="' + cjImg(url, widths[widths.length - 1]) + '" srcset="' + set +
+            '" sizes="' + sizes + '"';
+    }
+
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     /* ---------- Header shadow on scroll ---------- */
@@ -142,7 +160,7 @@
             }
         }
         const media = imgSrc
-            ? `<img src="${imgSrc}" alt="${title}" width="800" height="1000" loading="lazy" decoding="async">`
+            ? `<img ${cjImgAttrs(imgSrc, "(max-width: 780px) 45vw, 300px", [400, 600, 900])} alt="${title}" width="800" height="1000" loading="lazy" decoding="async">`
             : `<div class="product__placeholder"><svg aria-hidden="true"><use href="#i-leaf"/></svg><span>Product photo</span></div>`;
         const cta = nVar > 1 ? "Choose design" : "View details";
 
@@ -223,10 +241,10 @@
     function updateCatalogHead() {
         const cat = categoriesCache.find((c) => c.slug === activeCategory);
         if (catalogEyebrow) {
-            catalogEyebrow.textContent = activeCategory ? "Collection" : "Most loved";
+            catalogEyebrow.textContent = activeCategory ? "Collection" : "Browse by";
         }
         if (catalogTitle) {
-            catalogTitle.textContent = cat ? cat.name : "Reader’s picks";
+            catalogTitle.textContent = cat ? cat.name : "The shelf";
         }
     }
 

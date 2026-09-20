@@ -162,7 +162,7 @@
 <div class="cart-empty">
   <h1>Your cart is empty</h1>
   <p>Wander the collection and add something for your next reading hour.</p>
-  <a class="btn" href="/#featured">Continue shopping</a>
+  <a class="btn" href="/products/">Continue shopping</a>
 </div>`;
             paintBadge();
             return;
@@ -253,7 +253,7 @@
     <p class="cart-summary__note">Free shipping worldwide — nothing is added at checkout.</p>
     <p class="cart-summary__note">Payment: <strong>PayPal</strong> only.</p>
     <a class="btn cart-summary__cta" href="/checkout.html">Proceed to checkout</a>
-    <a class="btn btn--ghost cart-summary__shop" href="/#featured">Continue shopping</a>
+    <a class="btn btn--ghost cart-summary__shop" href="/products/">Continue shopping</a>
   </aside>
 </div>`;
 

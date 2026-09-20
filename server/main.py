@@ -30,6 +30,7 @@ from services import paypal as paypal_service  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from ssr import (  # noqa: E402
     affiliate_by_slug,
+    render_catalog_page,
     inject_home_seo,
     load_affiliate_catalog,
     render_collection_not_found,
@@ -399,6 +400,34 @@ def _related_products(product: Product, db: Session, *, limit: int = 4) -> list[
         if card.get("image_url"):
             out.append(card)
     return out
+
+
+@app.get("/products/", response_class=HTMLResponse)
+def catalog_index(db: Session = Depends(get_db)):
+    """The full catalogue on one page.
+
+    Registered before /products/{slug} so the bare path is not swallowed as a
+    slug. Every "shop all" link points here; they used to point at the
+    #featured anchor on the home page, which left the store with no browsable
+    URL of its own.
+    """
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.id.desc())
+        .all()
+    )
+    products = [p.to_public() for p in rows]
+    counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
+    for p in rows:
+        slug = cat_service.normalize_category(p.category)
+        counts[slug] = counts.get(slug, 0) + 1
+    categories = [
+        {**c, "product_count": counts.get(c["slug"], 0)}
+        for c in cat_service.all_categories()
+    ]
+    canonical = f"{PUBLIC_BASE}/products/"
+    return HTMLResponse(render_catalog_page(products, categories, canonical=canonical))
 
 
 @app.get("/products/{slug}", response_class=HTMLResponse)

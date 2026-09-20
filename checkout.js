@@ -75,7 +75,7 @@
             orderId ? ` <span class="checkout-banner__id">Order #${escapeHtml(orderId)}</span>` : ""
         }</p>
   <div class="checkout-banner__actions">
-    <a class="btn" href="/#featured">Back to shop</a>
+    <a class="btn" href="/products/">Back to shop</a>
     ${
         status === "cancel" || status === "payment_error" || status === "payment_incomplete"
             ? `<a class="btn btn--ghost" href="/cart.html">Return to cart</a>`
@@ -231,7 +231,7 @@
 <div class="cart-empty">
   <h1>Nothing to check out</h1>
   <p>Your cart is empty. Add a piece from the collection first.</p>
-  <a class="btn" href="/#featured">Browse the shop</a>
+  <a class="btn" href="/products/">Browse the shop</a>
 </div>`;
             return;
         }

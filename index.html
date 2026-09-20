@@ -136,20 +136,13 @@
         </a>
 
         <nav class="nav" id="nav" aria-label="Primary">
+            <a class="nav__link" href="/products/">Shop</a>
             <a class="nav__link" href="/collections">Collections</a>
-            <a class="nav__link" href="#featured">Featured</a>
             <a class="nav__link" href="#ereaders">E-readers</a>
             <a class="nav__link" href="#story">Our story</a>
-            <a class="nav__link" href="#newsletter">Newsletter</a>
         </nav>
 
         <div class="actions">
-            <button class="icon-btn" type="button" aria-label="Search products">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            </button>
-            <a class="icon-btn desktop-only" href="#" aria-label="My account">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
-            </a>
             <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
                 <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
@@ -172,7 +165,7 @@
                     kept few on purpose.
                 </p>
                 <div class="hero__ctas">
-                    <a class="btn" href="#featured">
+                    <a class="btn" href="/products/">
                         Explore collection
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
                     </a>
@@ -227,27 +220,36 @@
     </section>
 
     <!-- ====================== Categories ====================== -->
-    <section class="section" id="collections">
-        <div class="container">
-            <div class="section__head reveal">
-                <div>
-                    <p class="eyebrow">Browse by</p>
-                    <h2>Collections</h2>
-                </div>
-                <a class="link-more" href="#featured" data-category-clear>
-                    View all
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
-                </a>
-            </div>
-
-            <div class="categories reveal" id="categoryTiles" aria-busy="true">
-                <!-- Filled from /api/categories -->
-            </div>
-        </div>
-    </section>
 
     <!-- ====================== Amazon affiliate e-reader picks ======================
          Placed high so #ereaders is easy to find (not buried under the full catalog). -->
+
+    <!-- ====================== Products ====================== -->
+    <section class="section" id="featured">
+        <div class="container">
+            <div class="section__head reveal">
+                <div>
+                    <p class="eyebrow" id="catalogEyebrow">Browse by</p>
+                    <h2 id="catalogTitle">The shelf</h2>
+                </div>
+                <a class="link-more" href="/products/">
+                    Full catalog
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
+                </a>
+            </div>
+            <div class="categories reveal" id="categoryTiles" aria-busy="true">
+                <!-- Filled from /api/categories -->
+            </div>
+
+            <div class="catalog-filters reveal" id="catalogFilters" role="tablist" aria-label="Filter by category">
+                <!-- Filled from /api/categories -->
+            </div>
+
+            <div class="products reveal" id="productGrid" data-catalog-source="api">
+                <p class="catalog-loading" id="catalogLoading">Loading products…</p>
+            </div>
+        </div>
+    </section>
     <section class="section section--sunken" id="ereaders" aria-labelledby="ereadersTitle">
         <div class="container">
             <div class="section__head reveal">
@@ -273,29 +275,6 @@
 
             <div class="products products--affiliate reveal is-visible" id="affiliateGrid" aria-busy="true">
                 <p class="catalog-loading">Loading e-reader picks…</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ====================== Products ====================== -->
-    <section class="section" id="featured">
-        <div class="container">
-            <div class="section__head reveal">
-                <div>
-                    <p class="eyebrow" id="catalogEyebrow">The shelf</p>
-                    <h2 id="catalogTitle">Reader’s picks</h2>
-                </div>
-                <a class="link-more" href="#featured" data-category-clear>
-                    Full catalog
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-7 7 7-7 7"/></svg>
-                </a>
-            </div>
-            <div class="catalog-filters reveal" id="catalogFilters" role="tablist" aria-label="Filter by category">
-                <!-- Filled from /api/categories -->
-            </div>
-
-            <div class="products reveal" id="productGrid" data-catalog-source="api">
-                <p class="catalog-loading" id="catalogLoading">Loading products…</p>
             </div>
         </div>
     </section>
@@ -397,9 +376,9 @@
                     <li><a href="/collections/book-accessories">Book accessories</a></li>
                     <li><a href="/collections/decor">Decor</a></li>
                     <li><a href="/collections/ereader-accessories">E-reader accessories</a></li>
-                    <li><a href="#featured">New arrivals</a></li>
+                    <li><a href="/products/">All products</a></li>
                     <li><a href="#ereaders">E-readers (Amazon)</a></li>
-                    <li><a href="#featured">All products</a></li>
+                    <li><a href="#newsletter">Newsletter</a></li>
                 </ul>
             </div>
 
@@ -437,6 +416,6 @@
 <script src="track.js?v=4" defer></script>
 <script src="cart.js?v=3" defer></script>
 <script src="affiliate-data.js?v=5" defer></script>
-<script src="app.js?v=22" defer></script>
+<script src="app.js?v=24" defer></script>
 </body>
 </html>

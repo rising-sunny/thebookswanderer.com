@@ -412,7 +412,7 @@ def render_product_page(
                 "@type": "ListItem",
                 "position": 2,
                 "name": "Shop",
-                "item": PUBLIC_BASE + "/#featured",
+                "item": PUBLIC_BASE + "/products/",
             },
             {
                 "@type": "ListItem",
@@ -448,7 +448,7 @@ def render_product_page(
         for i, src in enumerate(lifestyle[:6]):
             s = src if not str(src).startswith("/") else PUBLIC_BASE + str(src)
             imgs.append(
-                f'<img src="{_esc(s)}" alt="{_esc(title)} lifestyle photo {i + 1}" '
+                f'<img {_cj_img_attrs(s, widths=(400, 600), sizes=SIZES_THUMB)} alt="{_esc(title)} lifestyle photo {i + 1}" '
                 f'width="400" height="400" loading="lazy" '
                 f'style="max-width:48%;height:auto;margin:0.25rem;border-radius:8px">'
             )
@@ -464,7 +464,7 @@ def render_product_page(
     # aparte del JSON-LD y Google los valida por separado, asi que tener la
     # imagen solo en el JSON-LD no salvaba a este.
     hero = (
-        f'<img itemprop="image" src="{_esc(img)}" alt="{_esc(title)}" width="800" height="1000" '
+        f'<img itemprop="image" {_cj_img_attrs(img, base_w=900, sizes=SIZES_PDP_HERO)} alt="{_esc(title)}" width="800" height="1000" '
         f'style="max-width:min(100%,420px);height:auto;border-radius:12px;display:block;margin:1rem 0">'
         if img
         # Sin foto de producto, el logo mantiene el item valido.
@@ -506,7 +506,7 @@ def render_product_page(
       before you order.
     </p>
     <p><a href="{_esc(canonical)}">Open product page</a> ·
-       <a href="/#featured">Browse the full catalog</a> ·
+       <a href="/products/">Browse the full catalog</a> ·
        <a href="/cart.html">View cart</a></p>
   </section>
 </article>
@@ -554,7 +554,7 @@ def render_product_page(
         </a>
         <nav class="nav" id="nav" aria-label="Primary" style="display:none"></nav>
         <div class="actions">
-            <a class="icon-btn" href="/#featured" aria-label="Back to shop">
+            <a class="icon-btn" href="/products/" aria-label="Back to shop">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
             </a>
             <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
@@ -567,7 +567,7 @@ def render_product_page(
 <main id="main" class="pdp">
     <div class="container">
         <nav class="pdp__crumb" aria-label="Breadcrumb">
-            <a href="/">Home</a> · <a href="/#featured">Shop</a>
+            <a href="/">Home</a> · <a href="/products/">Shop</a>
             {f' · <a href="/collections/{_esc(cat_slug)}">{_esc_text(category)}</a>' if cat_slug else ""}
             · <span id="pdpCrumb">{_esc_text(title)}</span>
         </nav>
@@ -595,7 +595,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=4" defer></script>
 <script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=24" defer></script>
+<script src="/product.js?v=25" defer></script>
 </body>
 </html>
 """
@@ -616,7 +616,7 @@ def render_product_not_found(slug: str = "") -> str:
   <main class="container" style="padding:3rem 1rem">
     <h1>Product not found</h1>
     <p>{msg}</p>
-    <p>Browse our <a href="/#featured">reader catalog</a> for available pieces.</p>
+    <p>Browse our <a href="/products/">reader catalog</a> for available pieces.</p>
   </main>
 </body>
 </html>
@@ -672,7 +672,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     bullets = pick.get("bullets") or []
     bullet_html = "".join(f"<li>{_esc_text(b)}</li>" for b in bullets)
     gallery = "".join(
-        f'<img src="{_esc(u)}" alt="{_esc(title)} photo {i + 1}" width="400" height="400" '
+        f'<img {_cj_img_attrs(u, widths=(400, 600), sizes=SIZES_THUMB)} alt="{_esc(title)} photo {i + 1}" width="400" height="400" '
         f'loading="lazy" style="max-width:46%;height:auto;margin:0.25rem;border-radius:8px;background:#fff">'
         for i, u in enumerate(images[:8])
     )
@@ -844,7 +844,7 @@ def render_pick_not_found(slug: str = "") -> str:
 """
 
 
-def _site_header(*, back_href: str = "/#featured", back_label: str = "Back to shop") -> str:
+def _site_header(*, back_href: str = "/products/", back_label: str = "Back to shop") -> str:
     return f"""
 <header class="header is-stuck" id="header">
     <div class="container header__inner">
@@ -904,7 +904,7 @@ def render_collection_page(
     intro_html = "".join(f"<p>{_esc_text(p)}</p>" for p in intro_paras if p)
     cards = "\n".join(_product_card_html(p) for p in products) or (
         '<p class="catalog-empty">Nothing in this collection yet — '
-        '<a href="/#featured">browse the full catalog</a>.</p>'
+        '<a href="/products/">browse the full catalog</a>.</p>'
     )
 
     # Sibling collections for internal links
@@ -1017,7 +1017,7 @@ def render_collection_page(
           <p class="eyebrow">In this collection</p>
           <h2 id="collectionGridTitle">{_esc_text(name)}</h2>
         </div>
-        <a class="link-more" href="/#featured">Full catalog</a>
+        <a class="link-more" href="/products/">Full catalog</a>
       </div>
       <div class="products is-visible" id="collectionGrid">
         {cards}
@@ -1026,6 +1026,151 @@ def render_collection_page(
   </section>
 </main>
 {_site_footer(note=name)}
+<script src="/track.js?v=4" defer></script>
+<script src="/cart.js?v=3" defer></script>
+</body>
+</html>
+"""
+
+
+def render_catalog_page(
+    products: list[dict[str, Any]],
+    categories: list[dict[str, Any]],
+    *,
+    canonical: str,
+) -> str:
+    """SSR index of the whole catalog.
+
+    This is the destination every "shop all" link needs: before it existed they
+    all pointed at the #featured anchor on the home page, which meant the store
+    had no browsable URL of its own.
+    """
+    n = len(products)
+    count_label = "No pieces yet" if n == 0 else ("1 piece" if n == 1 else f"{n} pieces")
+    page_title = "Shop all | The Books Wanderer"
+    meta_desc = _meta_description(
+        "Every piece in the shop: bookmarks, page holders, e-reader sleeves and "
+        "reading-nook decor, hand-picked and kept few on purpose."
+    )
+
+    chips = '<span class="collection-chip is-active" aria-current="page">All ' + str(n) + "</span>"
+    for c in categories:
+        cn = int(c.get("product_count") or 0)
+        if not cn:
+            continue
+        chips += (
+            f'<a class="collection-chip" href="/collections/{_esc(c.get("slug"))}">'
+            f'{_esc_text(c.get("name") or c.get("slug"))} {cn}</a>'
+        )
+
+    cards = chr(10).join(_product_card_html(p) for p in products) or (
+        '<p class="catalog-empty">Nothing in the shop yet — '
+        '<a href="/collections">browse the collections</a>.</p>'
+    )
+
+    og_img = ""
+    for p in products:
+        u = p.get("image_url") or ""
+        if u:
+            og_img = u if str(u).startswith("http") else PUBLIC_BASE + str(u)
+            break
+
+    item_list = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Shop all",
+        "description": meta_desc,
+        "url": canonical,
+        "isPartOf": {"@type": "WebSite", "name": "The Books Wanderer", "url": PUBLIC_BASE + "/"},
+        "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": n,
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "url": f"{PUBLIC_BASE}/products/{p.get('slug')}",
+                    "name": p.get("title") or p.get("slug"),
+                }
+                for i, p in enumerate(products)
+            ],
+        },
+    }
+    crumbs = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": PUBLIC_BASE + "/"},
+            {"@type": "ListItem", "position": 2, "name": "Shop", "item": canonical},
+        ],
+    }
+    ld_page = json.dumps(item_list, ensure_ascii=False)
+    ld_crumbs = json.dumps(crumbs, ensure_ascii=False)
+    v = _css_ver()
+    social = _social_head(
+        title=page_title,
+        description=meta_desc,
+        canonical=canonical,
+        image=og_img,
+        og_type="website",
+        image_alt="The Books Wanderer catalog",
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{_esc(page_title)}</title>
+    <meta name="description" content="{_esc(meta_desc)}">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="canonical" href="{_esc(canonical)}">
+    {social}
+    <meta name="theme-color" content="#f8f2e5">
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
+    <script type="application/ld+json">{ld_page}</script>
+    <script type="application/ld+json">{ld_crumbs}</script>
+</head>
+<body class="page-collection">
+<a class="skip-link" href="#main">Skip to content</a>
+{_site_header(back_href="/", back_label="Home")}
+<main id="main">
+  <section class="section collection-hero">
+    <div class="container">
+      <nav class="pdp__crumb" aria-label="Breadcrumb">
+        <a href="/">Home</a> · <span>Shop</span>
+      </nav>
+      <p class="eyebrow">Shop · {_esc_text(count_label)}</p>
+      <h1>Everything on the shelf</h1>
+      <div class="collection-intro">
+        <p>The whole catalogue on one page. We keep it small on purpose — every
+        piece is chosen by hand, and shipping is already inside the price.</p>
+      </div>
+      <p class="collection-siblings"><span class="eyebrow">Browse by</span> {chips}</p>
+    </div>
+  </section>
+  <section class="section section--sunken" aria-labelledby="catalogGridTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow">All pieces</p>
+          <h2 id="catalogGridTitle">Shop all</h2>
+        </div>
+        <a class="link-more" href="/collections">Browse collections</a>
+      </div>
+      <div class="products is-visible" id="catalogGrid">
+        {cards}
+      </div>
+    </div>
+  </section>
+</main>
+{_site_footer(note="Shop")}
 <script src="/track.js?v=4" defer></script>
 <script src="/cart.js?v=3" defer></script>
 </body>
@@ -1119,7 +1264,7 @@ def render_collections_index(
       <div class="categories" style="margin-top:var(--sp-6)">
         {"".join(cards)}
       </div>
-      <p style="margin-top:var(--sp-6)"><a class="link-more" href="/#featured">View full catalog</a></p>
+      <p style="margin-top:var(--sp-6)"><a class="link-more" href="/products/">View full catalog</a></p>
     </div>
   </section>
 </main>
@@ -1140,7 +1285,7 @@ def render_collection_not_found(slug: str = "") -> str:
 </head><body class="container" style="padding:2rem">
 <h1>Collection not found</h1>
 <p>We could not find “{_esc_text(slug)}”.</p>
-<p><a href="/collections">All collections</a> · <a href="/#featured">Full catalog</a></p>
+<p><a href="/collections">All collections</a> · <a href="/products/">Full catalog</a></p>
 </body></html>
 """
 
@@ -1158,6 +1303,44 @@ def _category_tile_html(c: dict[str, Any]) -> str:
 </a>"""
 
 
+SIZES_CARD = "(max-width: 780px) 45vw, 300px"
+SIZES_THUMB = "(max-width: 780px) 45vw, 380px"
+SIZES_PDP_HERO = "(max-width: 780px) 92vw, 420px"
+
+
+def _cj_variant(url: str, width: int, *, webp: bool = True) -> str:
+    """Ask CJ's CDN for a resized copy of one of their images.
+
+    Their bucket honours Alibaba OSS's x-oss-process, so a 743 KB original
+    comes back as a 34 KB 600px WebP. Without it the grid ships full-resolution
+    originals (800-1363px) into cards that render around 268px wide.
+    """
+    if not url or "cjdropshipping.com" not in url or "x-oss-process" in url:
+        return url
+    sep = "&" if "?" in url else "?"
+    chain = f"image/resize,w_{width}"
+    if webp:
+        chain += "/format,webp"
+    return f"{url}{sep}x-oss-process={chain}"
+
+
+def _cj_img_attrs(
+    url: str,
+    *,
+    base_w: int = 600,
+    widths: tuple[int, ...] = (400, 600, 900),
+    sizes: str = SIZES_CARD,
+) -> str:
+    """src + srcset + sizes for a CJ image; a plain src for anything else."""
+    if not url or "cjdropshipping.com" not in url:
+        return f'src="{_esc(url)}"'
+    srcset = ", ".join(f"{_esc(_cj_variant(url, w))} {w}w" for w in widths)
+    return (
+        f'src="{_esc(_cj_variant(url, base_w))}" '
+        f'srcset="{srcset}" sizes="{_esc(sizes)}"'
+    )
+
+
 def _product_card_html(p: dict[str, Any]) -> str:
     title = p.get("title") or "Product"
     slug = p.get("slug") or ""
@@ -1172,7 +1355,7 @@ def _product_card_html(p: dict[str, Any]) -> str:
     nvar = int(p.get("variant_count") or 0)
     badge = f'<span class="badge badge--gold">{nvar} designs</span>' if nvar > 1 else ""
     img_tag = (
-        f'<img src="{_esc(img)}" alt="{_esc(title)}" width="600" height="750" loading="lazy">'
+        f'<img {_cj_img_attrs(img)} alt="{_esc(title)}" width="600" height="750" loading="lazy" decoding="async">'
         if img
         else ""
     )
