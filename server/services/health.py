@@ -7,17 +7,15 @@ muerto. Por eso hay dos mitades:
 
   - Chequeos internos (esta funcion): nginx, disco, RAM, certificado, unidades
     fallidas, cron... Utiles cuando el panel carga.
-  - Un latido externo: .github/workflows/uptime.yml pide /api/health desde
-    GitHub cada 10 min y, si va bien, llama a POST /api/admin/heartbeat. El
-    panel muestra cuanto hace del ultimo latido. Si la sonda falla, GitHub
-    manda el email — eso es la alerta real, no este panel.
+  - UptimeRobot, desde fuera: pide /api/health cada 5 min y manda email si
+    falla. ESA es la alerta real. Este panel solo consulta su API de solo
+    lectura para mostrar lo que UptimeRobot ve (estado, % de uptime).
 
 Todo corre como www-data: nada aqui necesita root. Los chequeos lentos
 (systemctl, TLS) se cachean 60 s para que el panel no los repita a cada refresco.
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import socket
@@ -29,13 +27,7 @@ from pathlib import Path
 from typing import Any
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-HEARTBEAT_FILE = DATA_DIR / "heartbeat.json"
 CART_LOG = Path("/var/log/tbw-cart-reminders.log")
-
-# Mas de esto sin latido = la sonda externa no llega. La sonda corre cada 30
-# min (limite del plan Free en repos privados) y GitHub retrasa los cron hasta
-# 10-15 min en horas punta: 30 + 15 + margen.
-HEARTBEAT_STALE_S = 65 * 60
 
 _cache: dict[str, tuple[float, Any]] = {}
 
@@ -146,36 +138,56 @@ def check_cart_cron() -> dict:
         return {"ok": True, "value": "n/a", "detail": "log not readable by www-data"}
 
 
-def check_heartbeat() -> dict:
-    """Ultimo latido de la sonda externa (GitHub Actions)."""
-    if not (os.getenv("HEARTBEAT_TOKEN") or "").strip():
+def check_uptimerobot() -> dict:
+    """Lo que UptimeRobot ve desde fuera. API v2, clave de SOLO LECTURA.
+
+    Cacheado 60 s: el plan gratuito permite 10 llamadas/min y el panel
+    refresca cada 30 s desde cada pestana abierta.
+    """
+    key = (os.getenv("UPTIMEROBOT_API_KEY") or "").strip()
+    if not key:
         return {"ok": True, "value": "not configured",
-                "detail": "set HEARTBEAT_TOKEN in .env and as a GitHub secret"}
+                "detail": "add the read-only API key as UPTIMEROBOT_API_KEY in .env"}
+
+    def fetch():
+        import httpx
+        r = httpx.post(
+            "https://api.uptimerobot.com/v2/getMonitors",
+            data={"api_key": key, "format": "json",
+                  "custom_uptime_ratios": "1-7-30", "logs": "1", "logs_limit": "1"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        return r.json()
+
     try:
-        data = json.loads(HEARTBEAT_FILE.read_text())
-        ts = float(data.get("ts", 0))
-        age = time.time() - ts
-        mins = int(age // 60)
-        ok = age < HEARTBEAT_STALE_S
-        return {"ok": ok, "value": f"{mins} min ago",
-                "detail": data.get("source", "") + (
-                    "" if ok else " — probe not reaching us, or GitHub cron lagging")}
-    except FileNotFoundError:
-        return {"ok": False, "value": "never",
-                "detail": "no heartbeat received yet — is the workflow enabled?"}
+        data = _cached("uptimerobot", 60, fetch)
     except Exception as e:  # noqa: BLE001
-        return {"ok": False, "value": "error", "detail": str(e)[:80]}
+        return {"ok": False, "value": "api error", "detail": str(e)[:80]}
 
+    if data.get("stat") != "ok":
+        msg = (data.get("error") or {}).get("message", "unknown error")
+        return {"ok": False, "value": "api error", "detail": msg[:80]}
 
-def record_heartbeat(source: str) -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    HEARTBEAT_FILE.write_text(json.dumps({"ts": time.time(), "source": source[:80]}))
+    mons = data.get("monitors") or []
+    mon = next((m for m in mons if "thebookswanderer" in (m.get("url") or "")), None)         or (mons[0] if mons else None)
+    if not mon:
+        return {"ok": False, "value": "no monitor",
+                "detail": "the API key works but no monitor is defined yet"}
+
+    status = int(mon.get("status", 0))
+    labels = {0: "paused", 1: "not checked yet", 2: "UP", 8: "seems down", 9: "DOWN"}
+    ratios = (mon.get("custom_uptime_ratio") or "").split("-")
+    r7 = ratios[1] if len(ratios) > 1 else "?"
+    r30 = ratios[2] if len(ratios) > 2 else "?"
+    detail = f"uptime {r7}% (7d) / {r30}% (30d) — checked every {int(mon.get(interval, 0)) // 60} min"
+    return {"ok": status == 2, "value": labels.get(status, str(status)), "detail": detail}
 
 
 def snapshot() -> dict:
     """Todo junto, en el orden en que conviene leerlo."""
     checks = {
-        "external_probe": check_heartbeat(),
+        "external_probe": check_uptimerobot(),
         "nginx": check_nginx(),
         "tls_certificate": check_cert(),
         "failed_units": check_failed_units(),

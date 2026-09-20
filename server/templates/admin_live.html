@@ -290,7 +290,7 @@
       <li><span class="name">Loading…</span></li>
     </ul>
     <p class="hint" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">
-      A panel on this server cannot report this server being down. The external probe line is what catches that; GitHub emails on failure.
+      A panel on this server cannot report this server being down. UptimeRobot checks from outside every 5 min and emails you; that line is what catches it.
     </p>
   </section>
 
@@ -414,7 +414,7 @@
   }
 
   const HEALTH_LABELS = {
-    external_probe: "External probe (GitHub)", nginx: "nginx", tls_certificate: "TLS certificate",
+    external_probe: "UptimeRobot (external)", nginx: "nginx", tls_certificate: "TLS certificate",
     failed_units: "Failed services", reboot_required: "Reboot required", disk: "Disk",
     memory: "Memory", cart_reminder_cron: "Cart reminder cron"
   };
