@@ -52,7 +52,7 @@ if (Test-Path "$Root\googleca903f9ea8fb8e9e.html") {
 }
 # Brand / SEO images (logo optimized, OG 1200×630, favicons)
 $brandAssets = @(
-    "logo.png", "logo.webp", "logo-email.png", "og-default.jpg",
+    "logo.png", "logo.webp", "logo-hero.webp", "logo-email.png", "og-default.jpg",
     "favicon.ico", "favicon-32.png", "favicon-48.png", "apple-touch-icon.png"
 )
 foreach ($f in $brandAssets) {
