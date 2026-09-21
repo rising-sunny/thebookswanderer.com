@@ -114,13 +114,19 @@ def variantes(slug: str) -> tuple[list[dict], str]:
     """
     with urllib.request.urlopen(f"{BASE}/api/products/by-slug/{slug}", timeout=30) as r:
         p = json.load(r)
-    salida = []
+    salida, vistas = [], set()
     for v in p.get("variants") or []:
         url = (v.get("image_url") or "").strip()
         if not url:
             continue
         if url.startswith("/"):
             url = BASE + url
+        # Una misma foto sirve a varias variantes cuando el catalogo cruza
+        # acabado con talla (el atril son 3 fotos repartidas en 9 variantes).
+        # Sin esto el montaje repite el mismo plano seis veces.
+        if url in vistas:
+            continue
+        vistas.add(url)
         salida.append({"title": v.get("name") or "", "price": None, "url": url})
     if not salida:
         raise SystemExit(f"{slug} has no variant images")
@@ -145,11 +151,72 @@ def portada(dst: Path) -> None:
        "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
 
 
-def producto(img: Path, titulo: str, precio: float | None, dst: Path) -> None:
+def bandas(iw: int, ih: int, titulo: str | None,
+           medio=None) -> tuple[str, int | None]:
+    """Encaje en bandas verdes con el rotulo arriba. Devuelve (filtro, pie).
+
+    `pie` es la Y donde acaba la imagen: ahi se apoya la franja de envio.
+    Es None cuando la imagen llena el cuadro y no hay banda.
+
+    `medio` recibe el alto del encaje y devuelve filtros a insertar ANTES
+    del relleno. El zoom va ahi: aplicado despues, ampliaria tambien las
+    bandas y se comeria el rotulo.
+    """
+    alto = 2 * round(W * ih / iw / 2)
+    if alto >= H:
+        partes = [f"scale={W}:{H}:force_original_aspect_ratio=increase:"
+                  f"flags=lanczos", f"crop={W}:{H}"]
+        if medio:
+            partes.append(medio(H))
+        return ",".join(partes), None
+
+    # La banda de abajo es la mayor: ahi se apilan los controles de Reels y
+    # TikTok. Verde de marca y no crema: el crema alrededor de una foto de
+    # fondo oscuro la enmarca como una caja de television vieja.
+    arriba = 2 * round((H - alto) * 0.42 / 2)
+    partes = [f"scale={W}:{alto}:flags=lanczos"]
+    if medio:
+        partes.append(medio(alto))
+    partes.append(f"pad={W}:{H}:0:{arriba}:color={GREEN_BG}")
+    if titulo and arriba >= 150:
+        t = titulo.replace(":", r"\:").replace("'", "")
+        # Se apoya en el pie de la banda y encoge hasta librar la chapa del
+        # precio: su diagonal baja hacia la derecha, asi que cuanto mas
+        # abajo va el rotulo, mas sitio le queda.
+        lado = lado_chapa()
+        for fs in range(52, 29, -2):
+            y = arriba - fs - 26
+            limite = W if y >= lado else W - lado + y - 12
+            # 0.62 em es el avance medio de DejaVu Serif Bold; estimar basta,
+            # el margen de 12 px absorbe el error.
+            if W / 2 + 0.62 * fs * len(t) / 2 <= limite:
+                break
+        partes.append(f"drawtext=fontfile={SERIF_B}:text='{t}':"
+                      f"fontcolor={CREAM_HEX}:fontsize={fs}:x=(w-tw)/2:y={y}")
+    return ",".join(partes), arriba + alto
+
+
+def producto(img: Path, titulo: str, precio: float | None, dst: Path,
+             con_bandas: bool = False) -> int | None:
     t = titulo.replace(":", r"\:").replace("'", "")
     # El backslash escapa el $ para drawtext, no para el shell: aqui no hay shell.
     p = f"${precio:.2f}".replace("$", r"\$") if precio is not None else ""
     n = int(DUR * FPS)
+    if con_bandas:
+        # El montaje de disenos comparte marco con los anuncios de metraje:
+        # el nombre del diseno va en la banda de arriba y la de abajo queda
+        # libre para la franja de envio, que si no se solapa con el rotulo.
+        iw, ih, _ = sonda(img)
+        zoom = (lambda a: f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:"
+                          f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+                          f"s={W}x{a}:fps={FPS}")
+        encaje, pie = bandas(iw, ih, titulo, medio=zoom)
+        vf = (f"{encaje},fade=t=in:st=0:d=0.3:c={CREAM_HEX},"
+              f"fade=t=out:st={DUR-0.3:.2f}:d=0.3:c={CREAM_HEX}")
+        ff("-loop", "1", "-i", str(img), "-vf", vf, "-t", str(DUR),
+           "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+           "-r", str(FPS), str(dst))
+        return pie
     # En 9:16 las fotos de catalogo (casi cuadradas) perderian medio producto al
     # recortarlas, asi que se encajan enteras sobre fondo crema. En 4:5 el
     # recorte apenas quita nada y llena mejor el marco.
@@ -213,41 +280,8 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
     # Pedir mas metraje del que hay deja el fade de salida sin disparar y el
     # clip termina de golpe contra la tarjeta de cierre.
     dur = min(dur, max(0.5, total - start))
-    alto = 2 * round(W * ih / iw / 2)
-    pie = None
-    if alto < H:
-        # Metraje mas cuadrado que el marco: bandas en vez de un recorte que se
-        # comeria medio producto. Van en verde de marca, no en crema: el fondo
-        # de estas fotos es negro y el crema alrededor lo enmarcaba como una
-        # caja de television vieja. La banda de abajo es mayor porque ahi se
-        # apilan los controles de Reels y TikTok.
-        arriba = 2 * round((H - alto) * 0.42 / 2)
-        pie = arriba + alto
-        encaje = (f"scale={W}:{alto}:flags=lanczos,"
-                  f"pad={W}:{H}:0:{arriba}:color={GREEN_BG}")
-        # El nombre vive en la banda de arriba porque el feed se ve en silencio
-        # y la mayoria se va antes de la tarjeta de cierre.
-        if titulo and arriba >= 150:
-            t = titulo.replace(":", r"\:").replace("'", "")
-            # Se apoya en el pie de la banda y encoge hasta caber a la
-            # izquierda de la chapa del precio. La diagonal de la chapa baja
-            # hacia la derecha, asi que cuanto mas abajo va el nombre, mas
-            # sitio le queda; centrado en la banda se le metia encima.
-            lado = lado_chapa()
-            for fs in range(52, 29, -2):
-                y = arriba - fs - 26
-                limite = W if y >= lado else W - lado + y - 12
-                # 0.62 em es el avance medio de DejaVu Serif Bold. Estimar
-                # basta: el margen de 12 px absorbe el error.
-                if W / 2 + 0.62 * fs * len(t) / 2 <= limite:
-                    break
-            encaje += (f",drawtext=fontfile={SERIF_B}:text='{t}':"
-                       f"fontcolor={CREAM_HEX}:fontsize={fs}:x=(w-tw)/2:y={y}")
-    else:
-        encaje = (
-            f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
-            f"crop={W}:{H}"
-        )
+    encaje, pie = bandas(iw, ih, titulo)
+
     # Encadenando varios tramos, solo el primero entra desde crema y solo el
     # ultimo sale hacia el: fundir en cada corte mete destellos de crema en
     # mitad del cuerpo del anuncio.
@@ -403,6 +437,9 @@ def main() -> None:
                          "producto no se traducen: la web esta en ingles.")
     ap.add_argument("--video", help="Metraje real. Sustituye a los clips de "
                                     "catalogo: portada + video + cierre.")
+    ap.add_argument("--variantes", action="store_true",
+                    help="Un solo producto contado por sus disenos, sin "
+                         "metraje. Necesita --slug.")
     ap.add_argument("--slug", help="Producto del cierre cuando se usa --video.")
     ap.add_argument("--segments", help="Tramos del metraje, "
                                     "'inicio:duracion' separados por comas. "
@@ -418,14 +455,17 @@ def main() -> None:
 
     productos: list[dict] = []
     remate = None
-    if args.video:
+    pie = None
+    if args.video or args.variantes:
         if not args.slug:
-            raise SystemExit("--video necesita --slug para el cierre")
+            raise SystemExit("--video y --variantes necesitan --slug")
         with urllib.request.urlopen(
             f"{BASE}/api/products/by-slug/{args.slug}", timeout=30
         ) as r:
             info = json.load(r)
         remate = (info.get("title") or args.slug, float(info.get("price_usd") or 0))
+        if args.variantes:
+            productos, _ = variantes(args.slug)
     else:
         productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
         if not productos:
@@ -452,9 +492,15 @@ def main() -> None:
             for i, p in enumerate(productos, start=1):
                 img = tmp / f"{i}.jpg"
                 urllib.request.urlretrieve(p["url"], img)
-                producto(img, p["title"], p["price"], clips / f"{i:02d}.mp4")
-                print(f"  {i:02d} {p['title']:<34} ${p['price']:.2f}")
-            cierre(clips / "99.mp4")
+                pie = producto(img, p["title"], p["price"],
+                               clips / f"{i:02d}.mp4", con_bandas=args.variantes)
+                precio = f"${p['price']:.2f}" if p["price"] is not None else "—"
+                print(f"  {i:02d} {p['title']:<34} {precio}")
+            if remate:
+                cierre_producto(clips / "99.mp4", remate[0], remate[1])
+                print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
+            else:
+                cierre(clips / "99.mp4")
 
         lista = tmp / "list.txt"
         lista.write_text(
