@@ -158,7 +158,8 @@ def bandas(iw: int, ih: int, titulo: str | None,
     `pie` es la Y donde acaba la imagen: ahi se apoya la franja de envio.
     Es None cuando la imagen llena el cuadro y no hay banda.
 
-    `medio` recibe el alto del encaje y devuelve filtros a insertar ANTES
+    `medio` recibe el ancho y el alto del encaje y devuelve filtros a insertar
+    ANTES
     del relleno. El zoom va ahi: aplicado despues, ampliaria tambien las
     bandas y se comeria el rotulo.
     """
@@ -167,17 +168,27 @@ def bandas(iw: int, ih: int, titulo: str | None,
         partes = [f"scale={W}:{H}:force_original_aspect_ratio=increase:"
                   f"flags=lanczos", f"crop={W}:{H}"]
         if medio:
-            partes.append(medio(H))
+            partes.append(medio(W, H))
         return ",".join(partes), None
+
+    # Una banda por debajo de ~170 px no se lee como parte del diseno sino
+    # como un borde mal cortado: en 4:5 una foto cuadrada deja 113. Cuando no
+    # llega, la imagen se encoge hasta que las bandas tengan cuerpo y queda
+    # encuadrada como una lamina sobre el verde. A 9:16 no se activa nunca.
+    MINIMA = 170
+    ancho = W
+    if (H - alto) * 0.42 < MINIMA:
+        alto = 2 * round(min(alto, H - MINIMA / 0.42) / 2)
+        ancho = 2 * round(alto * iw / ih / 2)
 
     # La banda de abajo es la mayor: ahi se apilan los controles de Reels y
     # TikTok. Verde de marca y no crema: el crema alrededor de una foto de
     # fondo oscuro la enmarca como una caja de television vieja.
     arriba = 2 * round((H - alto) * 0.42 / 2)
-    partes = [f"scale={W}:{alto}:flags=lanczos"]
+    partes = [f"scale={ancho}:{alto}:flags=lanczos"]
     if medio:
-        partes.append(medio(alto))
-    partes.append(f"pad={W}:{H}:0:{arriba}:color={GREEN_BG}")
+        partes.append(medio(ancho, alto))
+    partes.append(f"pad={W}:{H}:{(W - ancho) // 2}:{arriba}:color={GREEN_BG}")
     if titulo and arriba >= 150:
         t = titulo.replace(":", r"\:").replace("'", "")
         # Se apoya en el pie de la banda y encoge hasta librar la chapa del
@@ -207,9 +218,9 @@ def producto(img: Path, titulo: str, precio: float | None, dst: Path,
         # el nombre del diseno va en la banda de arriba y la de abajo queda
         # libre para la franja de envio, que si no se solapa con el rotulo.
         iw, ih, _ = sonda(img)
-        zoom = (lambda a: f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:"
-                          f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-                          f"s={W}x{a}:fps={FPS}")
+        zoom = (lambda an, al: f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:"
+                               f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+                               f"s={an}x{al}:fps={FPS}")
         encaje, pie = bandas(iw, ih, titulo, medio=zoom)
         vf = (f"{encaje},fade=t=in:st=0:d=0.3:c={CREAM_HEX},"
               f"fade=t=out:st={DUR-0.3:.2f}:d=0.3:c={CREAM_HEX}")
@@ -440,6 +451,12 @@ def main() -> None:
     ap.add_argument("--variantes", action="store_true",
                     help="Un solo producto contado por sus disenos, sin "
                          "metraje. Necesita --slug.")
+    ap.add_argument("--disenos", help="Cuales de los disenos usar, por "
+                                      "posicion y separados por comas "
+                                      "(--disenos 1,2,5,6). Por defecto "
+                                      "todos. Ocho variantes son veinte "
+                                      "segundos de montaje, y algunas fotos "
+                                      "de proveedor no se pueden ensenar.")
     ap.add_argument("--slug", help="Producto del cierre cuando se usa --video.")
     ap.add_argument("--segments", help="Tramos del metraje, "
                                     "'inicio:duracion' separados por comas. "
@@ -466,6 +483,14 @@ def main() -> None:
         remate = (info.get("title") or args.slug, float(info.get("price_usd") or 0))
         if args.variantes:
             productos, _ = variantes(args.slug)
+            if args.disenos:
+                elegidos = [int(x) for x in args.disenos.split(",") if x.strip()]
+                fuera = [i for i in elegidos if not 1 <= i <= len(productos)]
+                if fuera:
+                    raise SystemExit(
+                        f"--disenos {fuera} fuera de rango: hay "
+                        f"{len(productos)} disenos")
+                productos = [productos[i - 1] for i in elegidos]
     else:
         productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
         if not productos:
