@@ -66,6 +66,9 @@ GREEN = "0x1B3728"
 GOLD = "0xA97C22"
 GOLD_LIGHT = "0xE2C47C"
 GREEN_BG = "#1B3728"
+# Por debajo de esto una banda no se lee como parte del diseno sino como
+# un borde mal cortado.
+BANDA_MINIMA = 170
 
 FONTS = Path("/usr/share/fonts/truetype/dejavu")
 SERIF = FONTS / "DejaVuSerif.ttf"
@@ -151,8 +154,15 @@ def portada(dst: Path) -> None:
        "-pix_fmt", "yuv420p", "-r", str(FPS), str(dst))
 
 
+def caja_montaje() -> tuple[int, int]:
+    """Hueco comun para las fotos de un montaje: cuadrado y lo mayor posible
+    sin dejar las bandas por debajo del minimo legible."""
+    lado = 2 * round(min(W, H - BANDA_MINIMA / 0.42) / 2)
+    return lado, lado
+
+
 def bandas(iw: int, ih: int, titulo: str | None,
-           medio=None) -> tuple[str, int | None]:
+           medio=None, caja: tuple[int, int] | None = None) -> tuple[str, int | None]:
     """Encaje en bandas verdes con el rotulo arriba. Devuelve (filtro, pie).
 
     `pie` es la Y donde acaba la imagen: ahi se apoya la franja de envio.
@@ -163,31 +173,40 @@ def bandas(iw: int, ih: int, titulo: str | None,
     del relleno. El zoom va ahi: aplicado despues, ampliaria tambien las
     bandas y se comeria el rotulo.
     """
-    alto = 2 * round(W * ih / iw / 2)
-    if alto >= H:
-        partes = [f"scale={W}:{H}:force_original_aspect_ratio=increase:"
-                  f"flags=lanczos", f"crop={W}:{H}"]
+    if caja:
+        # Hueco fijo: la foto se encaja dentro y lo que sobra se rellena de
+        # verde, asi que el rotulo y el precio no se mueven entre cortes.
+        ancho, alto = caja
+        partes = [f"scale={ancho}:{alto}:force_original_aspect_ratio=decrease:"
+                  f"flags=lanczos",
+                  f"pad={ancho}:{alto}:(ow-iw)/2:(oh-ih)/2:color={GREEN_BG}"]
         if medio:
-            partes.append(medio(W, H))
-        return ",".join(partes), None
+            partes.append(medio(ancho, alto))
+    else:
+        alto = 2 * round(W * ih / iw / 2)
+        if alto >= H:
+            partes = [f"scale={W}:{H}:force_original_aspect_ratio=increase:"
+                      f"flags=lanczos", f"crop={W}:{H}"]
+            if medio:
+                partes.append(medio(W, H))
+            return ",".join(partes), None
 
-    # Una banda por debajo de ~170 px no se lee como parte del diseno sino
-    # como un borde mal cortado: en 4:5 una foto cuadrada deja 113. Cuando no
-    # llega, la imagen se encoge hasta que las bandas tengan cuerpo y queda
-    # encuadrada como una lamina sobre el verde. A 9:16 no se activa nunca.
-    MINIMA = 170
-    ancho = W
-    if (H - alto) * 0.42 < MINIMA:
-        alto = 2 * round(min(alto, H - MINIMA / 0.42) / 2)
-        ancho = 2 * round(alto * iw / ih / 2)
+        # En 4:5 una foto cuadrada al ancho completo deja 113 px de banda.
+        # Cuando no llega al minimo, la imagen se encoge hasta que las bandas
+        # tengan cuerpo y queda encuadrada como una lamina sobre el verde.
+        # A 9:16 no se activa nunca.
+        ancho = W
+        if (H - alto) * 0.42 < BANDA_MINIMA:
+            alto = 2 * round(min(alto, H - BANDA_MINIMA / 0.42) / 2)
+            ancho = 2 * round(alto * iw / ih / 2)
+        partes = [f"scale={ancho}:{alto}:flags=lanczos"]
+        if medio:
+            partes.append(medio(ancho, alto))
 
     # La banda de abajo es la mayor: ahi se apilan los controles de Reels y
     # TikTok. Verde de marca y no crema: el crema alrededor de una foto de
     # fondo oscuro la enmarca como una caja de television vieja.
     arriba = 2 * round((H - alto) * 0.42 / 2)
-    partes = [f"scale={ancho}:{alto}:flags=lanczos"]
-    if medio:
-        partes.append(medio(ancho, alto))
     partes.append(f"pad={W}:{H}:{(W - ancho) // 2}:{arriba}:color={GREEN_BG}")
     if titulo and arriba >= 150:
         t = titulo.replace(":", r"\:").replace("'", "")
@@ -221,7 +240,17 @@ def producto(img: Path, titulo: str, precio: float | None, dst: Path,
         zoom = (lambda an, al: f"zoompan=z='min(zoom+0.0012,1.16)':d={n}:"
                                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
                                f"s={an}x{al}:fps={FPS}")
-        encaje, pie = bandas(iw, ih, titulo, medio=zoom)
+        encaje, pie = bandas(iw, ih, titulo, medio=zoom,
+                             caja=caja_montaje())
+        # En el montaje de catalogo cada producto trae su precio, y la banda
+        # de abajo esta vacia: ahi va, justo debajo de su foto. En el de
+        # disenos no hay precio por clip y la banda se queda limpia.
+        if precio is not None and pie is not None:
+            fs = 2 * round(min(72, (H - pie) * 0.30) / 2)
+            pr = f"${precio:.2f}".replace("$", r"\$")
+            encaje += (f",drawtext=fontfile={SANS_B}:text='{pr}':"
+                       f"fontcolor={GOLD_LIGHT}:fontsize={fs}:x=(w-tw)/2:"
+                       f"y={pie + 30}")
         vf = (f"{encaje},fade=t=in:st=0:d=0.3:c={CREAM_HEX},"
               f"fade=t=out:st={DUR-0.3:.2f}:d=0.3:c={CREAM_HEX}")
         ff("-loop", "1", "-i", str(img), "-vf", vf, "-t", str(DUR),
@@ -276,7 +305,14 @@ def sonda(src: Path) -> tuple[int, int, float]:
         capture_output=True, text=True, check=True,
     ).stdout.split()
     w, h = (int(x) for x in out[0].split(",")[:2])
-    return w, h, float(out[1])
+    # Una imagen fija no tiene duracion y ffprobe devuelve "N/A". Vale 0: a
+    # sonda() se le piden las medidas tanto para metraje como para fotos, y
+    # solo el metraje mira la duracion.
+    try:
+        dur = float(out[1])
+    except (IndexError, ValueError):
+        dur = 0.0
+    return w, h, dur
 
 
 def metraje(src: Path, dst: Path, *, start: float, dur: float,
@@ -518,7 +554,7 @@ def main() -> None:
                 img = tmp / f"{i}.jpg"
                 urllib.request.urlretrieve(p["url"], img)
                 pie = producto(img, p["title"], p["price"],
-                               clips / f"{i:02d}.mp4", con_bandas=args.variantes)
+                               clips / f"{i:02d}.mp4", con_bandas=True)
                 precio = f"${p['price']:.2f}" if p["price"] is not None else "—"
                 print(f"  {i:02d} {p['title']:<34} {precio}")
             if remate:
