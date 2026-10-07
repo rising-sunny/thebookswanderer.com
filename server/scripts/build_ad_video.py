@@ -112,8 +112,9 @@ def variantes(slug: str) -> tuple[list[dict], str]:
     """One product's designs as separate clips.
 
     A single-product ad has nothing to cut between, so the colourways carry
-    the montage: the label under each frame is the design, not the price,
-    which appears once at the end instead of on every frame.
+    the montage: the label over each frame is the design. The price rides
+    along per variant because a catalogue that charges more for one colour
+    cannot be summed up by a single figure on a corner tab.
     """
     with urllib.request.urlopen(f"{BASE}/api/products/by-slug/{slug}", timeout=30) as r:
         p = json.load(r)
@@ -130,7 +131,9 @@ def variantes(slug: str) -> tuple[list[dict], str]:
         if url in vistas:
             continue
         vistas.add(url)
-        salida.append({"title": v.get("name") or "", "price": None, "url": url})
+        salida.append({"title": v.get("name") or "",
+                       "price": float(v.get("price_usd") or 0) or None,
+                       "url": url})
     if not salida:
         raise SystemExit(f"{slug} has no variant images")
     return salida, p.get("title") or slug
@@ -161,8 +164,9 @@ def caja_montaje() -> tuple[int, int]:
     return lado, lado
 
 
-def bandas(iw: int, ih: int, titulo: str | None,
-           medio=None, caja: tuple[int, int] | None = None) -> tuple[str, int | None]:
+def bandas(iw: int, ih: int, titulo: str | None, medio=None,
+           caja: tuple[int, int] | None = None,
+           precio: float | None = None) -> tuple[str, int | None]:
     """Encaje en bandas verdes con el rotulo arriba. Devuelve (filtro, pie).
 
     `pie` es la Y donde acaba la imagen: ahi se apoya la franja de envio.
@@ -223,6 +227,14 @@ def bandas(iw: int, ih: int, titulo: str | None,
                 break
         partes.append(f"drawtext=fontfile={SERIF_B}:text='{t}':"
                       f"fontcolor={CREAM_HEX}:fontsize={fs}:x=(w-tw)/2:y={y}")
+        # El precio va encima del nombre, no bajo la foto: ahi lo tapa la
+        # franja de envio, que se dibuja despues y sobre el video entero.
+        if precio is not None:
+            fp = 2 * round(min(52, fs) / 2)
+            partes.append(f"drawtext=fontfile={SANS_B}:"
+                          f"text='{f'${precio:.2f}'.replace('$', chr(92) + '$')}':"
+                          f"fontcolor={GOLD_LIGHT}:fontsize={fp}:x=(w-tw)/2:"
+                          f"y={y - fp - 14}")
     return ",".join(partes), arriba + alto
 
 
@@ -241,16 +253,7 @@ def producto(img: Path, titulo: str, precio: float | None, dst: Path,
                                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
                                f"s={an}x{al}:fps={FPS}")
         encaje, pie = bandas(iw, ih, titulo, medio=zoom,
-                             caja=caja_montaje())
-        # En el montaje de catalogo cada producto trae su precio, y la banda
-        # de abajo esta vacia: ahi va, justo debajo de su foto. En el de
-        # disenos no hay precio por clip y la banda se queda limpia.
-        if precio is not None and pie is not None:
-            fs = 2 * round(min(72, (H - pie) * 0.30) / 2)
-            pr = f"${precio:.2f}".replace("$", r"\$")
-            encaje += (f",drawtext=fontfile={SANS_B}:text='{pr}':"
-                       f"fontcolor={GOLD_LIGHT}:fontsize={fs}:x=(w-tw)/2:"
-                       f"y={pie + 30}")
+                             caja=caja_montaje(), precio=precio)
         vf = (f"{encaje},fade=t=in:st=0:d=0.3:c={CREAM_HEX},"
               f"fade=t=out:st={DUR-0.3:.2f}:d=0.3:c={CREAM_HEX}")
         ff("-loop", "1", "-i", str(img), "-vf", vf, "-t", str(DUR),
@@ -344,14 +347,23 @@ def metraje(src: Path, dst: Path, *, start: float, dur: float,
     return dur, pie
 
 
-def cierre_producto(dst: Path, titulo: str, precio: float) -> None:
+def cierre_producto(dst: Path, titulo: str, precio: float,
+                    desde: bool = False) -> None:
     """Closing card for a single-product ad: name, price, free shipping, URL."""
     c = H // 2
     t = titulo.replace(":", r"\:").replace("'", "")
+    # "From" cuando las variantes no cuestan lo mismo: la cifra suelta seria
+    # cierta solo para la mas barata.
     p = f"${precio:.2f}".replace("$", r"\$")
+    if desde:
+        p = "From " + p
+    # "Antique-Finish Animal Bookends" a 64 px se sale por los dos lados.
+    # 0.60 em es el avance medio de DejaVu Serif Bold; el margen de 40 px
+    # por lado absorbe el error de la estimacion.
+    ft = next((f for f in range(64, 33, -2) if 0.60 * f * len(t) <= W - 80), 34)
     vf = (
         f"drawtext=fontfile={SERIF_B}:text='{t}':fontcolor={GREEN}:"
-        f"fontsize=64:x=(w-tw)/2:y={c-175},"
+        f"fontsize={ft}:x=(w-tw)/2:y={c-175+(64-ft)//2},"
         f"drawtext=fontfile={SANS_B}:text='{p}':fontcolor={GOLD}:"
         f"fontsize=92:x=(w-tw)/2:y={c-75},"
         f"drawbox=x=(iw-180)/2:y={c+50}:w=180:h=4:color={GOLD}@0.9:t=fill,"
@@ -509,6 +521,7 @@ def main() -> None:
     productos: list[dict] = []
     remate = None
     pie = None
+    precios_varian = False
     if args.video or args.variantes:
         if not args.slug:
             raise SystemExit("--video y --variantes necesitan --slug")
@@ -527,6 +540,7 @@ def main() -> None:
                         f"--disenos {fuera} fuera de rango: hay "
                         f"{len(productos)} disenos")
                 productos = [productos[i - 1] for i in elegidos]
+            precios_varian = len({p["price"] for p in productos}) > 1
     else:
         productos = catalogo([s.strip() for s in args.slugs.split(",") if s.strip()])
         if not productos:
@@ -553,13 +567,20 @@ def main() -> None:
             for i, p in enumerate(productos, start=1):
                 img = tmp / f"{i}.jpg"
                 urllib.request.urlretrieve(p["url"], img)
-                pie = producto(img, p["title"], p["price"],
+                # El precio por clip solo cuando no hay chapa que lo
+                # diga: en catalogo nunca la hay, y en variantes solo
+                # desaparece si los precios difieren. Con ambos, la misma
+                # cifra sale dos veces en el mismo cuadro.
+                suyo = p["price"] if (remate is None or precios_varian) else None
+                pie = producto(img, p["title"], suyo,
                                clips / f"{i:02d}.mp4", con_bandas=True)
                 precio = f"${p['price']:.2f}" if p["price"] is not None else "—"
                 print(f"  {i:02d} {p['title']:<34} {precio}")
             if remate:
-                cierre_producto(clips / "99.mp4", remate[0], remate[1])
-                print(f"  cierre  {remate[0]} ${remate[1]:.2f}")
+                cierre_producto(clips / "99.mp4", remate[0], remate[1],
+                                desde=precios_varian)
+                print(f"  cierre  {remate[0]} "
+                      f"{'desde ' if precios_varian else ''}${remate[1]:.2f}")
             else:
                 cierre(clips / "99.mp4")
 
@@ -571,12 +592,19 @@ def main() -> None:
                   "-pix_fmt", "yuv420p", "-movflags", "+faststart",
                   "-r", str(FPS), args.out]
         if remate:
-            chapa = tmp / "chapa.png"
-            lado = esquina_precio(remate[1], chapa)
-            ff("-f", "concat", "-safe", "0", "-i", str(lista), "-i", str(chapa),
-               "-filter_complex",
-               f"[0:v][1:v]overlay=x=main_w-{lado}:y=0,{franja_envio(pie)}",
-               *salida)
+            # La chapa solo cabe cuando hay UN precio. Con variantes a
+            # distinto precio cada clip lleva el suyo bajo su foto y la
+            # esquina se queda vacia: una cifra fija ahi seria falsa en
+            # cuanto aparece la variante cara.
+            entradas, filtros = [], []
+            if not precios_varian:
+                chapa = tmp / "chapa.png"
+                lado = esquina_precio(remate[1], chapa)
+                entradas = ["-i", str(chapa)]
+                filtros.append(f"[0:v][1:v]overlay=x=main_w-{lado}:y=0")
+            filtros.append(franja_envio(pie))
+            ff("-f", "concat", "-safe", "0", "-i", str(lista), *entradas,
+               "-filter_complex", ",".join(filtros), *salida)
         else:
             # En modo catalogo cada producto lleva su precio en su rotulo; una
             # sola cifra fija en la esquina mentiria sobre cinco de los seis.
