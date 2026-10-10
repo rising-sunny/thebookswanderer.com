@@ -1,0 +1,53 @@
+# Run one of server/scripts/*.py on the VPS (as www-data, with the live .env).
+# Deploy first: this runs the copy already on the server, not the branch.
+name: Run server script
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "Script in server/scripts, e.g. import_christmas_gifts.py"
+        required: true
+      args:
+        description: "Arguments, e.g. --dry-run"
+        required: false
+        default: ""
+
+concurrency:
+  group: run-script-vps
+  cancel-in-progress: false
+
+env:
+  VPS_HOST: root@5.78.125.169
+  REMOTE: /var/www/thebookswanderer.com
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate input
+        env:
+          SCRIPT: ${{ inputs.script }}
+        run: |
+          [[ "$SCRIPT" =~ ^[a-z0-9_]+\.py$ ]] || { echo "invalid script name"; exit 1; }
+          [ -f "server/scripts/$SCRIPT" ] || { echo "no such script in the repo"; exit 1; }
+
+      - name: SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: bash deploy/ci-ssh-setup.sh
+
+      - name: Run
+        env:
+          SCRIPT: ${{ inputs.script }}
+          ARGS: ${{ inputs.args }}
+        run: |
+          read -ra argv <<< "$ARGS"
+          cmd=$(printf '%q' "scripts/$SCRIPT")
+          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
+          ssh -o BatchMode=yes "$VPS_HOST" \
+            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
