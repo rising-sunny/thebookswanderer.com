@@ -1006,7 +1006,7 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG)
     shipping_total = float(quote["shipping_total"])
     grand_total = round(product_total + shipping_total, 2)
-    logistic_name = body.logistic_name or quote.get("logistic_name") or "CJPacket"
+    logistic_name = quote.get("logistic_name") or "CJPacket"
 
     order = Order(
         status="awaiting_payment",
@@ -1092,30 +1092,78 @@ async def checkout_return(
     if not order:
         raise HTTPException(404, "Order not found")
 
-    paypal_id = token or order.paypal_order_id
+    paypal_id = order.paypal_order_id
     if not paypal_id:
-        raise HTTPException(400, "Missing PayPal token")
+        raise HTTPException(400, "Missing PayPal order")
+    if not token or token != paypal_id:
+        raise HTTPException(400, "PayPal token does not match this order")
 
-    if order.status in ("paid", "cj_submitted", "fulfilled"):
+    if order.status in ("cj_submitted", "fulfilled", "shipped"):
         return _checkout_redirect("already_paid", order.id)
+    if order.status in ("paid", "cj_submitting", "cj_review"):
+        return _checkout_redirect("paid_cj_pending", order.id)
 
+    from decimal import Decimal, InvalidOperation
+
+    def valid_amount(amount):
+        try:
+            expected = Decimal(f"{order.grand_total:.2f}")
+            actual = Decimal(str(amount.get("value", "")))
+            return (
+                expected.is_finite()
+                and expected > 0
+                and actual.is_finite()
+                and actual == expected
+                and amount.get("currency_code") == "USD"
+            )
+        except (InvalidOperation, ValueError, TypeError, AttributeError):
+            return False
+
+    # Validate the stored PayPal order before attempting a charge.
     try:
-        capture = await paypal_service.capture_order(paypal_id)
-    except paypal_service.PayPalError as exc:
-        order.notes = f"capture failed: {exc}"[:500]
-        db.commit()
+        paypal_order = await paypal_service.get_order(paypal_id)
+    except Exception:
+        log.exception("PayPal verification failed for order %s", order.id)
         return _checkout_redirect("payment_error", order.id)
 
-    status = (capture.get("status") or "").upper()
-    if status not in ("COMPLETED", "APPROVED"):
-        # capture payload may nest status
-        pu = (capture.get("purchase_units") or [{}])[0]
-        captures = ((pu.get("payments") or {}).get("captures") or [{}])
-        cap_status = (captures[0].get("status") if captures else "") or ""
-        if cap_status.upper() != "COMPLETED" and status != "COMPLETED":
-            order.notes = f"PayPal status={status}"
-            db.commit()
-            return _checkout_redirect("payment_incomplete", order.id)
+    units = paypal_order.get("purchase_units") or []
+    if (
+        paypal_order.get("id") != paypal_id
+        or len(units) != 1
+        or units[0].get("reference_id") != str(order.id)
+        or units[0].get("custom_id") != f"tbw:{order.id}"
+        or not valid_amount(units[0].get("amount") or {})
+    ):
+        order.notes = "PayPal order reference or amount mismatch"
+        db.commit()
+        raise HTTPException(400, "Payment verification failed")
+
+    # Recover a capture already completed if an earlier response was lost.
+    if paypal_order.get("status") == "COMPLETED":
+        capture = paypal_order
+    else:
+        try:
+            capture = await paypal_service.capture_order(paypal_id)
+        except Exception:
+            log.exception("PayPal capture failed for order %s", order.id)
+            return _checkout_redirect("payment_error", order.id)
+
+    captured_units = capture.get("purchase_units") or []
+    captures = (
+        (captured_units[0].get("payments") or {}).get("captures") or []
+        if len(captured_units) == 1 else []
+    )
+    if (
+        capture.get("id") != paypal_id
+        or capture.get("status") != "COMPLETED"
+        or len(captures) != 1
+        or captures[0].get("status") != "COMPLETED"
+        or not captures[0].get("id")
+        or not valid_amount(captures[0].get("amount") or {})
+    ):
+        order.notes = "PayPal capture not completed or amount mismatch"
+        db.commit()
+        return _checkout_redirect("payment_incomplete", order.id)
 
     order.status = "paid"
     order.paypal_order_id = paypal_id
@@ -1180,7 +1228,10 @@ async def checkout_return(
         await _submit_to_cj(order, db)
     except Exception as exc:  # noqa: BLE001
         order.notes = f"paid but CJ submit failed: {exc}"[:800]
-        order.status = "paid"  # keep paid; manual retry later
+        # An uncertain CJ response must not trigger a blind resubmission.
+        db.refresh(order)
+        if order.status == "cj_submitting":
+            order.status = "cj_review"
         db.commit()
         return _checkout_redirect("paid_cj_pending", order.id)
 
@@ -1242,8 +1293,25 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
         if not p.get("sku"):
             p.pop("sku", None)
 
+    # Atomically claim this order before the external request.
+    claimed = (
+        db.query(Order)
+        .filter(Order.id == order.id, Order.status == "paid")
+        .update(
+            {"status": "cj_submitting"},
+            synchronize_session=False,
+        )
+    )
+    if claimed != 1:
+        db.rollback()
+        raise RuntimeError("Order already claimed or not ready for CJ")
+    db.commit()
+    db.refresh(order)
+
     result = await cj_service.create_order(payload)
-    order.cj_order_id = str(result.get("orderId") or "")
+    if not isinstance(result, dict) or not result.get("orderId"):
+        raise RuntimeError("CJ response missing orderId; reconciliation required")
+    order.cj_order_id = str(result["orderId"])
     order.cj_order_number = str(result.get("orderNumber") or payload["orderNumber"])
     order.status = "cj_submitted"
     db.commit()
