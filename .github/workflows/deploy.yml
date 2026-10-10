@@ -1,0 +1,72 @@
+# Deploy static site + API to the VPS — same steps as deploy/deploy.ps1.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+env:
+  VPS_HOST: root@5.78.125.169
+  REMOTE: /var/www/thebookswanderer.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: bash deploy/ci-ssh-setup.sh
+
+      - name: Directories
+        run: ssh -o BatchMode=yes "$VPS_HOST" "mkdir -p $REMOTE/assets/products $REMOTE/server/services $REMOTE/server/routers $REMOTE/server/templates $REMOTE/server/scripts $REMOTE/server/data $REMOTE/deploy"
+
+      - name: Static
+        run: |
+          scp -o BatchMode=yes \
+            index.html styles.css app.js product.html product.js cart.html cart.js \
+            checkout.html checkout.js affiliate-data.js pick.html pick.js about.html \
+            contact.html privacy.html shipping-returns.html robots.txt sitemap.xml \
+            affiliate-products.json track.js googleca903f9ea8fb8e9e.html \
+            "$VPS_HOST:$REMOTE/"
+          for f in logo.png logo.webp logo-hero.webp logo-email.png og-default.jpg \
+                   favicon.ico favicon-32.png favicon-48.png apple-touch-icon.png; do
+            if [ -f "assets/$f" ]; then
+              scp -o BatchMode=yes "assets/$f" "$VPS_HOST:$REMOTE/assets/"
+            fi
+          done
+          if [ -d assets/products ]; then
+            scp -o BatchMode=yes -r assets/products/. "$VPS_HOST:$REMOTE/assets/products/"
+          fi
+
+      - name: Server
+        working-directory: server
+        run: |
+          scp -o BatchMode=yes main.py database.py models.py requirements.txt .env.example \
+            ssr.py urls.py live.py "$VPS_HOST:$REMOTE/server/"
+          scp -o BatchMode=yes \
+            services/__init__.py services/cj.py services/paypal.py services/pricing.py \
+            services/categories.py services/email.py services/meta_capi.py services/health.py \
+            services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
+            "$VPS_HOST:$REMOTE/server/services/"
+          scp -o BatchMode=yes routers/__init__.py routers/pinterest.py "$VPS_HOST:$REMOTE/server/routers/"
+          scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"
+          scp -o BatchMode=yes scripts/*.py "$VPS_HOST:$REMOTE/server/scripts/"
+
+      - name: Setup on VPS
+        run: |
+          scp -o BatchMode=yes deploy/thebookswanderer.service "$VPS_HOST:/etc/systemd/system/thebookswanderer.service"
+          scp -o BatchMode=yes deploy/remote-setup.sh "$VPS_HOST:$REMOTE/deploy/remote-setup.sh"
+          ssh -o BatchMode=yes "$VPS_HOST" "sed -i 's/\r\$//' $REMOTE/deploy/remote-setup.sh; bash $REMOTE/deploy/remote-setup.sh"
+
+      - name: Health
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://thebookswanderer.com/api/health
