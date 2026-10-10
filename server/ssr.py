@@ -1404,6 +1404,33 @@ def _affiliate_card_html(p: dict[str, Any], *, paid_label: str = "paid link") ->
 </article>"""
 
 
+# Christmas shelf on the home page, in display order. The section is
+# dropped from the page when none of these are live.
+CHRISTMAS_SLUGS = (
+    "twilight-library-book-nook-kit",
+    "book-lovers-advent-calendar",
+    "book-tree-christmas-ornament",
+    "bookshelf-lantern-light",
+    "baker-street-book-nook-kit",
+    "heart-bookshelf-ornament",
+    "christmas-magnetic-bookmarks",
+    "reading-log-bookmarks",
+)
+
+
+def _inject_christmas_shelf(html_doc: str, products: list[dict[str, Any]]) -> str:
+    start, end = "<!-- christmas:start -->", "<!-- christmas:end -->"
+    if start not in html_doc:
+        return html_doc
+    by_slug = {p.get("slug"): p for p in products}
+    gifts = [by_slug[s] for s in CHRISTMAS_SLUGS if s in by_slug]
+    if not gifts:
+        head, _, rest = html_doc.partition(start)
+        return head + rest.partition(end)[2]
+    cards = "\n".join(_product_card_html(p) for p in gifts)
+    return html_doc.replace("<!-- christmas-gifts -->", cards, 1)
+
+
 def inject_home_seo(
     html_doc: str,
     *,
@@ -1425,6 +1452,7 @@ def inject_home_seo(
         f"</script>"
     )
 
+    html_doc = _inject_christmas_shelf(html_doc, products)
     if prod_html:
         html_doc = html_doc.replace(
             '<p class="catalog-loading" id="catalogLoading">Loading products…</p>',
