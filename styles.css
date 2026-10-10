@@ -279,6 +279,27 @@ button {
     text-align: center;
 }
 
+.announcement--festive {
+    background: linear-gradient(90deg, #6e1f22, var(--green-900) 45%, var(--green-900) 55%, #6e1f22);
+}
+
+.announcement__flake {
+    flex: none;
+    color: var(--gold-300);
+}
+
+.announcement__link {
+    margin-left: var(--sp-2);
+    color: var(--cream-50);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.announcement__link:hover {
+    color: var(--gold-300);
+}
+
 .announcement strong {
     color: var(--gold-300);
     font-weight: 700;
