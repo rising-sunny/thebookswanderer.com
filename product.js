@@ -48,6 +48,9 @@
 
     let product = null;
     let selectedVariantId = null;
+    // Until someone picks a design the stage shows the product's own hero
+    // photo; the default variant's picture is often just the packaging.
+    let variantChosen = false;
     let addQty = 1; // qty to add for the currently selected variant
     let destinations = [];
     let selectedCountry = "";
@@ -178,6 +181,7 @@
 
     function stageMain() {
         const v = selectedVariant();
+        if (!variantChosen && product.image_url) return product.image_url;
         return v?.image_url || product.image_url || "";
     }
 
@@ -696,6 +700,7 @@
         root.querySelectorAll(".pdp__variant[data-variant-id]").forEach((btn) => {
             btn.addEventListener("click", () => {
                 selectedVariantId = Number(btn.getAttribute("data-variant-id"));
+                variantChosen = true;
                 addQty = 1;
                 shippingQuote = null;
                 shippingStatus = selectedCountry ? "loading" : "idle";
@@ -782,6 +787,7 @@
             const wanted = Number(params.get("variant"));
             if (wanted && (product.variants || []).some((v) => v.id === wanted)) {
                 selectedVariantId = wanted;
+                variantChosen = true;
             }
             try {
                 if (window.tbwTrack) {
