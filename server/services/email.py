@@ -49,6 +49,12 @@ def _notify_owner() -> list[str]:
     return [p.strip() for p in raw.split(",") if p.strip()]
 
 
+def _alert_to() -> list[str]:
+    """Where shop activity alerts go (add to cart, checkout, paid order)."""
+    raw = _env("MAIL_ALERT_TO", "hello@thebookswanderer.com")
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
 def _money(n: Any) -> str:
     try:
         return f"${float(n):.2f} USD"
@@ -383,7 +389,7 @@ We'll email you again when your package is on its way.
     ok = await send_email(to=email, subject=subject, text=text, html=html)
 
     # Owner notification (always separate from customer mail)
-    owners = _notify_owner()
+    owners = list(dict.fromkeys(_notify_owner() + _alert_to()))
     if owners:
         phone = getattr(order, "phone", "") or "—"
         country = getattr(order, "shipping_country", "") or "—"
@@ -658,3 +664,50 @@ Finish your order anytime:
     )
     return await send_email(to=email, subject=subject, text=text, html=html,
                             headers=headers)
+
+
+async def send_shop_alert(
+    kind: str,
+    *,
+    product: str = "",
+    value: Any = None,
+    place: str = "",
+    source: str = "",
+    path: str = "",
+    detail: str = "",
+) -> bool:
+    """Short heads-up to the shop inbox when someone adds to cart or opens checkout."""
+    to = _alert_to()
+    if not to:
+        return False
+    label = {"add_to_cart": "Added to cart", "checkout_start": "Checkout started"}.get(kind, kind)
+    what = product or "cart"
+    amount = _money(value) if value not in (None, "") else ""
+    subject = f"🛒 {label}: {what}" + (f" · {amount}" if amount else "")
+    base = _public_base()
+    rows = [
+        ("Event", label),
+        ("Product", product or "—"),
+        ("Value", amount or "—"),
+        ("Where", place or "—"),
+        ("Source", source or "—"),
+        ("Page", path or "—"),
+    ]
+    if detail:
+        rows.append(("Detail", detail))
+    text = "\n".join(f"{k}: {v}" for k, v in rows) + f"\n\nLive view: {base}/admin/live"
+    html = _wrap_html(
+        preheader=f"{label} — {what}",
+        eyebrow="Shop activity",
+        body_html=(
+            '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:15px;line-height:1.6">'
+            + "".join(
+                f'<tr><td style="padding:4px 12px 4px 0;color:#6b6b6b;white-space:nowrap">{_esc(k)}</td>'
+                f'<td style="padding:4px 0">{_esc(v)}</td></tr>'
+                for k, v in rows
+            )
+            + "</table>"
+            + f'<p style="margin:24px 0 0;text-align:center">{_btn(base + "/admin/live", "Open live view")}</p>'
+        ),
+    )
+    return await send_email(to=to, subject=subject, text=text, html=html)

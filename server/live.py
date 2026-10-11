@@ -272,7 +272,52 @@ async def track(request: Request, db: Session = Depends(get_db)):
     db.add(ev)
     db.commit()
 
+    if payload.type in _ALERT_EVENTS:
+        _queue_alert(payload, ev)
+
     return {"ok": True}
+
+
+# ── Email alerts for cart / checkout ──────────────────────────────────────
+
+_ALERT_EVENTS = ("add_to_cart", "checkout_start")
+_ALERT_WINDOW_S = 30 * 60
+_alert_sent: dict[tuple[str, str], float] = {}
+_alert_tasks: set = set()
+
+
+def _queue_alert(payload: "TrackPayload", ev: LiveEvent) -> None:
+    """One email per session and event type every 30 minutes, sent in the
+    background so the tracking call never waits on SMTP."""
+    from services import email as email_service
+
+    if os.getenv("SHOP_ALERTS_ENABLED", "1").strip() == "0" or not email_service.configured():
+        return
+    now = time.time()
+    key = (payload.session_id, payload.type)
+    if now - _alert_sent.get(key, 0) < _ALERT_WINDOW_S:
+        return
+    _alert_sent[key] = now
+    if len(_alert_sent) > 5000:
+        for k, t in list(_alert_sent.items()):
+            if now - t > _ALERT_WINDOW_S:
+                _alert_sent.pop(k, None)
+
+    place = ", ".join(p for p in (ev.city, ev.country_name) if p)
+    source = " / ".join(p for p in (ev.source or ev.referrer_domain, ev.campaign) if p)
+    extra = payload.extra or {}
+    detail = ", ".join(f"{k}={extra[k]}" for k in ("quantity", "lines") if k in extra)
+    task = asyncio.create_task(email_service.send_shop_alert(
+        payload.type,
+        product=ev.product_slug or "",
+        value=ev.value_usd,
+        place=place,
+        source=source or "direct",
+        path=ev.path or "",
+        detail=detail,
+    ))
+    _alert_tasks.add(task)
+    task.add_done_callback(_alert_tasks.discard)
 
 
 # ── Snapshot & SSE ────────────────────────────────────────────────────────
