@@ -416,6 +416,53 @@
 
         root.removeAttribute("aria-busy");
         bindUi();
+        mountStickyBuy();
+    }
+
+    /**
+     * Phones: the add button sits a screen or more below the photo, so a
+     * slim bar stays pinned to the bottom until the real button scrolls into
+     * view. It only forwards the tap, so the cart logic stays in one place.
+     */
+    let stickyBuy = null;
+    function mountStickyBuy() {
+        if (stickyBuy) return;
+        stickyBuy = document.createElement("div");
+        stickyBuy.className = "pdp-sticky";
+        stickyBuy.hidden = true;
+        stickyBuy.innerHTML = `
+<span class="pdp-sticky__price" data-sticky-price></span>
+<button class="btn" type="button">Add to cart</button>`;
+        document.body.appendChild(stickyBuy);
+        stickyBuy.querySelector("button").addEventListener("click", () => {
+            const real = root.querySelector("[data-add-to-cart]");
+            if (!real) return;
+            real.click();
+            real.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        let ticking = false;
+        const update = () => {
+            ticking = false;
+            const real = root.querySelector("[data-add-to-cart]");
+            if (!real) {
+                stickyBuy.hidden = true;
+                return;
+            }
+            const r = real.getBoundingClientRect();
+            const inView = r.top < window.innerHeight && r.bottom > 0;
+            stickyBuy.hidden = inView;
+            const price = document.getElementById("pdpPrice");
+            stickyBuy.querySelector("[data-sticky-price]").textContent = price ? price.textContent : "";
+        };
+        const schedule = () => {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(update);
+            }
+        };
+        window.addEventListener("scroll", schedule, { passive: true });
+        window.addEventListener("resize", schedule);
+        update();
     }
 
     /** Refresh only cart panel + add bar without full re-render (keeps shipping select). */

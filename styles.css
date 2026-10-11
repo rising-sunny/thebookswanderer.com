@@ -1491,23 +1491,32 @@ a.add-to-cart {
         grid-row: auto;
     }
 
-    /* Title + design picker first; photos below */
-    .pdp__layout > .pdp__info {
-        order: 1;
-    }
-
-    .pdp__layout > .pdp__gallery {
-        order: 2;
-    }
-
     .pdp__layout {
         display: flex;
         flex-direction: column;
     }
 
+    /* Photo first: an ad visitor came for the picture, not the picker. */
+    .pdp__layout > .pdp__gallery {
+        order: 1;
+        width: 100%;
+    }
+
+    .pdp__layout > .pdp__info {
+        order: 2;
+    }
+
+    .pdp__variant-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .pdp__variant-grid .pdp__variant span {
+        font-size: 0.7rem;
+    }
+
     .pdp__stage {
         max-width: 420px;
-        max-height: 52vh;
+        max-height: 42vh;
         margin-inline: auto;
         width: 100%;
         aspect-ratio: 1;
@@ -3200,5 +3209,44 @@ a.add-to-cart {
     .due-card {
         justify-self: start;
         rotate: -0.8deg;
+    }
+}
+
+/* Pinned add-to-cart on phones; product.js shows it while the real button is off screen. */
+.pdp-sticky {
+    display: none;
+}
+
+@media (max-width: 860px) {
+    .pdp-sticky {
+        position: fixed;
+        inset: auto 0 0 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+        background: var(--bg-raised);
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -6px 18px rgba(16, 36, 26, 0.08);
+    }
+
+    .pdp-sticky[hidden] {
+        display: none;
+    }
+
+    body:has(.pdp-sticky) {
+        padding-bottom: 72px;
+    }
+
+    .pdp-sticky__price {
+        font-weight: 700;
+        color: var(--green-900);
+    }
+
+    .pdp-sticky .btn {
+        flex: 1;
+        max-width: 240px;
     }
 }
