@@ -441,6 +441,14 @@ async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
     """Canonical product PDP (SSR)."""
     p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
     if not p:
+        # A retired product still has pins and search results pointing at it;
+        # send those visitors to its collection instead of a dead end.
+        gone = db.query(Product).filter(Product.slug == slug).first()
+        if gone and gone.category:
+            return RedirectResponse(
+                url=collection_url(cat_service.normalize_category(gone.category)),
+                status_code=301,
+            )
         return HTMLResponse(render_product_not_found(slug), status_code=404)
     await _ensure_product_media(p, db)
     detail = p.to_detail()
