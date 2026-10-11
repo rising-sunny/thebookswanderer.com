@@ -62,6 +62,7 @@ jobs:
           scp -o BatchMode=yes routers/__init__.py routers/pinterest.py "$VPS_HOST:$REMOTE/server/routers/"
           scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"
           scp -o BatchMode=yes scripts/*.py "$VPS_HOST:$REMOTE/server/scripts/"
+          scp -o BatchMode=yes -r social "$VPS_HOST:$REMOTE/server/"
 
       - name: Setup on VPS
         run: |
