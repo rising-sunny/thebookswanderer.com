@@ -503,6 +503,12 @@ def home_page_ssr(db: Session = Depends(get_db)):
     return HTMLResponse(html_out)
 
 
+@app.get("/collections/", include_in_schema=False)
+def collections_index_slash():
+    # Starlette's automatic slash redirect is a 307; search engines want a 301.
+    return RedirectResponse(url="/collections", status_code=301)
+
+
 @app.get("/collections", response_class=HTMLResponse)
 def collections_index(db: Session = Depends(get_db)):
     """Index of all storefront collections."""
@@ -546,14 +552,25 @@ def collection_page(slug: str, db: Session = Depends(get_db)):
 def sitemap_xml(db: Session = Depends(get_db)):
     """Dynamic sitemap from live catalog (products + picks + collections)."""
     site_root = Path(__file__).resolve().parent.parent
-    today = datetime.now(timezone.utc).date().isoformat()
     urls: list[tuple[str, str, str, str]] = []  # loc, lastmod, changefreq, priority
 
-    urls.append((f"{PUBLIC_BASE}/", today, "weekly", "1.0"))
-    urls.append((f"{PUBLIC_BASE}/collections", today, "weekly", "0.85"))
+    rows = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.slug.asc())
+        .all()
+    )
+    # Listing pages change when the catalogue does, not every day: a lastmod
+    # that is always "today" teaches Google to ignore the field.
+    newest = max((p.created_at for p in rows if p.created_at), default=None)
+    listing_mod = max(_iso_date(newest), _file_mtime_iso(site_root / "index.html"))
+
+    urls.append((f"{PUBLIC_BASE}/", listing_mod, "weekly", "1.0"))
+    urls.append((f"{PUBLIC_BASE}/products/", listing_mod, "weekly", "0.9"))
+    urls.append((f"{PUBLIC_BASE}/collections", listing_mod, "weekly", "0.85"))
 
     for c in cat_service.all_categories():
-        urls.append((collection_url(c["slug"]), today, "weekly", "0.85"))
+        urls.append((collection_url(c["slug"]), listing_mod, "weekly", "0.85"))
 
     # Guides live as static directories so nginx serves /guides/<slug>/ directly.
     for guide_dir in sorted((site_root / "guides").glob("*/index.html")):
@@ -591,12 +608,6 @@ def sitemap_xml(db: Session = Depends(get_db)):
             continue
         urls.append((pick_url(slug), aff_mod, "weekly", "0.9"))
 
-    rows = (
-        db.query(Product)
-        .filter(Product.active.is_(True))
-        .order_by(Product.slug.asc())
-        .all()
-    )
     for p in rows:
         urls.append(
             (

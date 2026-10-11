@@ -155,7 +155,23 @@ _SHIP_TRANSIT_BANDS: list[dict[str, Any]] = [
 ]
 
 
-def _merchant_return_policy() -> dict[str, Any]:
+def _supplier_countries(supplier: str | None) -> set[str] | None:
+    """Countries a supplier can deliver to, when narrower than the shop's list.
+
+    Printify products are US-only (checkout refuses anything else), so their
+    merchant listing must not advertise the other 30 destinations.
+    """
+    if supplier == "printify":
+        try:
+            from services import printify
+
+            return set(printify.SHIP_COUNTRIES)
+        except Exception:  # noqa: BLE001
+            return {"US"}
+    return None
+
+
+def _merchant_return_policy(only: set[str] | None = None) -> dict[str, Any]:
     """JSON-LD MerchantReturnPolicy aligned with shipping-returns.html.
 
     Change-of-mind: 14 days from delivery. For most of the catalogue we do not
@@ -164,7 +180,7 @@ def _merchant_return_policy() -> dict[str, Any]:
     """
     return {
         "@type": "MerchantReturnPolicy",
-        "applicableCountry": _ship_countries(),
+        "applicableCountry": [c for c in _ship_countries() if only is None or c in only],
         "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
         "merchantReturnDays": 14,
         "returnMethod": "https://schema.org/KeepProduct",
@@ -200,9 +216,11 @@ def _shipping_rate(band: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _shipping_details() -> list[dict[str, Any]]:
+def _shipping_details(only: set[str] | None = None) -> list[dict[str, Any]]:
     """OfferShippingDetails per transit band for countries we actually ship to."""
     allowed = set(_ship_countries())
+    if only is not None:
+        allowed &= only
     details: list[dict[str, Any]] = []
     covered: set[str] = set()
     for band in _SHIP_TRANSIT_BANDS:
@@ -371,7 +389,13 @@ def render_product_page(
         "category": category,
     }
     if img:
-        json_ld_product["image"] = [img]
+        # Google picks the best of several images for results and Shopping;
+        # one was all it ever saw.
+        gallery = [img] + [u for u in lifestyle if u and u != img]
+        json_ld_product["image"] = [
+            PUBLIC_BASE + u if u.startswith("/") else u for u in gallery[:8]
+        ]
+    only = _supplier_countries(detail.get("supplier"))
     if price is not None:
         # Con variantes a distintos precios, un solo "price" contradice al rango
         # que se ve en pantalla. AggregateOffer es lo que describe eso.
@@ -393,8 +417,8 @@ def render_product_page(
             "seller": {"@type": "Organization", "name": "The Books Wanderer"},
             # Merchant listings (GSC): return policy + shipping bands.
             # Policy text source of truth: shipping-returns.html.
-            "hasMerchantReturnPolicy": _merchant_return_policy(),
-            "shippingDetails": _shipping_details(),
+            "hasMerchantReturnPolicy": _merchant_return_policy(only),
+            "shippingDetails": _shipping_details(only),
         }
     # mpn helps the "identifier / brand" merchant signal (no GTIN from CJ).
     mpn = str(detail.get("cj_sku") or detail.get("sku") or "").strip()
@@ -467,7 +491,7 @@ def render_product_page(
     # aparte del JSON-LD y Google los valida por separado, asi que tener la
     # imagen solo en el JSON-LD no salvaba a este.
     hero = (
-        f'<img itemprop="image" {_cj_img_attrs(img, base_w=900, sizes=SIZES_PDP_HERO)} alt="{_esc(title)}" width="800" height="1000" '
+        f'<img itemprop="image" {_cj_img_attrs(img, base_w=900, sizes=SIZES_PDP_HERO)} alt="{_esc(title)}" width="800" height="1000" fetchpriority="high" '
         f'style="max-width:min(100%,420px);height:auto;border-radius:12px;display:block;margin:1rem 0">'
         if img
         # Sin foto de producto, el logo mantiene el item valido.
@@ -1318,6 +1342,9 @@ def _cj_variant(url: str, width: int, *, webp: bool = True) -> str:
     comes back as a 34 KB 600px WebP. Without it the grid ships full-resolution
     originals (800-1363px) into cards that render around 268px wide.
     """
+    if url and "images-api.printify.com" in url and "&s=" not in url and "?s=" not in url:
+        # Printify mockups are 1200px squares; their CDN resizes with s=<px>.
+        return f"{url}{'&' if '?' in url else '?'}s={width}"
     if not url or "cjdropshipping.com" not in url or "x-oss-process" in url:
         return url
     sep = "&" if "?" in url else "?"
@@ -1335,7 +1362,7 @@ def _cj_img_attrs(
     sizes: str = SIZES_CARD,
 ) -> str:
     """src + srcset + sizes for a CJ image; a plain src for anything else."""
-    if not url or "cjdropshipping.com" not in url:
+    if not url or ("cjdropshipping.com" not in url and "images-api.printify.com" not in url):
         return f'src="{_esc(url)}"'
     srcset = ", ".join(f"{_esc(_cj_variant(url, w))} {w}w" for w in widths)
     return (
