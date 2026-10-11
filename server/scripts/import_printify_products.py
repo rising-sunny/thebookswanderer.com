@@ -52,6 +52,9 @@ PRODUCTS = [
                   f"{LOCAL}/readers-2027-october.jpg"],
         # Printify's back-cover mockup shows the factory's production label
         "skip_mockup_camera": {"100992"},
+        # the desk-scene mockup is square and shows the object; the flat
+        # cover is 2:1 and floats in the 4:5 product frame
+        "hero_mockup_camera": "99193",
         "variant_name": "Desk calendar, 10 × 5 in",
     },
     {
@@ -109,10 +112,16 @@ def write(spec: dict, info: dict, retail: float) -> None:
     if not product:
         product = Product(slug=spec["slug"])
         db.add(product)
-    gallery = [spec["hero"], *spec["local"], *info["mockups"]]
+    hero = spec["hero"]
+    cam = spec.get("hero_mockup_camera")
+    scene = next((m for m in info["mockups"] if cam and f"/{cam}/" in m), None)
+    if scene:
+        hero = scene
+    gallery = [hero, *([spec["hero"]] if scene else []), *spec["local"],
+               *[m for m in info["mockups"] if m != scene]]
     product.title = spec["title"]
     product.description = spec["description"]
-    product.image_url = spec["hero"]
+    product.image_url = hero
     product.gallery_json = json.dumps(gallery)
     product.details_html = ""
     product.category = spec["category"]
@@ -133,7 +142,7 @@ def write(spec: dict, info: dict, retail: float) -> None:
     db.flush()
     db.add(ProductVariant(
         product_id=product.id, name=spec["variant_name"], cj_vid="", cj_sku="",
-        printify_variant_id=info["variant_id"], image_url=spec["hero"],
+        printify_variant_id=info["variant_id"], image_url=hero,
         cost_usd=info["cost"], price_usd=retail, sort_order=0, active=True,
     ))
     db.commit()
