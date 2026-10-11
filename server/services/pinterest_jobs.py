@@ -133,6 +133,44 @@ def already_launch_pinned(db: Session, slug: str) -> bool:
     return n > 0
 
 
+def _rotate_image(db: Session, product: Product, detail: dict[str, Any], payload: dict[str, Any]) -> None:
+    """Give each drip pin of a product a different picture.
+
+    Cycles through the hero, the lifestyle shots and each variant's image, by
+    how many pins the product already has. A variant picture gets that
+    variant's name in the title and ?variant=<id> on the link, so the product
+    page opens on the design the pin showed.
+    """
+    base = pin.public_base()
+
+    def absolute(u: str) -> str:
+        return base + u if u.startswith("/") else u
+
+    choices: list[tuple[str, Any]] = []
+    seen: set[str] = set()
+    for u in [detail.get("image_url") or "", *(detail.get("lifestyle_images") or [])]:
+        if u and u not in seen:
+            seen.add(u)
+            choices.append((u, None))
+    for v in product.active_variants():
+        if v.image_url and v.image_url not in seen:
+            seen.add(v.image_url)
+            choices.append((v.image_url, v))
+    if len(choices) < 2:
+        return
+    done = (
+        db.query(PinterestPin)
+        .filter(PinterestPin.product_slug == product.slug, PinterestPin.status == "active")
+        .count()
+    )
+    img, variant = choices[done % len(choices)]
+    payload["image_url"] = absolute(img)
+    if variant is not None and len(product.active_variants()) > 1:
+        payload["title"] = f"{product.title} — {variant.name}"[:100]
+        payload["alt_text"] = payload["title"]
+        payload["link"] += f"&variant={variant.id}"
+
+
 async def create_product_pin(
     db: Session,
     product: Product,
@@ -157,6 +195,9 @@ async def create_product_pin(
         payload["link"] = payload["link"].replace(
             "utm_campaign=pin", "utm_campaign=auto_pin"
         )
+
+    if kind == "drip":
+        _rotate_image(db, product, detail, payload)
 
     if not payload.get("image_url"):
         _record(

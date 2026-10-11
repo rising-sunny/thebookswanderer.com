@@ -731,6 +731,11 @@
                 product.default_variant_id ||
                 (product.variants && product.variants[0] && product.variants[0].id) ||
                 null;
+            // ?variant=<id> (used by Pinterest pins of one design) opens on that design
+            const wanted = Number(params.get("variant"));
+            if (wanted && (product.variants || []).some((v) => v.id === wanted)) {
+                selectedVariantId = wanted;
+            }
             try {
                 if (window.tbwTrack) {
                     window.tbwTrack("product_view", {

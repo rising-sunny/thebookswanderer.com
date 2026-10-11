@@ -5,7 +5,9 @@ Daily product reel for the Facebook Page and Instagram.
 Picks the product that has gone longest without a post, renders a 16.5 s
 vertical reel (photos, brand type, one of three original waltzes in
 server/social/music), and publishes it as a Facebook Reel with a link to the
-product and an Instagram Reel that points to the link in bio.
+product and an Instagram Reel that points to the link in bio. On Pinterest
+the same reel goes up as a video pin, with SOCIAL_PINTEREST_IMAGE_PINS (2)
+image pins rotating through the product's other photos and designs.
 
   python scripts/daily_social_post.py --dry-run            # render + captions, no posting
   python scripts/daily_social_post.py --slug some-product  # force a product
@@ -409,6 +411,55 @@ class Meta:
         return pub["id"]
 
 
+# ── Pinterest ─────────────────────────────────────────────────────────────
+
+PINTEREST_EXTRA_IMAGE_PINS = int(os.getenv("SOCIAL_PINTEREST_IMAGE_PINS", "2"))
+
+
+def pinterest_round(slug: str, video: Path) -> dict:
+    """The day's reel as a video pin, plus a couple of image pins that rotate
+    through the product's other photos and designs. Never fails the run."""
+    import asyncio
+
+    from services import pinterest as pin
+    from services import pinterest_jobs as jobs
+
+    if not pin.is_configured() or not jobs.auto_pin_enabled():
+        return {"skipped": "pinterest not configured or auto pins disabled"}
+    from database import SessionLocal, init_db
+    from models import Product
+
+    init_db()
+    db = SessionLocal()
+    out: dict = {}
+    try:
+        prod = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
+        if not prod:
+            return {"skipped": "product not in DB"}
+        board = jobs.board_id_for_category(prod.category)
+        payload = pin.product_pin_payload(prod.to_detail())
+        try:
+            r = asyncio.run(pin.create_video_pin(
+                board_id=board, title=payload["title"], description=payload["description"],
+                link=payload["link"].replace("utm_campaign=pin", "utm_campaign=video_pin"),
+                video_path=video, cover_image_url=payload["image_url"], alt_text=payload["alt_text"],
+            ))
+            out["video"] = str(r.get("id") or "")
+            jobs._record(db, product=prod, board_id=board, pin_id=out["video"], kind="video")
+        except Exception as exc:  # noqa: BLE001
+            out["video_error"] = str(exc)[:300]
+            jobs._record(db, product=prod, board_id=board, pin_id="", kind="video",
+                         status="failed", error=str(exc))
+        images = []
+        for _ in range(max(0, PINTEREST_EXTRA_IMAGE_PINS)):
+            r = asyncio.run(jobs.create_product_pin(db, prod, kind="drip", board_id=board))
+            images.append(r.get("pin_id") or r.get("error"))
+        out["images"] = images
+        return out
+    finally:
+        db.close()
+
+
 # ── main ──────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -452,6 +503,12 @@ def main() -> None:
             except Exception as exc:  # noqa: BLE001
                 entry[f"{name}_error"] = str(exc)[:300]
                 print(f"  {name}: FAILED {exc}")
+        try:
+            entry["pinterest"] = pinterest_round(p["slug"], video)
+            print(f"  pinterest: {entry['pinterest']}")
+        except Exception as exc:  # noqa: BLE001
+            entry["pinterest"] = {"error": str(exc)[:300]}
+            print(f"  pinterest: FAILED {exc}")
         entry["ok"] = bool(entry.get("facebook") and entry.get("instagram"))
         state.append(entry)
         save_state(state)
