@@ -34,6 +34,9 @@ class Product(Base):
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
     from_country: Mapped[str] = mapped_column(String(8), default="CN")
+    # "cj" (dropshipping) or "printify" (print on demand, US only)
+    supplier: Mapped[str] = mapped_column(String(20), default="cj")
+    printify_product_id: Mapped[str] = mapped_column(String(40), default="")
 
     # Optional product demo video (self-hosted preferred over CJ hotlink)
     video_url: Mapped[str] = mapped_column(String(500), default="")
@@ -85,6 +88,7 @@ class Product(Base):
             "price_usd": round(min(prices), 2),
             "price_max_usd": round(max(prices), 2),
             "from_country": self.from_country,
+            "supplier": self.supplier or "cj",
             "variant_count": len(variants),
             "has_variants": len(variants) > 1,
         }
@@ -119,6 +123,7 @@ class ProductVariant(Base):
     name: Mapped[str] = mapped_column(String(200), default="")  # e.g. design name
     cj_vid: Mapped[str] = mapped_column(String(80), index=True, default="")
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
+    printify_variant_id: Mapped[int] = mapped_column(Integer, default=0)
     image_url: Mapped[str] = mapped_column(String(500), default="")
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
@@ -166,6 +171,7 @@ class Order(Base):
     paypal_order_id: Mapped[str] = mapped_column(String(80), default="", index=True)
     cj_order_id: Mapped[str] = mapped_column(String(80), default="")
     cj_order_number: Mapped[str] = mapped_column(String(80), default="")
+    printify_order_id: Mapped[str] = mapped_column(String(80), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
     # Abandoned-checkout reminder: set once so nobody is emailed twice.

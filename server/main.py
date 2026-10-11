@@ -27,6 +27,7 @@ from services import categories as cat_service  # noqa: E402
 from services import cj as cj_service  # noqa: E402
 from services import email as email_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
+from services import printify as printify_service  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from ssr import (  # noqa: E402
     affiliate_by_slug,
@@ -755,6 +756,8 @@ async def product_shipping_quote(
         raise HTTPException(404, "Product not found")
 
     variant = _resolve_variant(db, product, variant_id)
+    if (product.supplier or "cj") == "printify":
+        return await _printify_product_quote(product, variant, country_code.upper(), quantity)
     vid = (variant.cj_vid if variant else product.cj_vid) or ""
     if not vid:
         raise HTTPException(400, "Product has no CJ variant id")
@@ -829,6 +832,51 @@ async def product_shipping_quote(
     }
 
 
+PRINTIFY_ONLY_US_MSG = "Printed to order in the US; ships to United States addresses only."
+
+
+def _printify_line(product: Product, variant: ProductVariant | None, qty: int) -> dict:
+    return {
+        "product_id": product.printify_product_id,
+        "variant_id": int(variant.printify_variant_id if variant else 0),
+        "quantity": qty,
+    }
+
+
+async def _printify_product_quote(product, variant, country: str, quantity: int) -> dict:
+    unit_price = float(variant.price_usd if variant else product.price_usd)
+    product_total = round(unit_price * quantity, 2)
+    base = {
+        "country_code": country,
+        "product_id": product.id,
+        "variant_id": variant.id if variant else None,
+        "quantity": quantity,
+        "product_total": product_total,
+    }
+    unavailable = {**base, "available": False, "shipping_total": None, "grand_total": None, "options": []}
+    if not printify_service.ships_to(country):
+        return {**unavailable, "message": PRINTIFY_ONLY_US_MSG}
+    try:
+        cost = await printify_service.shipping_cost([_printify_line(product, variant, quantity)], country)
+    except printify_service.PrintifyError as exc:
+        log.warning("printify shipping quote failed for product %s: %s", product.id, exc)
+        return {**unavailable, "message": SHIPPING_UNAVAILABLE_MSG}
+    retail = _ship_retail(cost)
+    option = {"name": "Printify Standard", "eta_days": printify_service.ETA_DAYS,
+              "cost_usd": cost, "retail_usd": retail}
+    return {
+        **base,
+        "available": True,
+        "from_country": "US",
+        "shipping_total": retail,
+        "shipping_cost_raw": cost,
+        "grand_total": round(product_total + retail, 2),
+        "eta_days": printify_service.ETA_DAYS,
+        "logistic_name": option["name"],
+        "options": [option],
+    }
+
+
 # ── Shipping quote (per country via CJ) ───────────────────────────────
 
 
@@ -837,7 +885,13 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
     cart = _load_cart_lines(db, body.items)
     country = body.country_code.upper()
     by_origin: dict[str, list[dict]] = {}
+    pod_lines: list[dict] = []
     for product, variant, qty in cart:
+        if (product.supplier or "cj") == "printify":
+            if not printify_service.ships_to(country):
+                raise HTTPException(400, f"{product.title}: {PRINTIFY_ONLY_US_MSG}")
+            pod_lines.append(_printify_line(product, variant, qty))
+            continue
         origin = (product.from_country or "CN").upper()
         vid = (variant.cj_vid if variant else product.cj_vid) or ""
         if not vid:
@@ -890,6 +944,21 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
                 ],
             }
         )
+
+    if pod_lines:
+        try:
+            cost = await printify_service.shipping_cost(pod_lines, country)
+        except printify_service.PrintifyError as exc:
+            log.warning("printify shipping quote failed (%s): %s", country, exc)
+            raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG) from exc
+        retail_shipping += _ship_retail(cost)
+        eta_bits.append(printify_service.ETA_DAYS)
+        chosen_names.append("Printify Standard")
+        options_all.append({
+            "from": "US",
+            "options": [{"name": "Printify Standard", "eta_days": printify_service.ETA_DAYS,
+                         "cost_usd": cost, "retail_usd": _ship_retail(cost)}],
+        })
 
     product_total = sum(
         (v.price_usd if v else p.price_usd) * q for p, v, q in cart
@@ -1222,9 +1291,9 @@ async def checkout_return(
         # Never block checkout on mail
         pass
 
-    # Push to CJ Dropshipping
+    # Push to the suppliers (CJ and/or Printify)
     try:
-        await _submit_to_cj(order, db)
+        await _fulfil(order, db)
     except Exception as exc:  # noqa: BLE001
         order.notes = f"paid but CJ submit failed: {exc}"[:800]
         order.status = "paid"  # keep paid; manual retry later
@@ -1234,14 +1303,70 @@ async def checkout_return(
     return _checkout_redirect("success", order.id)
 
 
-async def _submit_to_cj(order: Order, db: Session) -> None:
-    """Create the CJ order(s). One per warehouse: CJ ships an order from a
-    single country, so a cart mixing CN and US stock becomes two CJ orders,
-    each on a carrier quoted for its own route."""
+async def _fulfil(order: Order, db: Session) -> None:
+    """Hand a paid order to its suppliers: CJ lines to CJ, print-on-demand
+    lines to Printify. Status 'cj_submitted' means every leg was accepted."""
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     if not items:
         raise RuntimeError("Order has no items")
+    products_db = {
+        p.id: p
+        for p in db.query(Product).filter(Product.id.in_([i.product_id for i in items])).all()
+    }
+    pod = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") == "printify"]
+    cj_items = [i for i in items if i not in pod]
+    if cj_items:
+        await _submit_to_cj(order, db, cj_items, mixed=bool(pod))
+    if pod:
+        await _submit_to_printify(order, db, pod, products_db)
 
+    order.status = "cj_submitted"
+    db.commit()
+    try:
+        await email_service.send_order_fulfillment_started(order, items)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def _submit_to_printify(order: Order, db: Session, items: list[OrderItem], products_db: dict) -> None:
+    if order.printify_order_id:  # already accepted on an earlier attempt
+        return
+    variants = {
+        v.id: v
+        for v in db.query(ProductVariant).filter(ProductVariant.id.in_([i.variant_id for i in items])).all()
+    }
+    lines = [
+        _printify_line(products_db[i.product_id], variants.get(i.variant_id), i.quantity)
+        for i in items
+    ]
+    first, _, last = (order.customer_name or "").strip().partition(" ")
+    address = {
+        "first_name": first or order.customer_name,
+        "last_name": last or "-",
+        "email": order.email,
+        "phone": order.phone or "",
+        "country": order.shipping_country_code,
+        "region": printify_service.region_code(order.shipping_province),
+        "address1": order.shipping_address,
+        "address2": order.shipping_address2 or "",
+        "city": order.shipping_city,
+        "zip": order.shipping_zip or "",
+    }
+    result = await printify_service.create_order(
+        external_id=f"tbw-{order.id}", label=f"TBW-{order.id}", lines=lines, address=address
+    )
+    order.printify_order_id = str(result.get("id") or "")
+    db.commit()
+    if printify_service.auto_production() and order.printify_order_id:
+        await printify_service.send_to_production(order.printify_order_id)
+
+
+async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed: bool = False) -> None:
+    """Create the CJ order(s). One per warehouse: CJ ships an order from a
+    single country, so a cart mixing CN and US stock becomes two CJ orders,
+    each on a carrier quoted for its own route. When the order also holds
+    Printify lines, the stored carrier name and total cover both suppliers,
+    so the CJ leg is requoted and priced on its own lines."""
     products_db = {
         p.id: p
         for p in db.query(Product)
@@ -1255,6 +1380,7 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
         groups.setdefault(origin, []).append(it)
 
     split = len(groups) > 1
+    requote = split or mixed
     # Already submitted legs (a retry after a partial failure) are skipped.
     done = dict(
         part.split(":", 1)
@@ -1264,7 +1390,7 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
     for origin, group in groups.items():
         if origin in done:
             continue
-        if split:
+        if requote:
             options = await cj_service.freight_calculate(
                 start_country=origin,
                 end_country=order.shipping_country_code,
@@ -1274,7 +1400,7 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
             if not options:
                 raise RuntimeError(f"no CJ route {origin} -> {order.shipping_country_code}")
             logistic = str(_pick_freight(options).get("logisticName") or "")
-            number = f"TBW-{order.id}-{origin}"
+            number = f"TBW-{order.id}-{origin}" if split else f"TBW-{order.id}"
             amount = round(sum(it.unit_price * it.quantity for it in group), 2)
         else:
             logistic = order.logistic_name or "CJPacket Ordinary"
@@ -1331,14 +1457,6 @@ async def _submit_to_cj(order: Order, db: Session) -> None:
             order.cj_order_number = cj_number
         # Commit per leg so a failure on the second keeps the first on record.
         db.commit()
-
-    order.status = "cj_submitted"
-    db.commit()
-
-    try:
-        await email_service.send_order_fulfillment_started(order, items)
-    except Exception:  # noqa: BLE001
-        pass
 
 
 # ── Admin: add product when you pick one from CJ ──────────────────────

@@ -65,6 +65,15 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE products ADD COLUMN video_url VARCHAR(500) DEFAULT ''"))
         if "video_poster" not in cols:
             conn.execute(text("ALTER TABLE products ADD COLUMN video_poster VARCHAR(500) DEFAULT ''"))
+        if "supplier" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN supplier VARCHAR(20) DEFAULT 'cj'"))
+        if "printify_product_id" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN printify_product_id VARCHAR(40) DEFAULT ''"))
+    if "product_variants" in insp.get_table_names():
+        vcols = {c["name"] for c in insp.get_columns("product_variants")}
+        if "printify_variant_id" not in vcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE product_variants ADD COLUMN printify_variant_id INTEGER DEFAULT 0"))
     # order_items.variant_id
     if "order_items" in insp.get_table_names():
         ocols = {c["name"] for c in insp.get_columns("order_items")}
@@ -77,3 +86,6 @@ def init_db() -> None:
         if "cart_reminder_sent_at" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN cart_reminder_sent_at DATETIME"))
+        if "printify_order_id" not in rcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN printify_order_id VARCHAR(80) DEFAULT ''"))
