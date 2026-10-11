@@ -131,6 +131,10 @@ if (Test-Path "$Root\server\scripts") {
     scp -o BatchMode=yes "$Root\server\scripts\*.py" "${HostName}:${RemotePath}/server/scripts/"
     Assert-Ok "scripts upload"
 }
+if (Test-Path "$Root\server\social") {
+    scp -o BatchMode=yes -r "$Root\server\social" "${HostName}:${RemotePath}/server/"
+    Assert-Ok "social assets upload"
+}
 
 scp -o BatchMode=yes "$PSScriptRoot\thebookswanderer.service" "${HostName}:/etc/systemd/system/thebookswanderer.service"
 Assert-Ok "systemd unit upload"

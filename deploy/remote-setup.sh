@@ -78,3 +78,17 @@ PY
   nginx -t
   systemctl reload nginx
 fi
+
+# Daily product reel for Facebook + Instagram (server/scripts/daily_social_post.py).
+# Cron fires at 15:03 and 16:03 UTC; --at-hour 11 keeps only the run that is
+# 11:xx in New York, so the post holds its local time across DST.
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg >/dev/null) \
+    || echo "WARNING: ffmpeg install failed; daily_social_post.py cannot render"
+fi
+touch /var/log/tbw-social.log
+chown www-data:www-data /var/log/tbw-social.log
+cat > /etc/cron.d/tbw-social-post <<CRON
+3 15,16 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/daily_social_post.py --at-hour 11 >> /var/log/tbw-social.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-social-post
