@@ -383,6 +383,58 @@ async def create_pin(
     return await api_request("POST", "/pins", json=body)
 
 
+async def create_video_pin(
+    *,
+    board_id: str,
+    title: str,
+    description: str,
+    link: str,
+    video_path: Path,
+    cover_image_url: str,
+    alt_text: str = "",
+    timeout_s: int = 300,
+) -> dict[str, Any]:
+    """Register a video upload, send the file to Pinterest's upload URL,
+    wait for processing, then create the pin."""
+    import asyncio
+
+    reg = await api_request("POST", "/media", json={"media_type": "video"})
+    async with httpx.AsyncClient(timeout=300) as client:
+        with open(video_path, "rb") as fh:
+            up = await client.post(
+                reg["upload_url"],
+                data=reg.get("upload_parameters") or {},
+                files={"file": (video_path.name, fh, "video/mp4")},
+            )
+    if up.status_code >= 300:
+        raise HTTPException(status_code=up.status_code, detail=f"video upload failed: {up.text[:300]}")
+    media_id = reg["media_id"]
+    waited = 0
+    while True:
+        st = await api_request("GET", f"/media/{media_id}")
+        status = (st.get("status") or "").lower()
+        if status == "succeeded":
+            break
+        if status == "failed" or waited >= timeout_s:
+            raise HTTPException(status_code=502, detail=f"video processing {status or 'timeout'}")
+        await asyncio.sleep(5)
+        waited += 5
+    body: dict[str, Any] = {
+        "board_id": board_id,
+        "title": title[:100],
+        "description": description[:800],
+        "link": link,
+        "media_source": {
+            "source_type": "video_id",
+            "media_id": media_id,
+            "cover_image_url": cover_image_url,
+        },
+    }
+    if alt_text:
+        body["alt_text"] = alt_text[:500]
+    return await api_request("POST", "/pins", json=body)
+
+
 def product_pin_payload(detail: dict[str, Any]) -> dict[str, Any]:
     """Build pin fields from a product detail/public dict."""
     slug = (detail.get("slug") or "").strip()

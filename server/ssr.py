@@ -598,7 +598,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=4" defer></script>
 <script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=25" defer></script>
+<script src="/product.js?v=26" defer></script>
 </body>
 </html>
 """
