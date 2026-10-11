@@ -153,6 +153,34 @@ def _classify_ua(ua: str) -> str:
     return "desktop"
 
 
+_SOCIAL_HOSTS = ("facebook.", "fb.", "instagram.", "threads.")
+
+
+def _meta_bot(ip: str, geo_info: dict, payload: "TrackPayload") -> Optional[str]:
+    """Meta's link checkers render pages in a normal browser, so the UA filter
+    misses them: a reel's link drew five "visitors" within 20 s of posting,
+    all from Meta (Prineville, Forest City) or cloud (Boardman) hosts.
+
+    Anything on Meta's own network is dropped. Cloud-hosted traffic is only
+    dropped when it arrives from Facebook/Instagram: people tap those links on
+    home or mobile connections, not from a data centre.
+    """
+    asn = (geo_info.get("asn") or "").upper()
+    if asn.startswith("AS32934 ") or geo.is_meta_ip(ip):
+        return "meta"
+    if not geo_info.get("hosting"):
+        return None
+    ref = (payload.referrer or "").lower()
+    path = (payload.path or "").lower()
+    src = (payload.source or "").lower()
+    social = (
+        "fbclid=" in path
+        or src in ("facebook", "instagram", "fb", "ig", "threads")
+        or any(h in ref for h in _SOCIAL_HOSTS)
+    )
+    return "meta-cloud" if social else None
+
+
 def _hash_ip(ip: str) -> str:
     return hashlib.sha256((ip + _admin_password()).encode()).hexdigest()[:16]
 
@@ -209,6 +237,9 @@ async def track(request: Request, db: Session = Depends(get_db)):
         return {"ok": True, "dropped": "bot"}
 
     geo_info = geo.lookup(ip)
+    meta_bot = _meta_bot(ip, geo_info, payload)
+    if meta_bot:
+        return {"ok": True, "dropped": meta_bot}
 
     ref_domain = None
     if payload.referrer:
