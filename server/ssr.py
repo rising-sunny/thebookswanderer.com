@@ -609,6 +609,7 @@ def render_product_page(
         <nav class="footer__links" aria-label="Footer">
             <a href="/about.html">About</a>
             <a href="/guides/hold-a-book-open-one-handed/">Holding a book open</a>
+            <a href="/guides/gifts-for-book-lovers/">Gifts for book lovers</a>
             <a href="/shipping-returns.html">Shipping &amp; returns</a>
             <a href="/contact.html">Contact</a>
             <a href="/privacy.html">Privacy &amp; cookies</a>
@@ -838,6 +839,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
         <nav class="footer__links" aria-label="Footer">
             <a href="/about.html">About</a>
             <a href="/guides/hold-a-book-open-one-handed/">Holding a book open</a>
+            <a href="/guides/gifts-for-book-lovers/">Gifts for book lovers</a>
             <a href="/shipping-returns.html">Shipping &amp; returns</a>
             <a href="/contact.html">Contact</a>
             <a href="/privacy.html">Privacy &amp; cookies</a>
