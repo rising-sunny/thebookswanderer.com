@@ -44,6 +44,7 @@ jobs:
               scp -o BatchMode=yes "assets/$f" "$VPS_HOST:$REMOTE/assets/"
             fi
           done
+          scp -o BatchMode=yes -r guides "$VPS_HOST:$REMOTE/"
           if [ -d assets/products ]; then
             scp -o BatchMode=yes -r assets/products/. "$VPS_HOST:$REMOTE/assets/products/"
           fi
