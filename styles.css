@@ -588,6 +588,16 @@ body.nav-is-open {
     color: var(--orange-600);
 }
 
+.hero__h1-sub {
+    display: block;
+    margin-top: 0.6rem;
+    font-family: "Karla", system-ui, sans-serif;
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.12rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-muted);
+}
+
 .hero__lead {
     font-size: clamp(1rem, 0.95rem + 0.35vw, 1.15rem);
     color: var(--ink-muted);
