@@ -113,6 +113,8 @@ async def capture_order(paypal_order_id: str) -> dict:
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
+                # Full body, so the caller can check custom_id and amount.
+                "Prefer": "return=representation",
             },
         )
         if resp.status_code >= 400:
