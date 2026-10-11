@@ -1006,7 +1006,9 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG)
     shipping_total = float(quote["shipping_total"])
     grand_total = round(product_total + shipping_total, 2)
-    logistic_name = body.logistic_name or quote.get("logistic_name") or "CJPacket"
+    # Never the client's pick: shipping is free, so a carrier named in the
+    # request body would be paid for by the shop. The quote is server-side.
+    logistic_name = quote.get("logistic_name") or "CJPacket"
 
     order = Order(
         status="awaiting_payment",
@@ -1075,6 +1077,31 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     }
 
 
+def _capture_problem(capture: dict, order: Order) -> str:
+    """Why a PayPal capture must not mark this order paid, or "" if it may."""
+    pu = (capture.get("purchase_units") or [{}])[0]
+    captures = (pu.get("payments") or {}).get("captures") or []
+    done = [c for c in captures if (c.get("status") or "").upper() == "COMPLETED"]
+    if not done:
+        return f"PayPal status={capture.get('status')}"
+
+    custom_ids = {c.get("custom_id") for c in done} | {pu.get("custom_id")}
+    if f"tbw:{order.id}" not in custom_ids and pu.get("reference_id") != str(order.id):
+        return f"PayPal capture belongs to another order: {pu.get('reference_id')}"
+
+    amount = done[0].get("amount") or {}
+    try:
+        value = float(amount.get("value") or 0)
+    except (TypeError, ValueError):
+        value = 0.0
+    if amount.get("currency_code") != "USD" or abs(value - float(order.grand_total)) > 0.01:
+        return (
+            f"PayPal captured {amount.get('value')} {amount.get('currency_code')}, "
+            f"order total is {order.grand_total:.2f} USD"
+        )
+    return ""
+
+
 def _checkout_redirect(status: str, order_id: int) -> RedirectResponse:
     return RedirectResponse(
         f"{PUBLIC_BASE}/checkout.html?status={status}&order_id={order_id}"
@@ -1092,9 +1119,15 @@ async def checkout_return(
     if not order:
         raise HTTPException(404, "Order not found")
 
-    paypal_id = token or order.paypal_order_id
+    # Only ever capture the PayPal order this shop order created. Trusting the
+    # token in the URL let a buyer approve a cheap order and return it under
+    # the id of a dear one, which then got marked paid and sent to CJ.
+    paypal_id = order.paypal_order_id
     if not paypal_id:
-        raise HTTPException(400, "Missing PayPal token")
+        raise HTTPException(400, "Missing PayPal order")
+    if token and token != paypal_id:
+        log.warning("checkout return token mismatch for order %s", order.id)
+        return _checkout_redirect("payment_error", order.id)
 
     if order.status in ("paid", "cj_submitted", "fulfilled"):
         return _checkout_redirect("already_paid", order.id)
@@ -1102,24 +1135,38 @@ async def checkout_return(
     try:
         capture = await paypal_service.capture_order(paypal_id)
     except paypal_service.PayPalError as exc:
-        order.notes = f"capture failed: {exc}"[:500]
-        db.commit()
-        return _checkout_redirect("payment_error", order.id)
-
-    status = (capture.get("status") or "").upper()
-    if status not in ("COMPLETED", "APPROVED"):
-        # capture payload may nest status
-        pu = (capture.get("purchase_units") or [{}])[0]
-        captures = ((pu.get("payments") or {}).get("captures") or [{}])
-        cap_status = (captures[0].get("status") if captures else "") or ""
-        if cap_status.upper() != "COMPLETED" and status != "COMPLETED":
-            order.notes = f"PayPal status={status}"
+        # A second hit on the return URL (reload, double redirect) fails with
+        # ORDER_ALREADY_CAPTURED. Ask PayPal what actually happened.
+        capture = None
+        try:
+            existing = await paypal_service.get_order(paypal_id)
+            if (existing.get("status") or "").upper() == "COMPLETED":
+                capture = existing
+        except Exception:  # noqa: BLE001
+            pass
+        if capture is None:
+            order.notes = f"capture failed: {exc}"[:500]
             db.commit()
-            return _checkout_redirect("payment_incomplete", order.id)
+            return _checkout_redirect("payment_error", order.id)
 
-    order.status = "paid"
-    order.paypal_order_id = paypal_id
+    problem = _capture_problem(capture, order)
+    if problem:
+        order.notes = problem[:500]
+        db.commit()
+        log.warning("order %s not marked paid: %s", order.id, problem)
+        return _checkout_redirect("payment_incomplete", order.id)
+
+    # Claim the order atomically so two concurrent returns cannot both send
+    # the confirmation email and submit it to CJ twice.
+    claimed = (
+        db.query(Order)
+        .filter(Order.id == order.id, Order.status == "awaiting_payment")
+        .update({"status": "paid"}, synchronize_session=False)
+    )
     db.commit()
+    db.refresh(order)
+    if not claimed:
+        return _checkout_redirect("already_paid", order.id)
 
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     try:
@@ -1188,63 +1235,103 @@ async def checkout_return(
 
 
 async def _submit_to_cj(order: Order, db: Session) -> None:
+    """Create the CJ order(s). One per warehouse: CJ ships an order from a
+    single country, so a cart mixing CN and US stock becomes two CJ orders,
+    each on a carrier quoted for its own route."""
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     if not items:
         raise RuntimeError("Order has no items")
 
-    # fromCountry: use first product's warehouse
     products_db = {
         p.id: p
         for p in db.query(Product)
         .filter(Product.id.in_([i.product_id for i in items]))
         .all()
     }
-    from_country = "CN"
+    groups: dict[str, list[OrderItem]] = {}
     for it in items:
         p = products_db.get(it.product_id)
-        if p and p.from_country:
-            from_country = p.from_country
-            break
+        origin = ((p.from_country if p else "") or "CN").upper()
+        groups.setdefault(origin, []).append(it)
 
-    payload = {
-        "orderNumber": f"TBW-{order.id}",
-        "shippingZip": order.shipping_zip or "00000",
-        "shippingCountry": order.shipping_country,
-        "shippingCountryCode": order.shipping_country_code,
-        "shippingProvince": order.shipping_province,
-        "shippingCity": order.shipping_city,
-        "shippingPhone": order.phone or "0000000000",
-        "shippingCustomerName": order.customer_name,
-        "shippingAddress": order.shipping_address,
-        "shippingAddress2": order.shipping_address2 or "",
-        "email": order.email,
-        "remark": f"Web order #{order.id}",
-        "payType": CJ_PAY_TYPE,
-        "shopAmount": order.grand_total,
-        "logisticName": order.logistic_name or "CJPacket Ordinary",
-        "fromCountryCode": from_country,
-        "platform": "api",
-        "orderFlow": 1,
-        "products": [
-            {
-                "vid": it.cj_vid,
-                "sku": it.cj_sku or None,
-                "quantity": it.quantity,
-                "unitPrice": it.unit_price,
-                "storeLineItemId": f"tbw-{order.id}-{it.id}",
-                "storeProductName": it.title,
-            }
-            for it in items
-        ],
-    }
-    # Drop null sku fields
-    for p in payload["products"]:
-        if not p.get("sku"):
-            p.pop("sku", None)
+    split = len(groups) > 1
+    # Already submitted legs (a retry after a partial failure) are skipped.
+    done = dict(
+        part.split(":", 1)
+        for part in (order.cj_order_id or "").split(",")
+        if ":" in part
+    )
+    for origin, group in groups.items():
+        if origin in done:
+            continue
+        if split:
+            options = await cj_service.freight_calculate(
+                start_country=origin,
+                end_country=order.shipping_country_code,
+                products=[{"vid": it.cj_vid, "quantity": it.quantity} for it in group],
+                zip_code=order.shipping_zip or None,
+            )
+            if not options:
+                raise RuntimeError(f"no CJ route {origin} -> {order.shipping_country_code}")
+            logistic = str(_pick_freight(options).get("logisticName") or "")
+            number = f"TBW-{order.id}-{origin}"
+            amount = round(sum(it.unit_price * it.quantity for it in group), 2)
+        else:
+            logistic = order.logistic_name or "CJPacket Ordinary"
+            number = f"TBW-{order.id}"
+            amount = order.grand_total
 
-    result = await cj_service.create_order(payload)
-    order.cj_order_id = str(result.get("orderId") or "")
-    order.cj_order_number = str(result.get("orderNumber") or payload["orderNumber"])
+        payload = {
+            "orderNumber": number,
+            "shippingZip": order.shipping_zip or "00000",
+            "shippingCountry": order.shipping_country,
+            "shippingCountryCode": order.shipping_country_code,
+            "shippingProvince": order.shipping_province,
+            "shippingCity": order.shipping_city,
+            "shippingPhone": order.phone or "0000000000",
+            "shippingCustomerName": order.customer_name,
+            "shippingAddress": order.shipping_address,
+            "shippingAddress2": order.shipping_address2 or "",
+            "email": order.email,
+            "remark": f"Web order #{order.id}",
+            "payType": CJ_PAY_TYPE,
+            "shopAmount": amount,
+            "logisticName": logistic,
+            "fromCountryCode": origin,
+            "platform": "api",
+            "orderFlow": 1,
+            "products": [
+                {
+                    "vid": it.cj_vid,
+                    "sku": it.cj_sku or None,
+                    "quantity": it.quantity,
+                    "unitPrice": it.unit_price,
+                    "storeLineItemId": f"tbw-{order.id}-{it.id}",
+                    "storeProductName": it.title,
+                }
+                for it in group
+            ],
+        }
+        # Drop null sku fields
+        for p in payload["products"]:
+            if not p.get("sku"):
+                p.pop("sku", None)
+
+        result = await cj_service.create_order(payload)
+        cj_id = str(result.get("orderId") or "")
+        cj_number = str(result.get("orderNumber") or number)
+        if split:
+            done[origin] = cj_id
+            order.cj_order_id = ",".join(f"{o}:{i}" for o, i in done.items())
+            order.cj_order_number = ",".join(
+                n for n in [order.cj_order_number, cj_number] if n
+            )
+        else:
+            order.cj_order_id = cj_id
+            order.cj_order_number = cj_number
+        # Commit per leg so a failure on the second keeps the first on record.
+        db.commit()
+
     order.status = "cj_submitted"
     db.commit()
 

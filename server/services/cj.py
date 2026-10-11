@@ -8,7 +8,9 @@ Base:        https://developers.cjdropshipping.com/api2.0/v1
 """
 from __future__ import annotations
 
+import asyncio
 import os
+import re
 import time
 from typing import Any
 
@@ -98,7 +100,36 @@ async def _refresh_access_token() -> str:
     return _token
 
 
+# CJ allows about one request per second per account. A product page and a
+# checkout landing together trip it, and the checkout then fails outright, so
+# throttled calls are retried after a short pause.
+RATE_LIMIT_RETRIES = (1.2, 2.5)
+
+
+def _rate_limited(exc: CJError) -> bool:
+    payload = exc.payload if isinstance(exc.payload, dict) else {}
+    if payload.get("code") in (429, 1600200) or payload.get("_http_status") == 429:
+        return True
+    return bool(re.search(r"too many|too frequent|rate limit|qps", str(exc), re.I))
+
+
 async def _request(
+    method: str,
+    path: str,
+    *,
+    params: dict | None = None,
+    json_body: dict | list | None = None,
+) -> Any:
+    for delay in (*RATE_LIMIT_RETRIES, None):
+        try:
+            return await _request_once(method, path, params=params, json_body=json_body)
+        except CJError as exc:
+            if delay is None or not _rate_limited(exc):
+                raise
+            await asyncio.sleep(delay)
+
+
+async def _request_once(
     method: str,
     path: str,
     *,
@@ -128,6 +159,8 @@ async def _request(
                 json=json_body,
             )
 
+        if resp.status_code == 429:
+            raise CJError("CJ rate limit (HTTP 429)", {"_http_status": 429})
         try:
             data = resp.json()
         except Exception as exc:
