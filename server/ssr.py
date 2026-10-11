@@ -1409,12 +1409,14 @@ def _affiliate_card_html(p: dict[str, Any], *, paid_label: str = "paid link") ->
 CHRISTMAS_SLUGS = (
     "twilight-library-book-nook-kit",
     "book-lovers-advent-calendar",
+    "readers-2027-desk-calendar",
     "book-tree-christmas-ornament",
     "bookshelf-lantern-light",
     "baker-street-book-nook-kit",
     "heart-bookshelf-ornament",
     "christmas-magnetic-bookmarks",
     "reading-log-bookmarks",
+    "library-ephemera-sticker-sheet",
 )
 
 

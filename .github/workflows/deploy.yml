@@ -57,6 +57,7 @@ jobs:
             services/__init__.py services/cj.py services/paypal.py services/pricing.py \
             services/categories.py services/email.py services/meta_capi.py services/health.py \
             services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
+            services/printify.py \
             "$VPS_HOST:$REMOTE/server/services/"
           scp -o BatchMode=yes routers/__init__.py routers/pinterest.py "$VPS_HOST:$REMOTE/server/routers/"
           scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"
