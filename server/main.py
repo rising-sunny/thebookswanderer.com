@@ -726,12 +726,14 @@ def sitemap_xml(db: Session = Depends(get_db)):
         ("shipping-returns.html", "0.5"),
         ("privacy.html", "0.3"),
         ("press.html", "0.4"),
+        ("reading-challenge-2027/index.html", "0.7"),
+        ("reto-de-lectura-2027/index.html", "0.6"),
     ):
         path = site_root / rel
         if path.is_file():
             urls.append(
                 (
-                    f"{PUBLIC_BASE}/{rel}",
+                    f"{PUBLIC_BASE}/{rel.removesuffix('index.html')}",
                     _file_mtime_iso(path),
                     "monthly",
                     prio,
@@ -2048,6 +2050,7 @@ def unsubscribe_token(email: str) -> str:
 class NewsletterIn(BaseModel):
     email: EmailStr
     lang: str = "en"
+    source: str = "homepage"
 
 
 async def _send_welcome_step(subscriber_id: int, step: int) -> None:
@@ -2103,7 +2106,8 @@ def newsletter_subscribe(body: NewsletterIn, background: BackgroundTasks, db: Se
             background.add_task(_send_welcome_step, existing.id, 1)
         return {"ok": True, "already": True}
 
-    sub = NewsletterSubscriber(email=normalized, lang=lang)
+    source = re.sub(r"[^a-z0-9-]", "", (body.source or "homepage").lower())[:40] or "homepage"
+    sub = NewsletterSubscriber(email=normalized, lang=lang, source=source)
     db.add(sub)
     db.commit()
     # The free Reading Challenge goes out straight away.
