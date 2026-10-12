@@ -611,6 +611,9 @@ def collection_page(slug: str, request: Request, db: Session = Depends(get_db)):
     return HTMLResponse(i18n.localize(page, lang, path))
 
 
+_FEED_SKIP_COUNTRIES = {"KR"}
+
+
 def _feed_text(s: str, limit: int) -> str:
     s = re.sub(r"<[^>]+>", " ", s or "")
     s = re.sub(r"\s+", " ", s).strip()
@@ -625,7 +628,9 @@ def google_products_feed(db: Session = Depends(get_db)):
     listings are for goods that ship."""
     from ssr import _supplier_countries
 
-    ship_all = [d["code"] for d in SHIP_DESTINATIONS]
+    # Google won't convert USD for South Korea (it wants KRW prices), so the
+    # feed leaves it out rather than carry a disapproval for every item.
+    ship_all = [d["code"] for d in SHIP_DESTINATIONS if d["code"] not in _FEED_SKIP_COUNTRIES]
     items: list[str] = []
     rows = db.query(Product).filter(Product.active.is_(True)).order_by(Product.id).all()
     for p in rows:
