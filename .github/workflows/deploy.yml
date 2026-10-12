@@ -34,7 +34,7 @@ jobs:
         run: |
           scp -o BatchMode=yes \
             index.html styles.css app.js product.html product.js cart.html cart.js \
-            checkout.html checkout.js affiliate-data.js pick.html pick.js about.html \
+            checkout.html checkout.js affiliate-data.js pick.html pick.js about.html press.html \
             contact.html privacy.html shipping-returns.html robots.txt sitemap.xml \
             affiliate-products.json track.js i18n.js googleca903f9ea8fb8e9e.html \
             "$VPS_HOST:$REMOTE/"
