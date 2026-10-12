@@ -75,6 +75,29 @@ PRODUCTS = [
         "skip_mockup_camera": set(),
         "variant_name": "Sticker sheet, 5.8 × 8.3 in",
     },
+    {
+        "slug": "a-literary-year-2027-wall-calendar",
+        "printify_id": "6acd172439bbe64f4f00efcd",
+        "title": "A Literary Year — Wall Calendar 2027",
+        "category": "decor",
+        "description": (
+            "Twelve classic book illustrations for 2027, one for every month: Manet's Raven for "
+            "Poe, Delacroix's Faust and Hamlet, Doré's Sancho Panza, Rackham's Midsummer Night's "
+            "Dream, Kemble's Huckleberry Finn, Blake's Canterbury Pilgrims on the cover and more. "
+            "Each page carries a line from the book and the authors born that month — Austen, "
+            "Tolkien, Woolf, Twain, Christie. Every image is public domain, reproduced from the "
+            "Cleveland Museum of Art and the Library of Congress. Spiral-bound wall calendar, "
+            "11 × 8.5 in pages (opens to 11 × 17 in), matte paper, hanging hole. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "hero": f"{LOCAL}/literary-year-2027-cover.jpg",
+        "local": [f"{LOCAL}/literary-year-2027-january.jpg", f"{LOCAL}/literary-year-2027-june.jpg",
+                  f"{LOCAL}/literary-year-2027-october.jpg"],
+        "skip_mockup_camera": set(),
+        # the hanging mockup shows the object; the flat cover goes second
+        "hero_mockup_camera": "60004",
+        "variant_name": "Wall calendar, 11 × 8.5 in",
+    },
 ]
 
 
