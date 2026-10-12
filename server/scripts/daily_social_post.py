@@ -469,6 +469,8 @@ def main() -> None:
     ap.add_argument("--slug")
     ap.add_argument("--at-hour", type=int, help="only run when it is this hour in New York")
     ap.add_argument("--out", help="keep the rendered video here")
+    ap.add_argument("--facebook-only", action="store_true",
+                    help="retry Facebook for today's entry (same product and reel), leave Instagram/Pinterest alone")
     args = ap.parse_args()
 
     now_ny = datetime.now(NY)
@@ -483,6 +485,14 @@ def main() -> None:
         print(f"{today}: already posted, nothing to do")
         return
 
+    retry = None
+    if args.facebook_only:
+        retry = next((e for e in reversed(state) if e["date"] == today), None)
+        if not retry or retry.get("facebook"):
+            print(f"{today}: nothing to retry on Facebook")
+            return
+        args.slug = retry["slug"]
+
     client = httpx.Client(timeout=40, headers={"User-Agent": "TheBooksWanderer social bot"})
     p = pick_product(client, state, args.slug)
     images = product_images(client, p)
@@ -496,6 +506,19 @@ def main() -> None:
             print("── Facebook ──\n" + fb_text + "\n── Instagram ──\n" + ig_text)
             return
         meta = Meta()
+        if retry is not None:
+            try:
+                retry["facebook"] = meta.facebook(video, fb_text)
+                retry.pop("facebook_error", None)
+                print(f"  facebook: posted {retry['facebook']}")
+            except Exception as exc:  # noqa: BLE001
+                retry["facebook_error"] = str(exc)[:300]
+                print(f"  facebook: FAILED {exc}")
+            retry["ok"] = bool(retry.get("facebook") and retry.get("instagram"))
+            save_state(state)
+            if not retry["ok"]:
+                raise SystemExit(1)
+            return
         entry = {"date": today, "slug": p["slug"], "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         for name, fn, text in (("facebook", meta.facebook, fb_text), ("instagram", meta.instagram, ig_text)):
             try:
