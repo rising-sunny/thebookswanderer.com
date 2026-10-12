@@ -45,6 +45,7 @@ jobs:
             fi
           done
           scp -o BatchMode=yes -r guides "$VPS_HOST:$REMOTE/"
+          scp -o BatchMode=yes -r reading-challenge-2027 reto-de-lectura-2027 "$VPS_HOST:$REMOTE/"
           if [ -d assets/products ]; then
             scp -o BatchMode=yes -r assets/products/. "$VPS_HOST:$REMOTE/assets/products/"
           fi
