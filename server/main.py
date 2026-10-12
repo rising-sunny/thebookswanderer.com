@@ -725,6 +725,7 @@ def sitemap_xml(db: Session = Depends(get_db)):
         ("contact.html", "0.5"),
         ("shipping-returns.html", "0.5"),
         ("privacy.html", "0.3"),
+        ("press.html", "0.4"),
     ):
         path = site_root / rel
         if path.is_file():
