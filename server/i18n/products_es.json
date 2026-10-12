@@ -142,5 +142,27 @@
   "a-literary-year-2027-wall-calendar": {
     "title": "Un año literario — Calendario de pared 2027",
     "description": "Doce ilustraciones clásicas de libros para 2027, una por mes: El cuervo de Manet para Poe, el Fausto y el Hamlet de Delacroix, el Sancho Panza de Doré, el Sueño de una noche de verano de Rackham, el Huckleberry Finn de Kemble, los Peregrinos de Canterbury de Blake en la portada y más. Cada página lleva una frase del libro y los autores que nacieron ese mes: Austen, Tolkien, Woolf, Twain, Christie. Todas las imágenes son de dominio público, del Museo de Arte de Cleveland y la Biblioteca del Congreso. Calendario de pared con espiral, páginas de 11 × 8,5 pulgadas (abierto 11 × 17), papel mate y agujero para colgar. Textos del calendario en inglés. Se imprime bajo pedido en EE. UU.; solo envíos a direcciones de EE. UU."
+  },
+  "color-the-classics": {
+    "title": "Colorea los clásicos — Libro para colorear literario (PDF imprimible)",
+    "description": "27 ilustraciones clásicas para colorear, cada una sacada de una primera edición o edición temprana de su historia y limpiada a mano en líneas claras: El Mago de Oz de W. W. Denslow (1900), la Alicia en el país de las maravillas y A través del espejo de John Tenniel, el Orgullo y prejuicio de Hugh Thomson (1894) y los cuentos de hadas de H. J. Ford del Libro azul de las hadas.\n\nQué incluye:\n• 27 ilustraciones a página completa, cada una con la frase del libro que ilustra\n• El León Cobarde, el Leñador de Hojalata, el Gato de Cheshire, el Sombrerero Loco, el Jabberwock, Humpty Dumpty, Elizabeth y Darcy, Cenicienta, el Gato con Botas y más\n• \"Este libro pertenece a\", una página para probar colores y una página extra: nuestro propio lector, The Books Wanderer, listo para colorear\n\nPDF imprimible tamaño Carta (21,6 × 27,9 cm), 32 páginas: imprime solo las que quieras, todas las veces que quieras; también sirve para A4. Descarga inmediata: recibes el enlace por correo justo después del pago. Producto digital, no se envía nada físico. Elige la edición en español en el selector. ¿Lo quieres encuadernado? Mira la edición impresa.",
+    "image_url": "/assets/products/color-the-classics/main_es.jpg",
+    "gallery": [
+      "/assets/products/color-the-classics/color_es.jpg",
+      "/assets/products/color-the-classics/pages_es.jpg",
+      "/assets/products/color-the-classics/bonus_es.jpg"
+    ],
+    "default_variant": "Español"
+  },
+  "color-the-classics-printed": {
+    "title": "Colorea los clásicos — Libro para colorear literario (tapa blanda impresa)",
+    "description": "27 ilustraciones clásicas para colorear, cada una sacada de una primera edición o edición temprana de su historia y limpiada a mano en líneas claras: El Mago de Oz de W. W. Denslow (1900), la Alicia en el país de las maravillas y A través del espejo de John Tenniel, el Orgullo y prejuicio de Hugh Thomson (1894) y los cuentos de hadas de H. J. Ford del Libro azul de las hadas.\n\nQué incluye:\n• 27 ilustraciones a página completa, cada una con la frase del libro que ilustra\n• El León Cobarde, el Leñador de Hojalata, el Gato de Cheshire, el Sombrerero Loco, el Jabberwock, Humpty Dumpty, Elizabeth y Darcy, Cenicienta, el Gato con Botas y más\n• \"Este libro pertenece a\", una página para probar colores y una página extra: nuestro propio lector, The Books Wanderer, listo para colorear\n\nTapa blanda de 21,6 × 27,9 cm (8,5 × 11 pulgadas), 60 páginas. Cada ilustración va impresa en su propia página con el reverso en blanco: los rotuladores no estropean la siguiente y cualquier página se puede recortar y enmarcar. Portada a todo color con la lámina original de Denslow de 1900. Se imprime bajo pedido y sale en 3–5 días hábiles; luego tarda 1–2 semanas por correo.\n\nEnvío gratis a Estados Unidos, Reino Unido, Canadá, Australia, Alemania, Francia, Países Bajos e Irlanda. Elige la edición en español en el selector. ¿Prefieres imprimirlo en casa? Mira el PDF imprimible.",
+    "image_url": "/assets/products/color-the-classics-printed/main_es.jpg",
+    "gallery": [
+      "/assets/products/color-the-classics-printed/color_es.jpg",
+      "/assets/products/color-the-classics-printed/pages_es.jpg",
+      "/assets/products/color-the-classics-printed/bonus_es.jpg"
+    ],
+    "default_variant": "Español"
   }
 }
