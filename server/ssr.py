@@ -399,6 +399,7 @@ def render_product_page(
             PUBLIC_BASE + u if u.startswith("/") else u for u in gallery[:8]
         ]
     only = _supplier_countries(detail.get("supplier"), detail.get("from_country"))
+    digital = detail.get("supplier") == "digital"
     if price is not None:
         # Con variantes a distintos precios, un solo "price" contradice al rango
         # que se ve en pantalla. AggregateOffer es lo que describe eso.
@@ -423,6 +424,15 @@ def render_product_page(
             "hasMerchantReturnPolicy": _merchant_return_policy(only),
             "shippingDetails": _shipping_details(only),
         }
+        if digital:
+            # A download ships nowhere; no shipping rows, no return window.
+            json_ld_product["offers"].pop("shippingDetails", None)
+            json_ld_product["offers"]["hasMerchantReturnPolicy"] = {
+                "@type": "MerchantReturnPolicy",
+                "applicableCountry": _ship_countries(),
+                "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+                "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
+            }
     # mpn helps the "identifier / brand" merchant signal (no GTIN from CJ).
     mpn = str(detail.get("cj_sku") or detail.get("sku") or "").strip()
     if mpn:
@@ -521,9 +531,9 @@ def render_product_page(
     </p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
-      <li>Ships from partner warehouses (typically China origin unless noted)</li>
+      {"<li>Digital download (PDF) — the link arrives by email right after payment</li>" if digital else "<li>Ships from partner warehouses (typically China origin unless noted)</li>"}
       <li>Faulty or wrong items refunded in full within 30 days</li>
-      <li>Secure checkout · shipping calculated by destination at cart</li>
+      <li>Secure checkout{"" if digital else " · shipping calculated by destination at cart"}</li>
     </ul>
   </section>
   {variant_lis}
@@ -626,7 +636,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=4" defer></script>
 <script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=28" defer></script>
+<script src="/product.js?v=29" defer></script>
 </body>
 </html>
 """

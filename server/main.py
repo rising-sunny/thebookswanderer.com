@@ -22,7 +22,8 @@ from sqlalchemy.orm import Session
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from database import get_db, init_db  # noqa: E402
-from models import Order, OrderItem, Product, ProductVariant  # noqa: E402
+from models import DownloadToken, Order, OrderItem, Product, ProductVariant  # noqa: E402
+from services import digital as digital_service  # noqa: E402
 from services import categories as cat_service  # noqa: E402
 from services import cj as cj_service  # noqa: E402
 from services import email as email_service  # noqa: E402
@@ -138,10 +139,12 @@ class CheckoutIn(BaseModel):
     email: EmailStr
     customer_name: str = Field(min_length=2, max_length=80)
     phone: str = ""
-    shipping_address: str = Field(min_length=3, max_length=200)
+    # Address fields are checked in checkout(): a cart of digital downloads
+    # has nothing to ship, so they may be empty.
+    shipping_address: str = Field("", max_length=200)
     shipping_address2: str = ""
-    shipping_city: str = Field(min_length=1, max_length=80)
-    shipping_province: str = Field(min_length=1, max_length=80)
+    shipping_city: str = Field("", max_length=80)
+    shipping_province: str = Field("", max_length=80)
     shipping_zip: str = ""
     shipping_country: str = Field(min_length=2, max_length=80)
     shipping_country_code: str = Field(min_length=2, max_length=2)
@@ -840,6 +843,15 @@ async def product_shipping_quote(
         raise HTTPException(404, "Product not found")
 
     variant = _resolve_variant(db, product, variant_id)
+    if digital_service.is_digital(product):
+        total = round(float(variant.price_usd if variant else product.price_usd) * quantity, 2)
+        return {
+            "available": True, "digital": True, "country_code": country_code.upper(),
+            "product_id": product_id, "variant_id": variant.id if variant else None,
+            "quantity": quantity, "product_total": total, "shipping_total": 0.0,
+            "grand_total": total, "eta_days": None, "logistic_name": DIGITAL_LOGISTIC,
+            "options": [],
+        }
     if (product.supplier or "cj") == "printify":
         return await _printify_product_quote(product, variant, country_code.upper(), quantity)
     vid = (variant.cj_vid if variant else product.cj_vid) or ""
@@ -917,6 +929,7 @@ async def product_shipping_quote(
 
 
 PRINTIFY_ONLY_US_MSG = "Printed to order in the US; ships to United States addresses only."
+DIGITAL_LOGISTIC = "Digital download"
 
 
 def _printify_line(product: Product, variant: ProductVariant | None, qty: int) -> dict:
@@ -970,7 +983,11 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
     country = body.country_code.upper()
     by_origin: dict[str, list[dict]] = {}
     pod_lines: list[dict] = []
+    digital_lines = 0
     for product, variant, qty in cart:
+        if digital_service.is_digital(product):
+            digital_lines += 1  # nothing to ship
+            continue
         if (product.supplier or "cj") == "printify":
             if not printify_service.ships_to(country):
                 raise HTTPException(400, f"{product.title}: {PRINTIFY_ONLY_US_MSG}")
@@ -1048,6 +1065,8 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
         (v.price_usd if v else p.price_usd) * q for p, v, q in cart
     )
     shipping_total = round(retail_shipping, 2)
+    if digital_lines:
+        chosen_names.append(DIGITAL_LOGISTIC)
 
     return {
         "country_code": country,
@@ -1056,6 +1075,8 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
         "grand_total": round(product_total + shipping_total, 2),
         "eta_days": " / ".join(e for e in eta_bits if e) or None,
         "logistic_name": " + ".join(chosen_names),
+        "digital_only": digital_lines == len(cart),
+        "has_digital": bool(digital_lines),
         "legs": options_all,
     }
 
@@ -1127,6 +1148,7 @@ def cart_preview(body: CartPreviewIn, lang: str = Query("en"), db: Session = Dep
                 "unit_price": round(unit, 2),
                 "line_total": line_total,
                 "category": i18n.product(p.to_public(), lang).get("category") or "",
+                "digital": digital_service.is_digital(p),
                 "cj_sku": (v.cj_sku if v else p.cj_sku) or "",
             }
         )
@@ -1147,6 +1169,18 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     product_total = round(
         sum((v.price_usd if v else p.price_usd) * q for p, v, q in cart), 2
     )
+    for p, v, _ in cart:
+        # Never take money for a download we cannot hand over.
+        if digital_service.is_digital(p) and not digital_service.file_path(digital_service.file_for(p, v)):
+            log.error("checkout blocked: no file for digital product %s", p.slug)
+            raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
+    needs_address = any(not digital_service.is_digital(p) for p, _, _ in cart)
+    if needs_address and (
+        len(body.shipping_address.strip()) < 3
+        or not body.shipping_city.strip()
+        or not body.shipping_province.strip()
+    ):
+        raise HTTPException(422, "Please complete the shipping address.")
 
     quote = await shipping_quote(
         ShippingQuoteIn(
@@ -1258,8 +1292,10 @@ def _capture_problem(capture: dict, order: Order) -> str:
 
 
 def _checkout_redirect(status: str, order_id: int, lang: str = "en") -> RedirectResponse:
+    # k lets the page show this order's download links, and nobody else's.
     return RedirectResponse(
         f"{i18n.url_for('/checkout.html', lang)}?status={status}&order_id={order_id}"
+        f"&k={digital_service.order_key(order_id)}"
     )
 
 
@@ -1285,7 +1321,7 @@ async def checkout_return(
         log.warning("checkout return token mismatch for order %s", order.id)
         return _checkout_redirect("payment_error", order.id, lang)
 
-    if order.status in ("paid", "cj_submitted", "fulfilled"):
+    if order.status in ("paid", "cj_submitted", "fulfilled", "delivered"):
         return _checkout_redirect("already_paid", order.id, lang)
 
     try:
@@ -1372,11 +1408,16 @@ async def checkout_return(
         # A paid order must never fail because of analytics.
         pass
 
-    try:
-        await email_service.send_order_paid(order, items)
-    except Exception:  # noqa: BLE001
-        # Never block checkout on mail
-        pass
+    products_db = {
+        p.id: p for p in db.query(Product).filter(Product.id.in_([i.product_id for i in items])).all()
+    }
+    digital_only = bool(items) and all(digital_service.is_digital(products_db.get(i.product_id)) for i in items)
+    if not digital_only:
+        try:
+            await email_service.send_order_paid(order, items)
+        except Exception:  # noqa: BLE001
+            # Never block checkout on mail
+            pass
 
     # Push to the suppliers (CJ and/or Printify)
     try:
@@ -1400,19 +1441,72 @@ async def _fulfil(order: Order, db: Session) -> None:
         p.id: p
         for p in db.query(Product).filter(Product.id.in_([i.product_id for i in items])).all()
     }
+    digital = [i for i in items if digital_service.is_digital(products_db.get(i.product_id))]
     pod = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") == "printify"]
-    cj_items = [i for i in items if i not in pod]
+    cj_items = [i for i in items if i not in pod and i not in digital]
+    # Downloads first: they need no supplier, so a CJ hiccup never holds
+    # back a file the buyer has already paid for.
+    if digital:
+        await _deliver_digital(order, db, digital, products_db)
     if cj_items:
         await _submit_to_cj(order, db, cj_items, mixed=bool(pod))
     if pod:
         await _submit_to_printify(order, db, pod, products_db)
 
-    order.status = "cj_submitted"
+    order.status = "cj_submitted" if (cj_items or pod) else "delivered"
     db.commit()
-    try:
-        await email_service.send_order_fulfillment_started(order, items)
-    except Exception:  # noqa: BLE001
-        pass
+    if cj_items or pod:
+        try:
+            await email_service.send_order_fulfillment_started(order, [i for i in items if i not in digital])
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _order_downloads(order_id: int, db: Session) -> list[dict]:
+    rows = db.query(DownloadToken).filter(DownloadToken.order_id == order_id).all()
+    return [
+        {
+            "label": r.label,
+            "url": digital_service.download_url(PUBLIC_BASE, r.token),
+            "expires_at": r.expires_at.isoformat() + "Z",
+            "remaining": max(0, r.max_downloads - r.downloads),
+        }
+        for r in rows
+    ]
+
+
+async def _deliver_digital(order: Order, db: Session, items: list[OrderItem], products_db: dict) -> None:
+    """One download link per digital line, then the email that carries them.
+    Safe to call twice: lines that already have a token are skipped."""
+    have = {
+        r.order_item_id
+        for r in db.query(DownloadToken).filter(DownloadToken.order_id == order.id).all()
+    }
+    variants = {
+        v.id: v
+        for v in db.query(ProductVariant).filter(ProductVariant.id.in_([i.variant_id for i in items])).all()
+    }
+    created = False
+    for it in items:
+        if it.id in have:
+            continue
+        product = products_db[it.product_id]
+        name = digital_service.file_for(product, variants.get(it.variant_id))
+        if not digital_service.file_path(name):
+            raise RuntimeError(f"digital file missing for {product.slug}: {name or '(none set)'}")
+        db.add(DownloadToken(
+            token=digital_service.new_token(), order_id=order.id, order_item_id=it.id,
+            product_id=it.product_id, variant_id=it.variant_id, file_name=name,
+            label=it.title, max_downloads=digital_service.max_downloads(),
+            expires_at=digital_service.expiry(),
+        ))
+        created = True
+    db.commit()
+    if created:
+        try:
+            await email_service.send_digital_downloads(order, items, _order_downloads(order.id, db))
+        except Exception:  # noqa: BLE001
+            log.exception("download email failed for order %s", order.id)
 
 
 async def _submit_to_printify(order: Order, db: Session, items: list[OrderItem], products_db: dict) -> None:
@@ -1880,16 +1974,45 @@ those aren't marketing, and you'd want them.</p>
 
 
 @app.get("/api/checkout/status/{order_id}")
-def checkout_status(order_id: int, db: Session = Depends(get_db)):
+def checkout_status(order_id: int, k: str | None = Query(None), db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(404, "Order not found")
-    return {
+    out = {
         "order_id": order.id,
         "status": order.status,
         "grand_total": order.grand_total,
         "cj_order_id": order.cj_order_id or None,
     }
+    if digital_service.check_order_key(order.id, k):
+        out["downloads"] = _order_downloads(order.id, db)
+    return out
+
+
+@app.api_route("/api/download/{token}", methods=["GET", "HEAD"])
+def download_file(token: str, request: Request, db: Session = Depends(get_db)):
+    """Serve a purchased file. The token is the only credential."""
+    from fastapi.responses import FileResponse
+
+    row = db.query(DownloadToken).filter(DownloadToken.token == token).first()
+    if not row:
+        raise HTTPException(404, "This download link is not valid.")
+    if datetime.utcnow() > row.expires_at:
+        raise HTTPException(410, "This download link has expired. Write to hello@thebookswanderer.com for a new one.")
+    if row.downloads >= row.max_downloads:
+        raise HTTPException(410, "This link has reached its download limit. Write to hello@thebookswanderer.com for a new one.")
+    path = digital_service.file_path(row.file_name)
+    if not path:
+        log.error("digital file missing on disk: %s (token %s)", row.file_name, row.id)
+        raise HTTPException(503, "The file is temporarily unavailable. We have been notified.")
+    if request.method == "GET":
+        row.downloads += 1
+        db.commit()
+    return FileResponse(
+        path,
+        filename=path.name,
+        headers={"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex"},
+    )
 
 
 # Simple HTML ping (optional)

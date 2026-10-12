@@ -30,6 +30,7 @@ def get_db():
 
 def init_db() -> None:
     from models import (  # noqa: F401
+        DownloadToken,
         EmailOptOut,
         LiveEvent,
         NewsletterSubscriber,
@@ -69,11 +70,16 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE products ADD COLUMN supplier VARCHAR(20) DEFAULT 'cj'"))
         if "printify_product_id" not in cols:
             conn.execute(text("ALTER TABLE products ADD COLUMN printify_product_id VARCHAR(40) DEFAULT ''"))
+        if "digital_file" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN digital_file VARCHAR(200) DEFAULT ''"))
     if "product_variants" in insp.get_table_names():
         vcols = {c["name"] for c in insp.get_columns("product_variants")}
         if "printify_variant_id" not in vcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE product_variants ADD COLUMN printify_variant_id INTEGER DEFAULT 0"))
+        if "digital_file" not in vcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE product_variants ADD COLUMN digital_file VARCHAR(200) DEFAULT ''"))
     # order_items.variant_id
     if "order_items" in insp.get_table_names():
         ocols = {c["name"] for c in insp.get_columns("order_items")}

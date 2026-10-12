@@ -852,3 +852,104 @@ async def history_page(request: Request, days: int = 30):
     return templates.TemplateResponse("admin_live_history.html", {
         "request": request, "default_days": days,
     })
+
+
+# ── Digital products: upload the files buyers download ───────────────────
+# Files go to DIGITAL_DIR (outside the web root); only /api/download/<token>
+# ever serves them. Same login as the live dashboard.
+
+from fastapi import File, UploadFile  # noqa: E402
+
+
+@router.get("/admin/digital/", response_class=HTMLResponse)
+async def digital_admin(request: Request, msg: Optional[str] = None, db: Session = Depends(get_db)):
+    if not _is_admin(request):
+        return _login_redirect()
+    import html as _h
+
+    from models import Product
+    from services import digital
+
+    rows = db.query(Product).filter(Product.supplier == digital.SUPPLIER).order_by(Product.id).all()
+    files = sorted(p.name for p in digital.digital_dir().glob("*") if p.is_file()) if digital.digital_dir().is_dir() else []
+
+    def status(name: str) -> str:
+        if not name:
+            return '<span style="color:#a33">no file</span>'
+        ok = digital.file_path(name) is not None
+        return f'{_h.escape(name)} {"✅" if ok else "<span style=color:#a33>❌ missing on disk</span>"}'
+
+    def form(pid: int, vid: int = 0) -> str:
+        return (
+            f'<form method="post" action="/admin/digital/upload" enctype="multipart/form-data" style="display:inline">'
+            f'<input type="hidden" name="product_id" value="{pid}"><input type="hidden" name="variant_id" value="{vid}">'
+            f'<input type="file" name="file" accept=".pdf,.zip,.epub,.png,.jpg" required> '
+            f'<button>Upload</button></form>'
+        )
+
+    items = []
+    for p in rows:
+        vs = "".join(
+            f"<li>{_h.escape(v.name or 'Option')} — {status(v.digital_file)} {form(p.id, v.id)}</li>"
+            for v in p.active_variants()
+        )
+        items.append(
+            f"<li style='margin-bottom:1rem'><strong>{_h.escape(p.title)}</strong> "
+            f"<code>{_h.escape(p.slug)}</code> {'(active)' if p.active else '(hidden)'}<br>"
+            f"Product file: {status(p.digital_file)} {form(p.id)}"
+            f"{'<ul>' + vs + '</ul>' if vs else ''}</li>"
+        )
+    body = "".join(items) or "<li>No digital products yet. Create them with scripts/digital_products.py.</li>"
+    note = f"<p style='background:#eef6ee;padding:.6rem'>{_h.escape(msg)}</p>" if msg else ""
+    return HTMLResponse(f"""<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Digital files</title></head>
+<body style="font-family:system-ui;max-width:900px;margin:2rem auto;padding:0 1rem">
+<h1>Digital files</h1>{note}
+<p>Files are stored in <code>{_h.escape(str(digital.digital_dir()))}</code>, outside the public site.
+A variant file overrides the product file.</p>
+<ul>{body}</ul>
+<h2>On disk</h2><ul>{''.join(f'<li>{_h.escape(f)}</li>' for f in files) or '<li>(empty)</li>'}</ul>
+<p><a href="/admin/live">← Live dashboard</a></p></body></html>""")
+
+
+@router.post("/admin/digital/upload")
+async def digital_upload(
+    request: Request,
+    product_id: int = Form(...),
+    variant_id: int = Form(0),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not _is_admin(request):
+        return _login_redirect()
+    import re as _re
+
+    from models import Product, ProductVariant
+    from services import digital
+
+    p = db.get(Product, product_id)
+    if not p or p.supplier != digital.SUPPLIER:
+        raise HTTPException(404, "Not a digital product")
+    v = db.get(ProductVariant, variant_id) if variant_id else None
+    if v and v.product_id != p.id:
+        raise HTTPException(400, "Variant does not belong to product")
+    ext = (Path(file.filename or "").suffix or ".pdf").lower()
+    stem = p.slug + (f"-{_re.sub(r'[^a-z0-9]+', '-', (v.name or str(v.id)).lower()).strip('-')}" if v else "")
+    name = digital.safe_name(f"{stem}{ext}")
+    if not name:
+        raise HTTPException(400, f"Unsupported file type {ext}")
+    folder = digital.digital_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    tmp = folder / f".{name}.part"
+    size = 0
+    with tmp.open("wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            out.write(chunk)
+    tmp.replace(folder / name)
+    if v:
+        v.digital_file = name
+    else:
+        p.digital_file = name
+    db.commit()
+    return RedirectResponse(f"/admin/digital/?msg=Saved+{name}+({size // 1024}+KB)", status_code=303)

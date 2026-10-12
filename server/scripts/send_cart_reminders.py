@@ -45,7 +45,7 @@ from models import EmailOptOut, Order, OrderItem  # noqa: E402
 from services import email as email_service  # noqa: E402
 
 # Estados que significan "ya pago": nunca se les recuerda nada.
-PAID = ("paid", "cj_submitted", "fulfilled", "shipped", "refunded", "cancelled")
+PAID = ("paid", "cj_submitted", "fulfilled", "delivered", "shipped", "refunded", "cancelled")
 
 
 def _public_base() -> str:

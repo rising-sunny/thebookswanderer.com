@@ -115,6 +115,44 @@ PY
   fi
 fi
 
+# Digital products: purchased files live outside the web root.
+mkdir -p /var/lib/tbw-digital
+chown www-data:www-data /var/lib/tbw-digital
+chmod 750 /var/lib/tbw-digital
+
+# Uploads of those files through /admin/digital/ need more than nginx's 1 MB default.
+if [ -f "$CONF" ] && ! grep -q 'location /admin/digital/' "$CONF"; then
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("/etc/nginx/sites-enabled/thebookswanderer.com")
+text = p.read_text()
+block = """    # Digital product uploads (server/live.py)
+    location /admin/digital/ {
+        client_max_body_size 200m;
+        proxy_pass http://127.0.0.1:8010;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_request_buffering off;
+    }
+
+    """
+needle = "location / {"
+idx = text.find(needle)
+if idx == -1:
+    raise SystemExit("could not find location / in nginx conf")
+p.write_text(text[:idx] + block + text[idx:])
+print("inserted /admin/digital/ location")
+PY
+  if nginx -t; then
+    systemctl reload nginx
+  else
+    echo "nginx -t failed after adding /admin/digital/ — check $CONF"
+  fi
+fi
+
 # Daily product reel for Facebook + Instagram (server/scripts/daily_social_post.py).
 # Cron fires at 15:03 and 16:03 UTC; --at-hour 11 keeps only the run that is
 # 11:xx in New York, so the post holds its local time across DST.
