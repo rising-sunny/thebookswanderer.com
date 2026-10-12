@@ -34,8 +34,11 @@ class Product(Base):
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
     from_country: Mapped[str] = mapped_column(String(8), default="CN")
-    # "cj" (dropshipping) or "printify" (print on demand, US only)
+    # "cj" (dropshipping), "printify" (print on demand, US only) or
+    # "digital" (a file the buyer downloads; see services/digital.py)
     supplier: Mapped[str] = mapped_column(String(20), default="cj")
+    # Digital products: file name inside DIGITAL_DIR (never a public path).
+    digital_file: Mapped[str] = mapped_column(String(200), default="")
     printify_product_id: Mapped[str] = mapped_column(String(40), default="")
 
     # Optional product demo video (self-hosted preferred over CJ hotlink)
@@ -124,6 +127,9 @@ class ProductVariant(Base):
     cj_vid: Mapped[str] = mapped_column(String(80), index=True, default="")
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
     printify_variant_id: Mapped[int] = mapped_column(Integer, default=0)
+    # Digital variants (e.g. "Printable A5" vs "Tablet PDF") may each carry
+    # their own file; empty falls back to the product's.
+    digital_file: Mapped[str] = mapped_column(String(200), default="")
     image_url: Mapped[str] = mapped_column(String(500), default="")
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
@@ -202,6 +208,26 @@ class OrderItem(Base):
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
 
     order: Mapped["Order"] = relationship(back_populates="items")
+
+
+class DownloadToken(Base):
+    """One buyer's access to one purchased file: the URL secret, its expiry
+    and how many times it has been used."""
+
+    __tablename__ = "download_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    order_id: Mapped[int] = mapped_column(Integer, index=True)
+    order_item_id: Mapped[int] = mapped_column(Integer, default=0)
+    product_id: Mapped[int] = mapped_column(Integer, default=0)
+    variant_id: Mapped[int] = mapped_column(Integer, default=0)
+    file_name: Mapped[str] = mapped_column(String(200), default="")
+    label: Mapped[str] = mapped_column(String(300), default="")
+    downloads: Mapped[int] = mapped_column(Integer, default=0)
+    max_downloads: Mapped[int] = mapped_column(Integer, default=10)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class LiveEvent(Base):

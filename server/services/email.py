@@ -711,3 +711,75 @@ async def send_shop_alert(
         ),
     )
     return await send_email(to=to, subject=subject, text=text, html=html)
+
+
+async def send_digital_downloads(order: Any, items: list[Any], downloads: list[dict]) -> bool:
+    """Customer: the download links for the digital lines of a paid order.
+    For a digital-only order this is also the order confirmation, so the shop
+    inbox gets a copy-of-sale note too."""
+    oid = getattr(order, "id", "?")
+    email = getattr(order, "email", "") or ""
+    name = getattr(order, "customer_name", "") or "there"
+    shop = _shop_name()
+    base = _public_base()
+    if not downloads:
+        return False
+    days = 30
+    try:
+        from services import digital
+
+        days = digital.link_days()
+    except Exception:  # noqa: BLE001
+        pass
+
+    subject = f"Your downloads — order #{oid}, {shop}"
+    lines_text = "\n".join(f"- {d['label']}\n  {d['url']}" for d in downloads)
+    text = f"""Hi {name},
+
+Thank you for your order #{oid}. Your files are ready:
+
+{lines_text}
+
+Each link works for {days} days and up to {downloads[0].get('remaining', 10)} downloads.
+Save the files somewhere safe once you have them. If a link stops working,
+reply to this email and we will send a fresh one.
+
+— {shop}
+{base}
+"""
+    buttons = "".join(
+        f"""<tr><td style="padding:10px 0;border-bottom:1px solid #efe6d2">
+              <p style="margin:0 0 8px;font-size:15px;color:#1b3728">{_esc(d['label'])}</p>
+              {_btn(d['url'], "Download")}
+            </td></tr>"""
+        for d in downloads
+    )
+    html = _wrap_html(
+        preheader=f"Your files for order #{oid} are ready",
+        eyebrow="Your downloads",
+        body_html=f"""
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:24px;font-weight:600;
+                     color:#1b3728;line-height:1.25">Your files are ready</h1>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#333">
+            Hi {_esc(name)}, thank you for order <strong style="color:#1b3728">#{_esc(oid)}</strong>.
+            Here is everything you bought, ready to download.
+          </p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px">{buttons}</table>
+          <p style="margin:0;font-size:13px;line-height:1.6;color:#6b5c3e">
+            Each link works for {days} days. Save the files once you have them; if a link
+            stops working, just reply to this email and we will send a fresh one.
+          </p>
+        """,
+    )
+    ok = await send_email(to=email, subject=subject, text=text, html=html)
+
+    owners = list(dict.fromkeys(_notify_owner() + _alert_to()))
+    if owners:
+        total = _money(getattr(order, "grand_total", 0))
+        owner_text = (
+            f"Digital order #{oid} paid — {total}\n\nCustomer: {name} <{email}>\n"
+            f"Country: {getattr(order, 'shipping_country', '') or '—'}\n\nItems:\n{_order_lines_text(items)}\n"
+            f"\nDownload links were emailed to the customer."
+        )
+        await send_email(to=owners, subject=f"💾 Digital order #{oid} — {total}", text=owner_text)
+    return ok

@@ -223,7 +223,18 @@
         return `Delivery ${etaDays} days`;
     }
 
+    function isDigital() {
+        return Boolean(product && product.supplier === "digital");
+    }
+
     function shippingBlockHtml() {
+        if (isDigital()) {
+            return `
+<div class="pdp__variants pdp__shipping" id="pdpShipping">
+  <h2 class="pdp__variants-title">Instant download</h2>
+  <p class="pdp__variants-label"><strong>Digital file</strong> — nothing is shipped. Your download link arrives by email right after payment and appears on the confirmation page.</p>
+</div>`;
+        }
         const price = unitPrice();
         const opts = destinations
             .map(
@@ -406,9 +417,13 @@
   ${lifestyleBox}
   ${shippingBlockHtml()}
   <ul class="pdp__meta">
-    <li>Free shipping worldwide — no cost added at checkout</li>
+    ${isDigital()
+        ? `<li>Instant download — PDF, no shipping</li>
     <li>Secure checkout with PayPal</li>
-    <li>Faulty or wrong items refunded in full</li>
+    <li>Problem with a file? We send a fresh link or refund you</li>`
+        : `<li>Free shipping worldwide — no cost added at checkout</li>
+    <li>Secure checkout with PayPal</li>
+    <li>Faulty or wrong items refunded in full</li>`}
     ${sku ? `<li id="pdpSku">SKU ${escapeHtml(sku)}</li>` : ""}
   </ul>
 </div>

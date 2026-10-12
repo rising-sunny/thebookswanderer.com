@@ -3274,3 +3274,37 @@ a.add-to-cart {
     background: var(--green-800);
     color: var(--cream-50);
 }
+
+/* Download links on the checkout confirmation (digital products). */
+.checkout-downloads {
+    margin: var(--sp-5) 0;
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg-raised);
+}
+
+.checkout-downloads h2 {
+    margin: 0 0 var(--sp-2);
+}
+
+.checkout-downloads ul {
+    list-style: none;
+    margin: var(--sp-4) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--sp-3);
+}
+
+.checkout-downloads li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+}
+
+.checkout-digital-note {
+    margin: 0 0 var(--sp-3);
+    color: var(--ink-muted);
+}

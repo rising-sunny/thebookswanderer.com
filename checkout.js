@@ -11,6 +11,7 @@
     const params = new URLSearchParams(window.location.search);
     const status = (params.get("status") || "").toLowerCase();
     const orderId = params.get("order_id") || "";
+    const orderKey = params.get("k") || "";
 
     let destinations = [];
     let geoCountry = ""; // IP guess, only used when the buyer has no saved choice
@@ -84,6 +85,35 @@
     }
   </div>
 </div>`;
+    }
+
+    // A cart of downloads only: nothing to ship, so no address to ask for.
+    function digitalOnly() {
+        const items = preview?.items || [];
+        return items.length > 0 && items.every((i) => i.digital);
+    }
+
+    async function renderDownloads() {
+        if (!orderId || !orderKey) return;
+        try {
+            const res = await fetch(`/api/checkout/status/${encodeURIComponent(orderId)}?k=${encodeURIComponent(orderKey)}`, {
+                headers: { Accept: "application/json" },
+            });
+            const data = await res.json();
+            const list = data.downloads || [];
+            if (!list.length) return;
+            const box = document.createElement("div");
+            box.className = "checkout-downloads";
+            box.innerHTML = `
+  <h2>Your downloads</h2>
+  <p>The same links are in your email. Each works for 30 days.</p>
+  <ul>${list
+      .map((d) => `<li><span>${escapeHtml(d.label)}</span> <a class="btn" href="${escapeHtml(d.url)}">Download</a></li>`)
+      .join("")}</ul>`;
+            root.querySelector(".checkout-banner")?.after(box);
+        } catch (_) {
+            /* the email still has the links */
+        }
     }
 
     function formValues() {
@@ -224,6 +254,8 @@
                 ship.innerHTML = `<span class="pdp__ship-warn">${escapeHtml(
                     quote?.message || "Unavailable"
                 )}</span>`;
+            } else if (quoteStatus === "ok" && quote && quote.digital_only) {
+                ship.innerHTML = `<strong>Instant download</strong>`;
             } else if (quoteStatus === "ok" && quote) {
                 ship.innerHTML = `<strong>${money(quote.shipping_total)}</strong>`;
             } else {
@@ -322,7 +354,8 @@
     </fieldset>
 
     <fieldset class="checkout-fieldset">
-      <legend>Shipping address</legend>
+      <legend>${digitalOnly() ? "Country" : "Shipping address"}</legend>
+      ${digitalOnly() ? `<p class="checkout-digital-note">Digital downloads only — no shipping address needed.</p>` : ""}
       <label class="field">
         <span>Country</span>
         <select id="coCountry" name="country" required>
@@ -330,6 +363,7 @@
           ${opts}
         </select>
       </label>
+      <div id="coAddressFields"${digitalOnly() ? " hidden" : ""}>
       <label class="field">
         <span>Address</span>
         <input id="coAddress" name="address" type="text" required autocomplete="address-line1" minlength="3">
@@ -352,6 +386,7 @@
         <span>Postal code</span>
         <input id="coZip" name="zip" type="text" autocomplete="postal-code">
       </label>
+      </div>
     </fieldset>
 
     <p class="checkout-error" id="coError" hidden></p>
@@ -412,11 +447,12 @@
             showErr("Your cart is empty.");
             return;
         }
-        if (!vals.email || !vals.customer_name || !vals.shipping_address) {
-            showErr("Please fill in email, name, and address.");
+        const dOnly = digitalOnly();
+        if (!vals.email || !vals.customer_name || (!dOnly && !vals.shipping_address)) {
+            showErr(dOnly ? "Please fill in email and name." : "Please fill in email, name, and address.");
             return;
         }
-        if (!vals.shipping_country_code || !vals.shipping_city || !vals.shipping_province) {
+        if (!vals.shipping_country_code || (!dOnly && (!vals.shipping_city || !vals.shipping_province))) {
             showErr("Please complete city, province/state, and country.");
             return;
         }
@@ -484,6 +520,7 @@
         // Status return from PayPal — show result, don't require cart
         if (status && STATUS_COPY[status]) {
             root.innerHTML = bannerHtml();
+            if (status === "success" || status === "already_paid" || status === "paid_cj_pending") renderDownloads();
             Cart.paintBadge();
             try {
                 if (
