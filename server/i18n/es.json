@@ -30,6 +30,16 @@
         "Los e-readers viajan: bolso, playa, cajón de la mesita. Una buena funda protege la pantalla sin abultar y se ve mejor que una carcasa genérica cuando la sacas en el tren.",
         "Elegimos fundas que cierran bien, se limpian fácil y encajan en los modelos de Kindle más habituales. Si aún no tienes uno, en nuestra selección de Amazon están los dos que recomendamos."
       ]
+    },
+    "printables": {
+      "name": "Imprimibles",
+      "h1": "Diarios de lectura imprimibles y descargas literarias",
+      "description": "Diarios y registros de lectura en descarga inmediata para imprimir en casa.",
+      "meta_description": "Diarios de lectura imprimibles de The Books Wanderer: PDF de descarga inmediata en A4, Carta y A5, pensados para imprimir en casa y doblar en cuadernillo.",
+      "intro": [
+        "Algunos compañeros de lectura no necesitan paquete. Nuestros imprimibles son PDF que compras una vez, imprimes en casa o en una copistería y doblas en cuadernillo: sin envío ni esperas, te llegan al correo justo después del pago.",
+        "Cada uno está diseñado desde cero, no revendido de un pack de plantillas, con guía de impresión para A4 y Carta y una versión A5 para carpetas de anillas y tablets."
+      ]
     }
   },
   "templates": [
@@ -586,6 +596,7 @@
     "Digital downloads only — no shipping address needed.": "Solo descargas digitales: no hace falta dirección de envío.",
     "Please fill in email and name.": "Completa el correo y el nombre.",
     "Digital download (PDF) — the link arrives by email right after payment": "Descarga digital (PDF): el enlace llega por correo justo después del pago",
-    "Secure checkout": "Pago seguro"
+    "Secure checkout": "Pago seguro",
+    "Printables": "Imprimibles"
   }
 }

@@ -72,6 +72,7 @@ HASHTAGS = {
     "book-accessories": "#bookaccessories #bookmarks #booklover #bookish #readingtime #bookstagram",
     "decor": "#readingnook #bookshelfdecor #booklover #bookish #cozyreading #bookstagram",
     "ereader-accessories": "#kindle #kindleaccessories #ereader #booklover #bookish #bookstagram",
+    "printables": "#readingjournal #printable #booktracker #booklover #bookish #bookstagram",
 }
 DEFAULT_TAGS = "#booklover #bookish #readingtime #bookstagram"
 

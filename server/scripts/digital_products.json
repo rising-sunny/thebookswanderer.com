@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "slug": "reading-passport",
+    "title": "The Wanderer's Reading Passport — Printable Reading Journal",
+    "price_usd": 8.99,
+    "category": "printables",
+    "description": "A reading journal disguised as a passport. Every book you finish is a journey: log it on a boarding pass, declare it at customs, and stamp a visa when it earns one.\n\nWhat's inside (40 pages, PDF):\n• Passport cover, holder's data page and reading regulations\n• Travel log for the whole year and a world atlas to colour in the countries your books took you to\n• 48 numbered boarding passes — title, author, departure and arrival dates, seat, rating\n• Customs declarations for your favourite quotes and DNF books\n• 6 visa pages plus 2 sheets of 24 printable visa stamps (genres, milestones, \"DNF — deported\")\n\nFormats included: saddle-stitch booklet for A4 and US Letter (print double-sided, fold, staple — it becomes an A6/pocket passport), single pages in A6 and A5 for binders and tablets, and a one-page print guide.\n\nInstant download: you get the link by email right after checkout. Digital product — nothing is shipped. English edition; a Spanish edition is available in the same listing.",
+    "image_url": "/assets/products/reading-passport/main_en.jpg",
+    "gallery": [
+      "/assets/products/reading-passport/boarding_en.jpg",
+      "/assets/products/reading-passport/visas_en.jpg",
+      "/assets/products/reading-passport/atlas_en.jpg"
+    ],
+    "variants": [
+      {"name": "English", "image_url": "/assets/products/reading-passport/main_en.jpg"},
+      {"name": "Español", "image_url": "/assets/products/reading-passport/main_es.jpg"}
+    ],
+    "active": true
+  }
+]
