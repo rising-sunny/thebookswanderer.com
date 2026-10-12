@@ -184,3 +184,11 @@ cat > /etc/cron.d/tbw-welcome-series <<CRON
 41 * * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/send_welcome_series.py >> /var/log/tbw-welcome.log 2>&1
 CRON
 chmod 644 /etc/cron.d/tbw-welcome-series
+
+# IndexNow (server/scripts/indexnow_submit.py): new / changed sitemap URLs to Bing & co, daily.
+touch /var/log/tbw-indexnow.log
+chown www-data:www-data /var/log/tbw-indexnow.log
+cat > /etc/cron.d/tbw-indexnow <<CRON
+17 7 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/indexnow_submit.py >> /var/log/tbw-indexnow.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-indexnow
