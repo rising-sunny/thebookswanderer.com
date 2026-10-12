@@ -617,7 +617,7 @@ def _feed_text(s: str, limit: int) -> str:
     return s[:limit]
 
 
-@app.get("/feeds/google-products.xml")
+@app.get("/api/feeds/google-products.xml")
 def google_products_feed(db: Session = Depends(get_db)):
     """Product feed (Google Merchant Center format, RSS 2.0 + g: namespace)
     for free listings on Google, the Pinterest catalog and AI shopping feeds.
