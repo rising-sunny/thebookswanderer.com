@@ -106,5 +106,16 @@
   "washi-sticker-book": {
     "title": "Libreta de pegatinas washi",
     "description": "Una libreta de bolsillo con pegatinas washi para rincones de lectura tranquilos y diarios sin prisa. Láminas suaves de inspiración vintage: despega, coloca y crea pequeñas escenas en tus páginas, agendas o cartas. Unas 50 láminas por libreta; elige el diseño que vaya con tu ánimo."
+  },
+  "reading-passport": {
+    "title": "Pasaporte del lector — Diario de lectura imprimible",
+    "description": "Un diario de lectura disfrazado de pasaporte. Cada libro que terminas es un viaje: regístralo en una tarjeta de embarque, decláralo en la aduana y séllale un visado cuando se lo gane.\n\nQué incluye (40 páginas, PDF):\n• Portada de pasaporte, página de datos del titular y reglamento de lectura\n• Bitácora de viajes del año y un atlas para colorear los países a los que te llevaron tus libros\n• 48 tarjetas de embarque numeradas: título, autor, fechas de salida y llegada, asiento y valoración\n• Declaraciones de aduana para tus citas favoritas y los libros abandonados\n• 6 páginas de visados y 2 hojas con 24 sellos imprimibles (géneros, hitos, \"DNF — deportado\")\n\nFormatos incluidos: cuadernillo grapado para A4 y Carta (imprime a doble cara, dobla y grapa: queda un pasaporte de bolsillo A6), páginas sueltas en A6 y A5 para carpetas y tablets, y una guía de impresión de una página.\n\nDescarga inmediata: recibes el enlace por correo justo después del pago. Producto digital, no se envía nada físico. Elige la edición en español en el selector.",
+    "image_url": "/assets/products/reading-passport/main_es.jpg",
+    "gallery": [
+      "/assets/products/reading-passport/boarding_es.jpg",
+      "/assets/products/reading-passport/visas_es.jpg",
+      "/assets/products/reading-passport/atlas_es.jpg"
+    ],
+    "default_variant": "Español"
   }
 }

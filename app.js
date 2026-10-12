@@ -280,6 +280,13 @@
                     tile: "linear-gradient(150deg, #a63a2f, #6d221c)",
                     product_count: 0,
                 },
+                {
+                    slug: "printables",
+                    name: "Printables",
+                    description: "Instant-download reading journals to print at home.",
+                    tile: "linear-gradient(150deg, #3a4f7a, #1b2540)",
+                    product_count: 0,
+                },
             ];
         }
         renderCategoryTiles(categoriesCache);

@@ -89,6 +89,30 @@ CATEGORIES: list[dict[str, Any]] = [
         "tile": "linear-gradient(150deg, #a63a2f, #6d221c)",
         "sort_order": 3,
     },
+    {
+        "slug": "printables",
+        "name": "Printables",
+        "h1": "Printable reading journals and bookish downloads",
+        "description": "Instant-download reading journals and trackers to print at home.",
+        "meta_description": (
+            "Printable reading journals from The Books Wanderer — instant PDF downloads "
+            "in A4, Letter and A5, designed to print at home and fold into a booklet."
+        ),
+        "intro": [
+            (
+                "Some reading companions do not need a parcel. Our printables are PDF "
+                "downloads you buy once, print at home or at a copy shop, and fold into "
+                "a booklet — no shipping, no waiting, delivered to your inbox right after checkout."
+            ),
+            (
+                "Each one is designed from scratch rather than resold from a template pack, "
+                "with print guides for A4 and US Letter and an A5 version for ring binders "
+                "and tablets."
+            ),
+        ],
+        "tile": "linear-gradient(150deg, #3a4f7a, #1b2540)",
+        "sort_order": 4,
+    },
 ]
 
 _BY_SLUG = {c["slug"]: c for c in CATEGORIES}

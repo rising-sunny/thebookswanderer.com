@@ -109,6 +109,17 @@ def product(p: dict[str, Any], lang: str) -> dict[str, Any]:
         out["title"] = es["title"]
     if es.get("description"):
         out["description"] = es["description"]
+    # Localized mockups (e.g. a printable whose pages are in Spanish).
+    if es.get("image_url"):
+        out["image_url"] = es["image_url"]
+    if es.get("gallery") and "lifestyle_images" in out:
+        out["images"] = out["lifestyle_images"] = list(es["gallery"])
+    if es.get("default_variant") and out.get("variants"):
+        variants = list(out["variants"])
+        first = [v for v in variants if v.get("name") == es["default_variant"]]
+        if first:
+            out["variants"] = first + [v for v in variants if v is not first[0]]
+            out["default_variant_id"] = first[0].get("id")
     cat_slug = out.get("category_slug") or ""
     if cat_slug and out.get("category"):
         out["category"] = category_name(cat_slug, out["category"], lang)
