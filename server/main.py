@@ -618,6 +618,7 @@ _FEED_SKIP_COUNTRIES = {"KR"}
 # Google product taxonomy ids (taxonomy-with-ids.en-US.txt), first match on
 # the slug wins; otherwise the shop category decides.
 _GOOGLE_CATEGORY_BY_SLUG = (
+    ("color-the-classics", "784"),      # Media > Books > Print Books (coloring book)
     ("advent-calendar", "5359"),        # Decor > Seasonal & Holiday Decorations > Advent Calendars
     ("calendar", "927"),                # Office Supplies > Filing & Organization > Calendars, Organizers & Planners
     ("reading-passport", "961"),        # Office Supplies > ... > Paper Products > Notebooks & Notepads
