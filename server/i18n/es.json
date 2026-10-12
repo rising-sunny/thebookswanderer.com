@@ -265,7 +265,7 @@
     "Subscribe": "Suscribirme",
     "No spam, and one click to leave whenever you like.": "Sin spam, y un clic para darte de baja cuando quieras.",
     "Please check your email — it looks incomplete.": "Revisa tu correo: parece incompleto.",
-    "Adding you…": "Apuntándote…",
+    "Adding you…": "Añadiéndote…",
     "You were already on the list — nothing to do.": "Ya estabas en la lista; no hay que hacer nada.",
     "Added. One letter a month, and a link to leave in each one.": "Listo. Una carta al mes, y en cada una un enlace para darte de baja.",
     "That didn't go through. Try again, or email hello@thebookswanderer.com.": "No se pudo completar. Inténtalo de nuevo o escribe a hello@thebookswanderer.com.",
@@ -604,6 +604,11 @@
     "Printing faults replaced or refunded in full": "Si llega con fallos de impresión, lo reponemos o te devolvemos el dinero",
     "Printed to order; ships to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland.": "Se imprime bajo pedido; enviamos a EE. UU., Reino Unido, Canadá, Australia, Alemania, Francia, Países Bajos e Irlanda.",
     "Free shipping": "Envío gratis",
-    "to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland — pick your country for the delivery estimate": "a EE. UU., Reino Unido, Canadá, Australia, Alemania, Francia, Países Bajos e Irlanda: elige tu país para ver la estimación de entrega"
+    "to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland — pick your country for the delivery estimate": "a EE. UU., Reino Unido, Canadá, Australia, Alemania, Francia, Países Bajos e Irlanda: elige tu país para ver la estimación de entrega",
+    "Free: the 2027 Reading Challenge": "Gratis: el reto de lectura 2027",
+    "A printable 52-book challenge and a page to log your reading year, sent to your inbox. After that, one letter a month: new arrivals and reading picks.": "Un reto imprimible de 52 libros y una página para registrar tu año de lectura, directo a tu correo. Después, una carta al mes: novedades y recomendaciones.",
+    "Send me the challenge": "Envíame el reto",
+    "You were already on the list — the challenge is on its way to your inbox.": "Ya estabas en la lista: el reto va camino a tu correo.",
+    "Done! Check your inbox for the 2027 Reading Challenge.": "¡Listo! Revisa tu correo: ahí está el reto de lectura 2027."
   }
 }

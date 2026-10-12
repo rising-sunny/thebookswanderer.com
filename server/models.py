@@ -292,6 +292,10 @@ class NewsletterSubscriber(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     source: Mapped[str] = mapped_column(String(40), default="homepage")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Welcome series (services/email.py): last step sent and when.
+    lang: Mapped[str] = mapped_column(String(5), default="en")
+    welcome_step: Mapped[int] = mapped_column(Integer, default=0)
+    welcome_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class PinterestPin(Base):

@@ -783,3 +783,136 @@ reply to this email and we will send a fresh one.
         )
         await send_email(to=owners, subject=f"💾 Digital order #{oid} — {total}", text=owner_text)
     return ok
+
+
+# ── Newsletter welcome series ─────────────────────────────────────────
+# Step 1 the moment someone subscribes (the free 2027 Reading Challenge),
+# step 2 three days later (the Reading Passport), step 3 four days after
+# that (gift guide). Sent by main.py and scripts/send_welcome_series.py.
+
+WELCOME_DELAYS_DAYS = {2: 3, 3: 4}
+
+_WELCOME = {
+    "en": {
+        1: {
+            "subject": "Your 2027 Reading Challenge is here",
+            "pre": "52 prompts, one a week, and a page to log the year.",
+            "eyebrow": "Welcome",
+            "paras": [
+                "Thank you for joining us. As promised, here is the free 2027 Reading Challenge: "
+                "fifty-two prompts, one for every week (a book with a map inside, a classic you pretended "
+                "to have read, the one you've been saving), plus a page to log the year month by month.",
+                "Print it on Letter or A4, stick it inside a notebook or pin it by your shelf. "
+                "It's free for personal use, so feel free to print one for your book club too.",
+            ],
+            "cta": ("Download the challenge (PDF)", "/assets/downloads/2027-reading-challenge.pdf"),
+            "after": "We write once a month at most: new arrivals, a few reading picks, nothing else. "
+                     "If you just hit reply, it reaches a real person.",
+        },
+        2: {
+            "subject": "A passport for your reading year",
+            "pre": "Every book you finish is a journey. Here's where to log it.",
+            "eyebrow": "From the shop",
+            "paras": [
+                "If the challenge got you thinking about where your books will take you in 2027, "
+                "this is the thing we made for it: the Wanderer's Reading Passport.",
+                "It's a reading journal disguised as a passport. Each book you finish gets a numbered "
+                "boarding pass (departure, arrival, seat, rating), favourite lines are declared at customs, "
+                "and a visa gets stamped when a book really earns it. There's an atlas, too, to mark every "
+                "country your books took you to.",
+                "It comes three ways: a printable PDF with 24 visa stamps ($8.99), an A5 paperback ($19.99) "
+                "and a hardcover deluxe edition ($34.99). The printed ones ship free to the US, UK, Canada, "
+                "Australia and much of Europe.",
+            ],
+            "cta": ("See the Reading Passport", "/products/reading-passport-printed"),
+            "after": "No pressure: the challenge works on any scrap of paper. We just think it looks better stamped.",
+        },
+        3: {
+            "subject": "Gifts for the readers on your list",
+            "pre": "Small, useful things for people who always have a book on the go.",
+            "eyebrow": "Gift guide",
+            "paras": [
+                "December fills up quickly, so here is our short guide to gifts for book lovers: "
+                "things readers actually use, picked one by one rather than ordered by the crate.",
+                "Bookmarks that don't fall out, a one-handed page holder for reading in bed, a sleeve for "
+                "the Kindle that lives in a tote bag, a literary wall calendar for 2027 and the Reading Passport "
+                "for the friend who keeps lists of everything.",
+            ],
+            "cta": ("Read the gift guide", "/guides/gifts-for-book-lovers/"),
+            "after": "That's the last of the welcome letters. From here on it's one letter a month, at most.",
+        },
+    },
+    "es": {
+        1: {
+            "subject": "Aquí está tu reto de lectura 2027",
+            "pre": "52 retos, uno por semana, y una página para registrar el año.",
+            "eyebrow": "Bienvenida",
+            "paras": [
+                "Gracias por suscribirte. Como prometimos, aquí tienes el reto de lectura 2027 gratis: "
+                "cincuenta y dos retos, uno por semana (un libro con un mapa dentro, un clásico que fingiste "
+                "haber leído, el que llevas tiempo guardando) y una página para registrar el año mes a mes.",
+                "Imprímelo en A4 o Carta, pégalo en un cuaderno o junto a tu estantería. Es gratis para uso "
+                "personal, así que puedes imprimir otro para tu club de lectura.",
+            ],
+            "cta": ("Descargar el reto (PDF)", "/assets/downloads/reto-de-lectura-2027.pdf"),
+            "after": "Escribimos una vez al mes como mucho: novedades y algunas recomendaciones, nada más. "
+                     "Si respondes a este correo, lo lee una persona de verdad.",
+        },
+        2: {
+            "subject": "Un pasaporte para tu año de lectura",
+            "pre": "Cada libro que terminas es un viaje. Aquí puedes registrarlo.",
+            "eyebrow": "De la tienda",
+            "paras": [
+                "Si el reto te hizo pensar en adónde te llevarán tus libros en 2027, esto es lo que hicimos "
+                "para eso: el Pasaporte del lector.",
+                "Es un diario de lectura disfrazado de pasaporte. Cada libro que terminas tiene su tarjeta de "
+                "embarque numerada (salida, llegada, asiento, valoración), las frases favoritas se declaran en "
+                "la aduana y se sella un visado cuando un libro se lo gana. Trae también un atlas para marcar "
+                "los países a los que te llevaron tus libros.",
+                "Hay tres ediciones: PDF imprimible con 24 sellos de visado (8,99 USD), tapa blanda A5 "
+                "(19,99 USD) y edición de lujo en tapa dura (34,99 USD). Las impresas tienen envío gratis a "
+                "EE. UU., Reino Unido, Canadá, Australia y buena parte de Europa.",
+            ],
+            "cta": ("Ver el Pasaporte del lector", "/es/products/reading-passport-printed"),
+            "after": "Sin presión: el reto funciona en cualquier papel. Solo creemos que se ve mejor sellado.",
+        },
+        3: {
+            "subject": "Regalos para los lectores de tu lista",
+            "pre": "Cosas pequeñas y útiles para quien siempre tiene un libro entre manos.",
+            "eyebrow": "Guía de regalos",
+            "paras": [
+                "Diciembre se llena rápido, así que aquí va nuestra guía corta de regalos para lectores: "
+                "cosas que de verdad se usan, elegidas una a una.",
+                "Separadores que no se caen, un sujetapáginas para leer con una mano en la cama, una funda para "
+                "el Kindle que vive en el bolso, un calendario literario de pared para 2027 y el Pasaporte del "
+                "lector para quien hace listas de todo.",
+            ],
+            "cta": ("Ver la tienda", "/es/collections/"),
+            "after": "Esta es la última carta de bienvenida. A partir de ahora, una al mes como mucho.",
+        },
+    },
+}
+
+
+async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str) -> bool:
+    lang = "es" if lang == "es" else "en"
+    w = _WELCOME[lang][step]
+    base = _public_base()
+    utm = f"utm_source=newsletter&utm_medium=email&utm_campaign=welcome_{step}"
+    href = f"{base}{w['cta'][1]}{'&' if '?' in w['cta'][1] else '?'}{utm}"
+    leave = "Darme de baja" if lang == "es" else "Unsubscribe"
+    text = "\n\n".join(w["paras"]) + f"\n\n{w['cta'][0]}: {href}\n\n{w['after']}\n\n— The Books Wanderer\n\n" \
+        + f"{leave}: {unsubscribe_url}\n"
+    body = "".join(
+        f'<p style="margin:0 0 16px;font-family:Georgia,Times,serif;font-size:16px;line-height:1.6;color:#2b2b2b">'
+        f"{_esc(p)}</p>" for p in w["paras"])
+    body += f'<p style="margin:24px 0;text-align:center">{_btn(href, w["cta"][0])}</p>'
+    body += (f'<p style="margin:0 0 16px;font-family:Georgia,Times,serif;font-size:15px;line-height:1.6;color:#555">'
+             f'{_esc(w["after"])}</p>'
+             f'<p style="margin:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8a8a">'
+             f'<a href="{_esc(unsubscribe_url)}" style="color:#8a8a8a">{leave}</a></p>')
+    html = _wrap_html(preheader=w["pre"], eyebrow=w["eyebrow"], body_html=body)
+    return await send_email(
+        to=email, subject=w["subject"], text=text, html=html,
+        headers={"List-Unsubscribe": f"<{unsubscribe_url}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+    )

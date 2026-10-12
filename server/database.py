@@ -103,3 +103,12 @@ def init_db() -> None:
         if "lulu_job_id" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN lulu_job_id VARCHAR(80) DEFAULT ''"))
+    if "newsletter_subscribers" in insp.get_table_names():
+        ncols = {c["name"] for c in insp.get_columns("newsletter_subscribers")}
+        with engine.begin() as conn:
+            if "lang" not in ncols:
+                conn.execute(text("ALTER TABLE newsletter_subscribers ADD COLUMN lang VARCHAR(5) DEFAULT 'en'"))
+            if "welcome_step" not in ncols:
+                conn.execute(text("ALTER TABLE newsletter_subscribers ADD COLUMN welcome_step INTEGER DEFAULT 0"))
+            if "welcome_at" not in ncols:
+                conn.execute(text("ALTER TABLE newsletter_subscribers ADD COLUMN welcome_at DATETIME"))

@@ -481,13 +481,13 @@
                 const res = await fetch("/api/newsletter/subscribe", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: email.value.trim() }),
+                    body: JSON.stringify({ email: email.value.trim(), lang: window.TBW_LANG || "en" }),
                 });
                 if (!res.ok) throw new Error("subscribe failed");
                 const data = await res.json();
                 status.textContent = data.already
-                    ? "You were already on the list — nothing to do."
-                    : "Added. One letter a month, and a link to leave in each one.";
+                    ? "You were already on the list — the challenge is on its way to your inbox."
+                    : "Done! Check your inbox for the 2027 Reading Challenge.";
                 form.reset();
             } catch (_) {
                 status.textContent =
