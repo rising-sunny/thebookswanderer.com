@@ -152,6 +152,10 @@
     [
       "^(\\d+) lines? · (\\d+) items?$",
       "$1 línea(s) · $2 artículo(s)"
+    ],
+    [
+      "^Order #(\\d+)$",
+      "Pedido n.º $1"
     ]
   ],
   "phrases": {

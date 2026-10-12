@@ -157,7 +157,16 @@
         preview = await Cart.preview(items);
     }
 
-    async function loadQuote() {
+    // The zip field re-quotes on "change", which fires when it loses focus —
+    // i.e. on the same click as Pay. Submit waits for that quote instead of
+    // reading it half-way and telling the buyer shipping is unavailable.
+    let quotePending = Promise.resolve();
+    function loadQuote() {
+        quotePending = fetchQuote();
+        return quotePending;
+    }
+
+    async function fetchQuote() {
         const code = document.getElementById("coCountry")?.value || "";
         const zip = document.getElementById("coZip")?.value?.trim() || "";
         const items = cartPayload();
@@ -411,6 +420,7 @@
             showErr("Please complete city, province/state, and country.");
             return;
         }
+        if (quoteStatus === "loading") await quotePending;
         if (quoteStatus !== "ok" || !quote) {
             showErr("Select a country with available shipping before paying.");
             return;

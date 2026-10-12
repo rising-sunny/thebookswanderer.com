@@ -155,7 +155,7 @@ _SHIP_TRANSIT_BANDS: list[dict[str, Any]] = [
 ]
 
 
-def _supplier_countries(supplier: str | None) -> set[str] | None:
+def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
     """Countries a supplier can deliver to, when narrower than the shop's list.
 
     Printify products are US-only (checkout refuses anything else), so their
@@ -168,6 +168,9 @@ def _supplier_countries(supplier: str | None) -> set[str] | None:
             return set(printify.SHIP_COUNTRIES)
         except Exception:  # noqa: BLE001
             return {"US"}
+    # CJ's US warehouse only has domestic routes (checkout refuses the rest).
+    if (from_country or "").upper() == "US":
+        return {"US"}
     return None
 
 
@@ -395,7 +398,7 @@ def render_product_page(
         json_ld_product["image"] = [
             PUBLIC_BASE + u if u.startswith("/") else u for u in gallery[:8]
         ]
-    only = _supplier_countries(detail.get("supplier"))
+    only = _supplier_countries(detail.get("supplier"), detail.get("from_country"))
     if price is not None:
         # Con variantes a distintos precios, un solo "price" contradice al rango
         # que se ve en pantalla. AggregateOffer es lo que describe eso.
