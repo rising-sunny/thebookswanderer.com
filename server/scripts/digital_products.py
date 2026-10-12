@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Create or update the shop's digital products from digital_products.json.
+"""Create or update the shop's digital and Lulu-printed products from
+digital_products.json ("supplier": "lulu" plus "lulu_package" for books).
 
 The JSON (next to this script) holds only public listing data — title,
 price, images, variants. The files buyers download are uploaded separately
@@ -36,12 +37,14 @@ def main() -> int:
     for spec in specs:
         p = db.query(Product).filter(Product.slug == spec["slug"]).first()
         new = p is None
+        supplier = spec.get("supplier", digital.SUPPLIER)
         if new:
-            p = Product(slug=spec["slug"], supplier=digital.SUPPLIER, cj_pid="digital", from_country="")
+            p = Product(slug=spec["slug"], supplier=supplier, cj_pid=supplier, from_country="")
             db.add(p)
-        elif p.supplier != digital.SUPPLIER:
-            print(f"{spec['slug']}: exists and is not digital, skipped")
+        elif p.supplier != supplier:
+            print(f"{spec['slug']}: exists with supplier {p.supplier}, skipped")
             continue
+        p.lulu_package = spec.get("lulu_package", "")
         p.title = spec["title"]
         p.description = spec.get("description", "")
         p.category = spec.get("category", "")
@@ -57,15 +60,21 @@ def main() -> int:
             v.image_url = vs.get("image_url", "")
             v.sort_order = i
             v.active = True
-            v.cj_vid = f"digital-{p.slug}-{i}"
+            v.cj_vid = f"{supplier}-{p.slug}-{i}"
             db.add(v)
-        files_ok = bool(digital.file_path(p.digital_file)) or all(
-            digital.file_path(v.digital_file) for v in p.variants if v.active
-        ) and bool(p.variants)
+        if supplier == "lulu":
+            files_ok = bool(p.variants) and all(
+                digital.file_path(v.digital_file) and digital.file_path(v.print_cover)
+                for v in p.variants if v.active
+            )
+        else:
+            files_ok = bool(digital.file_path(p.digital_file)) or all(
+                digital.file_path(v.digital_file) for v in p.variants if v.active
+            ) and bool(p.variants)
         print(f"{'create' if new else 'update'} {p.slug}: ${p.price_usd:.2f} active={p.active} "
               f"variants={len(spec.get('variants', []))} files={'ok' if files_ok else 'MISSING — upload at /admin/digital/'}")
         if p.active and not files_ok:
-            print("  ! active without a file: buyers could pay and get nothing. Keeping it hidden.")
+            print("  ! active without its files: buyers could pay and get nothing. Keeping it hidden.")
             p.active = False
     if apply:
         db.commit()

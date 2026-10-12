@@ -34,9 +34,12 @@ class Product(Base):
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
     from_country: Mapped[str] = mapped_column(String(8), default="CN")
-    # "cj" (dropshipping), "printify" (print on demand, US only) or
-    # "digital" (a file the buyer downloads; see services/digital.py)
+    # "cj" (dropshipping), "printify" (print on demand, US only),
+    # "digital" (a file the buyer downloads; see services/digital.py) or
+    # "lulu" (books printed to order; see services/lulu.py)
     supplier: Mapped[str] = mapped_column(String(20), default="cj")
+    # Lulu products: the pod_package_id (trim, colour, binding, paper).
+    lulu_package: Mapped[str] = mapped_column(String(40), default="")
     # Digital products: file name inside DIGITAL_DIR (never a public path).
     digital_file: Mapped[str] = mapped_column(String(200), default="")
     printify_product_id: Mapped[str] = mapped_column(String(40), default="")
@@ -128,8 +131,10 @@ class ProductVariant(Base):
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
     printify_variant_id: Mapped[int] = mapped_column(Integer, default=0)
     # Digital variants (e.g. "Printable A5" vs "Tablet PDF") may each carry
-    # their own file; empty falls back to the product's.
+    # their own file; empty falls back to the product's. Lulu variants keep
+    # their interior PDF here and the cover spread in print_cover.
     digital_file: Mapped[str] = mapped_column(String(200), default="")
+    print_cover: Mapped[str] = mapped_column(String(200), default="")
     image_url: Mapped[str] = mapped_column(String(500), default="")
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
@@ -178,6 +183,7 @@ class Order(Base):
     cj_order_id: Mapped[str] = mapped_column(String(80), default="")
     cj_order_number: Mapped[str] = mapped_column(String(80), default="")
     printify_order_id: Mapped[str] = mapped_column(String(80), default="")
+    lulu_job_id: Mapped[str] = mapped_column(String(80), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
     # Abandoned-checkout reminder: set once so nobody is emailed twice.

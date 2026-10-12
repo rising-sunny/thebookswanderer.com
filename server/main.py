@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,7 @@ from services import cj as cj_service  # noqa: E402
 from services import email as email_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
 from services import printify as printify_service  # noqa: E402
+from services import lulu as lulu_service  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from ssr import (  # noqa: E402
     affiliate_by_slug,
@@ -854,6 +855,8 @@ async def product_shipping_quote(
         }
     if (product.supplier or "cj") == "printify":
         return await _printify_product_quote(product, variant, country_code.upper(), quantity)
+    if product.supplier == lulu_service.SUPPLIER:
+        return _lulu_product_quote(product, variant, country_code.upper(), quantity)
     vid = (variant.cj_vid if variant else product.cj_vid) or ""
     if not vid:
         raise HTTPException(400, "Product has no CJ variant id")
@@ -974,6 +977,32 @@ async def _printify_product_quote(product, variant, country: str, quantity: int)
     }
 
 
+LULU_LOGISTIC = "Printed to order · free shipping"
+LULU_COUNTRIES_MSG = "Printed to order; ships to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland."
+
+
+def _lulu_product_quote(product, variant, country: str, quantity: int) -> dict:
+    """Shipping is part of the price; only the country decides."""
+    total = round(float(variant.price_usd if variant else product.price_usd) * quantity, 2)
+    base = {"country_code": country, "product_id": product.id,
+            "variant_id": variant.id if variant else None, "quantity": quantity, "product_total": total}
+    if not lulu_service.ships_to(country):
+        return {**base, "available": False, "shipping_total": None, "grand_total": None,
+                "options": [], "message": LULU_COUNTRIES_MSG}
+    option = {"name": LULU_LOGISTIC, "eta_days": lulu_service.ETA_DAYS, "cost_usd": 0.0, "retail_usd": 0.0}
+    return {**base, "available": True, "shipping_total": 0.0, "grand_total": total,
+            "eta_days": lulu_service.ETA_DAYS, "logistic_name": LULU_LOGISTIC, "options": [option]}
+
+
+def _lulu_files(product: Product, variant: ProductVariant | None) -> tuple[str, str] | None:
+    """(interior, cover) file names when both are on disk, else None."""
+    interior = digital_service.file_for(product, variant)
+    cover = (variant.print_cover if variant else "") or ""
+    if digital_service.file_path(interior) and digital_service.file_path(cover):
+        return interior, cover
+    return None
+
+
 # ── Shipping quote (per country via CJ) ───────────────────────────────
 
 
@@ -984,9 +1013,15 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
     by_origin: dict[str, list[dict]] = {}
     pod_lines: list[dict] = []
     digital_lines = 0
+    lulu_lines = 0
     for product, variant, qty in cart:
         if digital_service.is_digital(product):
             digital_lines += 1  # nothing to ship
+            continue
+        if product.supplier == lulu_service.SUPPLIER:
+            if not lulu_service.ships_to(country):
+                raise HTTPException(400, f"{product.title}: {LULU_COUNTRIES_MSG}")
+            lulu_lines += 1  # shipping is in the price
             continue
         if (product.supplier or "cj") == "printify":
             if not printify_service.ships_to(country):
@@ -1065,6 +1100,9 @@ async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
         (v.price_usd if v else p.price_usd) * q for p, v, q in cart
     )
     shipping_total = round(retail_shipping, 2)
+    if lulu_lines:
+        eta_bits.append(lulu_service.ETA_DAYS)
+        chosen_names.append(LULU_LOGISTIC)
     if digital_lines:
         chosen_names.append(DIGITAL_LOGISTIC)
 
@@ -1173,6 +1211,9 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         # Never take money for a download we cannot hand over.
         if digital_service.is_digital(p) and not digital_service.file_path(digital_service.file_for(p, v)):
             log.error("checkout blocked: no file for digital product %s", p.slug)
+            raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
+        if p.supplier == lulu_service.SUPPLIER and not (lulu_service.configured() and _lulu_files(p, v)):
+            log.error("checkout blocked: print files or Lulu keys missing for %s", p.slug)
             raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
     needs_address = any(not digital_service.is_digital(p) for p, _, _ in cart)
     if needs_address and (
@@ -1423,7 +1464,7 @@ async def checkout_return(
     try:
         await _fulfil(order, db)
     except Exception as exc:  # noqa: BLE001
-        order.notes = f"paid but CJ submit failed: {exc}"[:800]
+        order.notes = f"paid but supplier submit failed: {exc} {getattr(exc, 'payload', '') or ''}"[:800]
         order.status = "paid"  # keep paid; manual retry later
         db.commit()
         return _checkout_redirect("paid_cj_pending", order.id, lang)
@@ -1443,7 +1484,8 @@ async def _fulfil(order: Order, db: Session) -> None:
     }
     digital = [i for i in items if digital_service.is_digital(products_db.get(i.product_id))]
     pod = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") == "printify"]
-    cj_items = [i for i in items if i not in pod and i not in digital]
+    books = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == lulu_service.SUPPLIER]
+    cj_items = [i for i in items if i not in pod and i not in digital and i not in books]
     # Downloads first: they need no supplier, so a CJ hiccup never holds
     # back a file the buyer has already paid for.
     if digital:
@@ -1452,10 +1494,13 @@ async def _fulfil(order: Order, db: Session) -> None:
         await _submit_to_cj(order, db, cj_items, mixed=bool(pod))
     if pod:
         await _submit_to_printify(order, db, pod, products_db)
+    if books:
+        await _submit_to_lulu(order, db, books, products_db)
 
-    order.status = "cj_submitted" if (cj_items or pod) else "delivered"
+    shipped = cj_items or pod or books
+    order.status = "cj_submitted" if shipped else "delivered"
     db.commit()
-    if cj_items or pod:
+    if shipped:
         try:
             await email_service.send_order_fulfillment_started(order, [i for i in items if i not in digital])
         except Exception:  # noqa: BLE001
@@ -1540,6 +1585,37 @@ async def _submit_to_printify(order: Order, db: Session, items: list[OrderItem],
     db.commit()
     if printify_service.auto_production() and order.printify_order_id:
         await printify_service.send_to_production(order.printify_order_id)
+
+
+async def _submit_to_lulu(order: Order, db: Session, items: list[OrderItem], products_db: dict) -> None:
+    if order.lulu_job_id:  # already accepted on an earlier attempt
+        return
+    variants = {
+        v.id: v
+        for v in db.query(ProductVariant).filter(ProductVariant.id.in_([i.variant_id for i in items])).all()
+    }
+    lines = []
+    for it in items:
+        product = products_db[it.product_id]
+        files = _lulu_files(product, variants.get(it.variant_id))
+        if not files:
+            raise RuntimeError(f"print files missing for {product.slug}")
+        lines.append({
+            "external_id": f"tbw-{order.id}-{it.id}",
+            "title": it.title,
+            "quantity": it.quantity,
+            "pod_package_id": product.lulu_package,
+            "interior_url": lulu_service.file_url(PUBLIC_BASE, files[0]),
+            "cover_url": lulu_service.file_url(PUBLIC_BASE, files[1]),
+        })
+    address = lulu_service.address(
+        order.customer_name, order.shipping_address, order.shipping_address2 or "",
+        order.shipping_city, order.shipping_province, order.shipping_country_code,
+        order.shipping_zip or "", order.phone or "",
+    )
+    result = await lulu_service.create_print_job(f"tbw-{order.id}", lines, address)
+    order.lulu_job_id = str(result.get("id") or "")
+    db.commit()
 
 
 async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed: bool = False) -> None:
@@ -1987,6 +2063,15 @@ def checkout_status(order_id: int, k: str | None = Query(None), db: Session = De
     if digital_service.check_order_key(order.id, k):
         out["downloads"] = _order_downloads(order.id, db)
     return out
+
+
+@app.api_route("/api/print-files/{name}", methods=["GET", "HEAD"])
+def print_file(name: str, sig: str | None = Query(None)):
+    """Interior and cover PDFs for Lulu to fetch; the link is signed."""
+    path = digital_service.file_path(name)
+    if not path or not lulu_service.check_file_sig(name, sig):
+        raise HTTPException(404, "Not found")
+    return FileResponse(path, media_type="application/pdf", headers={"Cache-Control": "no-store"})
 
 
 @app.api_route("/api/download/{token}", methods=["GET", "HEAD"])

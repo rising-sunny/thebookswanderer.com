@@ -870,7 +870,7 @@ async def digital_admin(request: Request, msg: Optional[str] = None, db: Session
     from models import Product
     from services import digital
 
-    rows = db.query(Product).filter(Product.supplier == digital.SUPPLIER).order_by(Product.id).all()
+    rows = db.query(Product).filter(Product.supplier.in_([digital.SUPPLIER, "lulu"])).order_by(Product.id).all()
     files = sorted(p.name for p in digital.digital_dir().glob("*") if p.is_file()) if digital.digital_dir().is_dir() else []
 
     def status(name: str) -> str:
@@ -879,16 +879,29 @@ async def digital_admin(request: Request, msg: Optional[str] = None, db: Session
         ok = digital.file_path(name) is not None
         return f'{_h.escape(name)} {"✅" if ok else "<span style=color:#a33>❌ missing on disk</span>"}'
 
-    def form(pid: int, vid: int = 0) -> str:
+    def form(pid: int, vid: int = 0, kind: str = "") -> str:
         return (
             f'<form method="post" action="/admin/digital/upload" enctype="multipart/form-data" style="display:inline">'
             f'<input type="hidden" name="product_id" value="{pid}"><input type="hidden" name="variant_id" value="{vid}">'
+            f'<input type="hidden" name="kind" value="{kind}">'
             f'<input type="file" name="file" accept=".pdf,.zip,.epub,.png,.jpg" required> '
             f'<button>Upload</button></form>'
         )
 
     items = []
     for p in rows:
+        if p.supplier == "lulu":
+            vs = "".join(
+                f"<li>{_h.escape(v.name or 'Option')} — interior: {status(v.digital_file)} {form(p.id, v.id, 'interior')}"
+                f"<br>cover spread: {status(v.print_cover)} {form(p.id, v.id, 'cover')}</li>"
+                for v in p.active_variants()
+            )
+            items.append(
+                f"<li style='margin-bottom:1rem'><strong>{_h.escape(p.title)}</strong> "
+                f"<code>{_h.escape(p.slug)}</code> Lulu <code>{_h.escape(p.lulu_package)}</code> "
+                f"{'(active)' if p.active else '(hidden)'}<ul>{vs}</ul></li>"
+            )
+            continue
         vs = "".join(
             f"<li>{_h.escape(v.name or 'Option')} — {status(v.digital_file)} {form(p.id, v.id)}</li>"
             for v in p.active_variants()
@@ -917,24 +930,31 @@ async def digital_upload(
     request: Request,
     product_id: int = Form(...),
     variant_id: int = Form(0),
+    kind: str = Form(""),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     if not _is_admin(request):
         return _login_redirect()
     import re as _re
+    import unicodedata as _ud
 
     from models import Product, ProductVariant
     from services import digital
 
     p = db.get(Product, product_id)
-    if not p or p.supplier != digital.SUPPLIER:
-        raise HTTPException(404, "Not a digital product")
+    if not p or p.supplier not in (digital.SUPPLIER, "lulu"):
+        raise HTTPException(404, "Not a digital or printed product")
+    if p.supplier == "lulu" and kind not in ("interior", "cover"):
+        raise HTTPException(400, "Printed products take an interior or a cover PDF")
     v = db.get(ProductVariant, variant_id) if variant_id else None
     if v and v.product_id != p.id:
         raise HTTPException(400, "Variant does not belong to product")
     ext = (Path(file.filename or "").suffix or ".pdf").lower()
-    stem = p.slug + (f"-{_re.sub(r'[^a-z0-9]+', '-', (v.name or str(v.id)).lower()).strip('-')}" if v else "")
+    label = _ud.normalize("NFKD", (v.name or str(v.id)) if v else "").encode("ascii", "ignore").decode()
+    stem = p.slug + (f"-{_re.sub(r'[^a-z0-9]+', '-', label.lower()).strip('-')}" if v else "")
+    if kind in ("interior", "cover"):
+        stem += f"-{kind}"
     name = digital.safe_name(f"{stem}{ext}")
     if not name:
         raise HTTPException(400, f"Unsupported file type {ext}")
@@ -947,7 +967,9 @@ async def digital_upload(
             size += len(chunk)
             out.write(chunk)
     tmp.replace(folder / name)
-    if v:
+    if kind == "cover" and v:
+        v.print_cover = name
+    elif v:
         v.digital_file = name
     else:
         p.digital_file = name

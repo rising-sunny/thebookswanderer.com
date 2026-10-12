@@ -227,6 +227,10 @@
         return Boolean(product && product.supplier === "digital");
     }
 
+    function isPrinted() {
+        return Boolean(product && product.supplier === "lulu");
+    }
+
     function shippingBlockHtml() {
         if (isDigital()) {
             return `
@@ -269,7 +273,9 @@
         return `
 <div class="pdp__variants pdp__shipping" id="pdpShipping">
   <h2 class="pdp__variants-title">Shipping</h2>
-  <p class="pdp__variants-label"><strong>Free worldwide</strong> — pick your country for the delivery estimate</p>
+  <p class="pdp__variants-label">${isPrinted()
+      ? "<strong>Free shipping</strong> to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland — pick your country for the delivery estimate"
+      : "<strong>Free worldwide</strong> — pick your country for the delivery estimate"}</p>
   <label class="pdp__ship-label" for="pdpCountry">Ship to</label>
   <select id="pdpCountry" class="pdp__ship-select" aria-label="Destination country">
     <option value="">Choose country…</option>
@@ -421,6 +427,11 @@
         ? `<li>Instant download — PDF, no shipping</li>
     <li>Secure checkout with PayPal</li>
     <li>Problem with a file? We send a fresh link or refund you</li>`
+        : isPrinted()
+        ? `<li>Printed to order for you — ships in 3–5 business days</li>
+    <li>Free shipping to the US, UK, CA, AU, DE, FR, NL and IE</li>
+    <li>Secure checkout with PayPal</li>
+    <li>Printing faults replaced or refunded in full</li>`
         : `<li>Free shipping worldwide — no cost added at checkout</li>
     <li>Secure checkout with PayPal</li>
     <li>Faulty or wrong items refunded in full</li>`}
