@@ -49,6 +49,10 @@ jobs:
           if [ -d assets/products ]; then
             scp -o BatchMode=yes -r assets/products/. "$VPS_HOST:$REMOTE/assets/products/"
           fi
+          if [ -d assets/pins ]; then
+            ssh -o BatchMode=yes "$VPS_HOST" "mkdir -p $REMOTE/assets/pins"
+            scp -o BatchMode=yes -r assets/pins/. "$VPS_HOST:$REMOTE/assets/pins/"
+          fi
           if [ -d assets/downloads ]; then
             ssh -o BatchMode=yes "$VPS_HOST" "mkdir -p $REMOTE/assets/downloads"
             scp -o BatchMode=yes -r assets/downloads/. "$VPS_HOST:$REMOTE/assets/downloads/"
