@@ -3250,3 +3250,27 @@ a.add-to-cart {
         max-width: 240px;
     }
 }
+
+/* EN / ES switcher in the header. */
+.lang-switch {
+    display: inline-grid;
+    place-items: center;
+    min-width: 36px;
+    height: 32px;
+    padding: 0 8px;
+    margin-right: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--green-800);
+    text-decoration: none;
+    transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.lang-switch:hover,
+.lang-switch:focus-visible {
+    background: var(--green-800);
+    color: var(--cream-50);
+}

@@ -36,7 +36,7 @@ jobs:
             index.html styles.css app.js product.html product.js cart.html cart.js \
             checkout.html checkout.js affiliate-data.js pick.html pick.js about.html \
             contact.html privacy.html shipping-returns.html robots.txt sitemap.xml \
-            affiliate-products.json track.js googleca903f9ea8fb8e9e.html \
+            affiliate-products.json track.js i18n.js googleca903f9ea8fb8e9e.html \
             "$VPS_HOST:$REMOTE/"
           for f in logo.png logo.webp logo-hero.webp logo-email.png og-default.jpg \
                    favicon.ico favicon-32.png favicon-48.png apple-touch-icon.png; do
@@ -53,7 +53,8 @@ jobs:
         working-directory: server
         run: |
           scp -o BatchMode=yes main.py database.py models.py requirements.txt .env.example \
-            ssr.py urls.py live.py "$VPS_HOST:$REMOTE/server/"
+            ssr.py urls.py live.py i18n.py "$VPS_HOST:$REMOTE/server/"
+          scp -o BatchMode=yes -r i18n "$VPS_HOST:$REMOTE/server/"
           scp -o BatchMode=yes \
             services/__init__.py services/cj.py services/paypal.py services/pricing.py \
             services/categories.py services/email.py services/meta_capi.py services/health.py \
