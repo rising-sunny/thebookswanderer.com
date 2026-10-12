@@ -449,7 +449,8 @@ def catalog_index(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/es/products/{slug}", response_class=HTMLResponse)
 @app.get("/products/{slug}", response_class=HTMLResponse)
-async def product_page_pretty(slug: str, request: Request, db: Session = Depends(get_db)):
+async def product_page_pretty(slug: str, request: Request, variant: str | None = None,
+                              db: Session = Depends(get_db)):
     """Canonical product PDP (SSR)."""
     lang = i18n.lang_of(request.url.path)
     p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
@@ -468,7 +469,8 @@ async def product_page_pretty(slug: str, request: Request, db: Session = Depends
     path = product_path(p.slug)
     canonical = i18n.url_for(path, lang)
     related = [i18n.product(r, lang) for r in _related_products(p, db)]
-    page = render_product_page(detail, canonical=canonical, related=related)
+    page = render_product_page(detail, canonical=canonical, related=related,
+                               variant_id=int(variant) if (variant or "").isdigit() else None)
     return HTMLResponse(i18n.localize(page, lang, path))
 
 

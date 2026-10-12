@@ -319,6 +319,7 @@ def render_product_page(
     *,
     canonical: str,
     related: list[dict[str, Any]] | None = None,
+    variant_id: int | None = None,
 ) -> str:
     """Full HTML document for a store product (CJ catalog)."""
     title = detail.get("title") or "Product"
@@ -343,6 +344,12 @@ def render_product_page(
     related_html = _related_block_html(related or [])
     variants = detail.get("variants") or []
     lifestyle = detail.get("lifestyle_images") or detail.get("images") or []
+    # The feed sends each variant to ?variant=<id> and Merchant Center checks
+    # the price on that page, so it shows that variant's price, not the range.
+    chosen = next((v for v in variants if variant_id is not None and v.get("id") == variant_id
+                   and v.get("price_usd") is not None), None)
+    if chosen:
+        price = price_max = chosen["price_usd"]
 
     tiene_rango = (
         price is not None
@@ -418,7 +425,7 @@ def render_product_page(
             importe = {"@type": "Offer", "price": f"{float(price):.2f}"}
         json_ld_product["offers"] = {
             **importe,
-            "url": canonical,
+            "url": f"{canonical}?variant={chosen['id']}" if chosen else canonical,
             "priceCurrency": "USD",
             "availability": "https://schema.org/InStock",
             "itemCondition": "https://schema.org/NewCondition",
