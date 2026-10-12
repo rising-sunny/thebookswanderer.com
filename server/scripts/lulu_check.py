@@ -21,9 +21,11 @@ from services import lulu  # noqa: E402
 
 # trim · colour · quality · binding · paper · ppi · finish (see Lulu's pod package docs)
 PACKAGES = {
-    "pocket 4.25x6.87 colour, saddle stitch": "0425X0687FCSTDSS080CW444GXX",
+    "pocket 4.25x6.87 colour, saddle stitch, uncoated": "0425X0687FCSTDSS060UW444MXX",
+    "pocket 4.25x6.87 b/w, paperback": "0425X0687BWSTDPB060UW444MXX",
     "pocket 4.25x6.87 colour, paperback": "0425X0687FCSTDPB080CW444GXX",
-    "A5 colour, saddle stitch": "0583X0827FCSTDSS080CW444GXX",
+    "A5 colour, saddle stitch, uncoated": "0583X0827FCSTDSS060UW444MXX",
+    "A5 colour premium, saddle stitch": "0583X0827FCPRESS080CW444GXX",
     "A5 colour, coil": "0583X0827FCSTDCO080CW444GXX",
     "A5 b/w, saddle stitch": "0583X0827BWSTDSS060UW444MXX",
 }
@@ -32,7 +34,7 @@ ADDRESSES = {
            "state_code": "DC", "postcode": "20540", "country_code": "US", "phone_number": "+12025550100"},
     "GB": {"name": "Test", "street1": "96 Euston Rd", "city": "London",
            "postcode": "NW1 2DB", "country_code": "GB", "phone_number": "+442075550100"},
-    "CL": {"name": "Test", "street1": "Av. Libertador Bernardo O'Higgins 651", "city": "Santiago",
+    "CL": {"name": "Test", "street1": "Alameda 651", "city": "Santiago",
            "postcode": "8320000", "country_code": "CL", "phone_number": "+56225550100"},
 }
 
