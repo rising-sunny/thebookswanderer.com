@@ -346,7 +346,7 @@
         if (!btn) return;
         if (btn.tagName === "A" && btn.getAttribute("href")) return;
         e.preventDefault();
-        window.location.href = "/cart.html";
+        window.location.href = (window.TBW_L || String)("/cart.html");
     });
 
     // Cart page auto-render

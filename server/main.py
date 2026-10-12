@@ -51,6 +51,7 @@ from urls import (  # noqa: E402
     product_url,
 )
 from live import router as live_router  # noqa: E402
+import i18n  # noqa: E402
 from routers.pinterest import router as pinterest_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 
@@ -147,6 +148,7 @@ class CheckoutIn(BaseModel):
     items: list[CartItemIn]
     logistic_name: str = ""
     shipping_total: float | None = None  # client can pass quote; revalidated server-side
+    lang: str = "en"
 
 
 class AddProductIn(BaseModel):
@@ -278,6 +280,7 @@ def list_categories(db: Session = Depends(get_db)):
 @app.get("/api/products")
 def list_products(
     category: str | None = Query(None, description="Category slug filter"),
+    lang: str = Query("en"),
     db: Session = Depends(get_db),
 ):
     rows = (
@@ -298,19 +301,19 @@ def list_products(
         ]
 
     return {
-        "products": [p.to_public() for p in rows],
+        "products": [i18n.product(p.to_public(), lang) for p in rows],
         "count": len(rows),
         "category": filter_slug,
     }
 
 
 @app.get("/api/products/by-slug/{slug}")
-async def get_product_by_slug(slug: str, db: Session = Depends(get_db)):
+async def get_product_by_slug(slug: str, lang: str = Query("en"), db: Session = Depends(get_db)):
     p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
     if not p:
         raise HTTPException(404, "Product not found")
     await _ensure_product_media(p, db)
-    return p.to_detail()
+    return i18n.product(p.to_detail(), lang)
 
 
 # ── SEO: pretty URLs, 301 from query shells, dynamic sitemap ──
@@ -408,8 +411,9 @@ def _related_products(product: Product, db: Session, *, limit: int = 4) -> list[
     return out
 
 
+@app.get("/es/products/", response_class=HTMLResponse)
 @app.get("/products/", response_class=HTMLResponse)
-def catalog_index(db: Session = Depends(get_db)):
+def catalog_index(request: Request, db: Session = Depends(get_db)):
     """The full catalogue on one page.
 
     Registered before /products/{slug} so the bare path is not swallowed as a
@@ -423,22 +427,26 @@ def catalog_index(db: Session = Depends(get_db)):
         .order_by(Product.id.desc())
         .all()
     )
-    products = [p.to_public() for p in rows]
+    lang = i18n.lang_of(request.url.path)
+    products = [i18n.product(p.to_public(), lang) for p in rows]
     counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
     for p in rows:
         slug = cat_service.normalize_category(p.category)
         counts[slug] = counts.get(slug, 0) + 1
     categories = [
-        {**c, "product_count": counts.get(c["slug"], 0)}
+        i18n.category({**c, "product_count": counts.get(c["slug"], 0)}, lang)
         for c in cat_service.all_categories()
     ]
-    canonical = f"{PUBLIC_BASE}/products/"
-    return HTMLResponse(render_catalog_page(products, categories, canonical=canonical))
+    canonical = i18n.url_for("/products/", lang)
+    page = render_catalog_page(products, categories, canonical=canonical)
+    return HTMLResponse(i18n.localize(page, lang, "/products/"))
 
 
+@app.get("/es/products/{slug}", response_class=HTMLResponse)
 @app.get("/products/{slug}", response_class=HTMLResponse)
-async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
+async def product_page_pretty(slug: str, request: Request, db: Session = Depends(get_db)):
     """Canonical product PDP (SSR)."""
+    lang = i18n.lang_of(request.url.path)
     p = db.query(Product).filter(Product.slug == slug, Product.active.is_(True)).first()
     if not p:
         # A retired product still has pins and search results pointing at it;
@@ -446,17 +454,17 @@ async def product_page_pretty(slug: str, db: Session = Depends(get_db)):
         gone = db.query(Product).filter(Product.slug == slug).first()
         if gone and gone.category:
             return RedirectResponse(
-                url=collection_url(cat_service.normalize_category(gone.category)),
+                url=i18n.url_for(collection_url(cat_service.normalize_category(gone.category))[len(PUBLIC_BASE):], lang),
                 status_code=301,
             )
         return HTMLResponse(render_product_not_found(slug), status_code=404)
     await _ensure_product_media(p, db)
-    detail = p.to_detail()
-    canonical = product_url(p.slug)
-    related = _related_products(p, db)
-    return HTMLResponse(
-        render_product_page(detail, canonical=canonical, related=related)
-    )
+    detail = i18n.product(p.to_detail(), lang)
+    path = product_path(p.slug)
+    canonical = i18n.url_for(path, lang)
+    related = [i18n.product(r, lang) for r in _related_products(p, db)]
+    page = render_product_page(detail, canonical=canonical, related=related)
+    return HTMLResponse(i18n.localize(page, lang, path))
 
 
 @app.api_route("/pick.html", methods=["GET", "HEAD"])
@@ -480,9 +488,11 @@ async def pick_page_pretty(slug: str):
     return HTMLResponse(render_pick_page(pick, canonical=canonical))
 
 
+@app.api_route("/es/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+@app.api_route("/es/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 @app.api_route("/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
-def home_page_ssr(db: Session = Depends(get_db)):
+def home_page_ssr(request: Request, db: Session = Depends(get_db)):
     """Home with crawlable product + affiliate + category cards in the HTML."""
     template_path = Path(__file__).resolve().parent.parent / "index.html"
     try:
@@ -495,7 +505,8 @@ def home_page_ssr(db: Session = Depends(get_db)):
         .order_by(Product.id.desc())
         .all()
     )
-    products = [p.to_public() for p in rows]
+    lang = i18n.lang_of(request.url.path)
+    products = [i18n.product(p.to_public(), lang) for p in rows]
     counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
     for p in rows:
         counts[cat_service.normalize_category(p.category)] = (
@@ -503,12 +514,44 @@ def home_page_ssr(db: Session = Depends(get_db)):
         )
     categories = []
     for c in cat_service.all_categories():
-        categories.append({**c, "product_count": counts.get(c["slug"], 0)})
+        categories.append(i18n.category({**c, "product_count": counts.get(c["slug"], 0)}, lang))
     aff = load_affiliate_catalog()
     html_out = inject_home_seo(
         raw, products=products, affiliate=aff, categories=categories
     )
-    return HTMLResponse(html_out)
+    if lang == "es":
+        html_out = html_out.replace(
+            '<link rel="canonical" href="https://thebookswanderer.com/">',
+            '<link rel="canonical" href="https://thebookswanderer.com/es/">',
+        )
+    return HTMLResponse(i18n.localize(html_out, lang, "/"))
+
+
+@app.get("/es", include_in_schema=False)
+def spanish_root():
+    return RedirectResponse(url="/es/", status_code=301)
+
+
+@app.get("/es/collections/", include_in_schema=False)
+def spanish_collections_slash():
+    return RedirectResponse(url="/es/collections", status_code=301)
+
+
+@app.api_route("/es/{page}.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def spanish_static_page(page: str):
+    """Spanish edition of about / contact / privacy / shipping / cart / checkout."""
+    if page not in i18n.STATIC_PAGES:
+        raise HTTPException(404, "Not found")
+    path = Path(__file__).resolve().parent.parent / f"{page}.html"
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        raise HTTPException(404, "Not found")
+    raw = raw.replace(
+        f'<link rel="canonical" href="https://thebookswanderer.com/{page}.html">',
+        f'<link rel="canonical" href="https://thebookswanderer.com/es/{page}.html">',
+    )
+    return HTMLResponse(i18n.localize(raw, "es", f"/{page}.html"))
 
 
 @app.get("/collections/", include_in_schema=False)
@@ -517,25 +560,34 @@ def collections_index_slash():
     return RedirectResponse(url="/collections", status_code=301)
 
 
+@app.get("/es/collections", response_class=HTMLResponse)
 @app.get("/collections", response_class=HTMLResponse)
-def collections_index(db: Session = Depends(get_db)):
+def collections_index(request: Request, db: Session = Depends(get_db)):
     """Index of all storefront collections."""
     rows = db.query(Product).filter(Product.active.is_(True)).all()
     counts: dict[str, int] = {c["slug"]: 0 for c in cat_service.all_categories()}
     for p in rows:
         s = cat_service.normalize_category(p.category)
         counts[s] = counts.get(s, 0) + 1
-    categories = [{**c, "product_count": counts.get(c["slug"], 0)} for c in cat_service.all_categories()]
-    canonical = f"{PUBLIC_BASE}/collections"
-    return HTMLResponse(render_collections_index(categories, canonical=canonical))
+    lang = i18n.lang_of(request.url.path)
+    categories = [
+        i18n.category({**c, "product_count": counts.get(c["slug"], 0)}, lang)
+        for c in cat_service.all_categories()
+    ]
+    canonical = i18n.url_for("/collections", lang)
+    page = render_collections_index(categories, canonical=canonical)
+    return HTMLResponse(i18n.localize(page, lang, "/collections"))
 
 
+@app.get("/es/collections/{slug}", response_class=HTMLResponse)
 @app.get("/collections/{slug}", response_class=HTMLResponse)
-def collection_page(slug: str, db: Session = Depends(get_db)):
+def collection_page(slug: str, request: Request, db: Session = Depends(get_db)):
     """Category landing page with SSR product grid + JSON-LD."""
+    lang = i18n.lang_of(request.url.path)
     cat = cat_service.get_category(slug)
     if not cat:
         return HTMLResponse(render_collection_not_found(slug), status_code=404)
+    cat = i18n.category(cat, lang)
     rows = (
         db.query(Product)
         .filter(Product.active.is_(True))
@@ -543,17 +595,15 @@ def collection_page(slug: str, db: Session = Depends(get_db)):
         .all()
     )
     products = [
-        p.to_public()
+        i18n.product(p.to_public(), lang)
         for p in rows
         if cat_service.normalize_category(p.category) == cat["slug"]
     ]
-    all_cats = cat_service.all_categories()
-    canonical = collection_url(cat["slug"])
-    return HTMLResponse(
-        render_collection_page(
-            cat, products, canonical=canonical, all_cats=all_cats
-        )
-    )
+    all_cats = [i18n.category(c, lang) for c in cat_service.all_categories()]
+    path = collection_url(cat["slug"])[len(PUBLIC_BASE):]
+    canonical = i18n.url_for(path, lang)
+    page = render_collection_page(cat, products, canonical=canonical, all_cats=all_cats)
+    return HTMLResponse(i18n.localize(page, lang, path))
 
 
 @app.get("/sitemap.xml")
@@ -628,11 +678,26 @@ def sitemap_xml(db: Session = Depends(get_db)):
 
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ]
+    # Pages with a Spanish edition are listed in both languages, each entry
+    # naming its alternates so Google pairs them up.
+    expanded: list[tuple[str, str, str, str, list[tuple[str, str]]]] = []
     for loc, lastmod, freq, prio in urls:
+        path = loc[len(PUBLIC_BASE):] if loc.startswith(PUBLIC_BASE) else loc
+        if i18n.is_localized(path):
+            alts = [("en", i18n.url_for(path, "en")), ("es", i18n.url_for(path, "es")),
+                    ("x-default", i18n.url_for(path, "en"))]
+            expanded.append((loc, lastmod, freq, prio, alts))
+            expanded.append((i18n.url_for(path, "es"), lastmod, freq, prio, alts))
+        else:
+            expanded.append((loc, lastmod, freq, prio, []))
+    for loc, lastmod, freq, prio, alts in expanded:
         lines.append("  <url>")
         lines.append(f"    <loc>{xml_escape(loc)}</loc>")
+        for hl, href in alts:
+            lines.append(f'    <xhtml:link rel="alternate" hreflang="{hl}" href="{xml_escape(href)}"/>')
         lines.append(f"    <lastmod>{xml_escape(lastmod)}</lastmod>")
         lines.append(f"    <changefreq>{freq}</changefreq>")
         lines.append(f"    <priority>{prio}</priority>")
@@ -647,12 +712,12 @@ def sitemap_xml(db: Session = Depends(get_db)):
 
 
 @app.get("/api/products/{product_id}")
-async def get_product(product_id: int, db: Session = Depends(get_db)):
+async def get_product(product_id: int, lang: str = Query("en"), db: Session = Depends(get_db)):
     p = db.get(Product, product_id)
     if not p or not p.active:
         raise HTTPException(404, "Product not found")
     await _ensure_product_media(p, db)
-    return p.to_detail()
+    return i18n.product(p.to_detail(), lang)
 
 
 async def _ensure_product_media(p: Product, db: Session) -> None:
@@ -1003,7 +1068,7 @@ class CartPreviewIn(BaseModel):
 
 
 @app.post("/api/cart/preview")
-def cart_preview(body: CartPreviewIn, db: Session = Depends(get_db)):
+def cart_preview(body: CartPreviewIn, lang: str = Query("en"), db: Session = Depends(get_db)):
     """Hydrate cart lines with titles, images, prices for the storefront cart UI."""
     if not body.items:
         return {"items": [], "product_total": 0.0, "count": 0}
@@ -1044,9 +1109,10 @@ def cart_preview(body: CartPreviewIn, db: Session = Depends(get_db)):
         product_total += line_total
         img = (v.image_url if v and v.image_url else p.image_url) or ""
         name = (v.name if v and v.name else "") or ""
-        title = p.title
+        ptitle = i18n.product_title(p.slug, p.title, lang)
+        title = ptitle
         if name:
-            title = f"{p.title} — {name}"
+            title = f"{ptitle} — {name}"
         lines_out.append(
             {
                 "product_id": p.id,
@@ -1055,12 +1121,12 @@ def cart_preview(body: CartPreviewIn, db: Session = Depends(get_db)):
                 "available": True,
                 "slug": p.slug,
                 "title": title,
-                "product_title": p.title,
+                "product_title": ptitle,
                 "variant_name": name,
                 "image_url": img,
                 "unit_price": round(unit, 2),
                 "line_total": line_total,
-                "category": p.to_public().get("category") or "",
+                "category": i18n.product(p.to_public(), lang).get("category") or "",
                 "cj_sku": (v.cj_sku if v else p.cj_sku) or "",
             }
         )
@@ -1145,8 +1211,9 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
             order_id=order.id,
             amount_usd=grand_total,
             description=desc,
-            return_url=f"{PUBLIC_BASE}/api/checkout/return?order_id={order.id}",
-            cancel_url=f"{PUBLIC_BASE}/checkout.html?status=cancel&order_id={order.id}",
+            return_url=f"{PUBLIC_BASE}/api/checkout/return?order_id={order.id}"
+            + ("&lang=es" if body.lang == "es" else ""),
+            cancel_url=f"{i18n.url_for('/checkout.html', body.lang)}?status=cancel&order_id={order.id}",
         )
     except paypal_service.PayPalError as exc:
         order.status = "failed"
@@ -1190,9 +1257,9 @@ def _capture_problem(capture: dict, order: Order) -> str:
     return ""
 
 
-def _checkout_redirect(status: str, order_id: int) -> RedirectResponse:
+def _checkout_redirect(status: str, order_id: int, lang: str = "en") -> RedirectResponse:
     return RedirectResponse(
-        f"{PUBLIC_BASE}/checkout.html?status={status}&order_id={order_id}"
+        f"{i18n.url_for('/checkout.html', lang)}?status={status}&order_id={order_id}"
     )
 
 
@@ -1201,6 +1268,7 @@ async def checkout_return(
     request: Request,
     order_id: int = Query(...),
     token: str | None = Query(None),  # PayPal order id
+    lang: str = Query("en"),
     db: Session = Depends(get_db),
 ):
     order = db.get(Order, order_id)
@@ -1215,10 +1283,10 @@ async def checkout_return(
         raise HTTPException(400, "Missing PayPal order")
     if token and token != paypal_id:
         log.warning("checkout return token mismatch for order %s", order.id)
-        return _checkout_redirect("payment_error", order.id)
+        return _checkout_redirect("payment_error", order.id, lang)
 
     if order.status in ("paid", "cj_submitted", "fulfilled"):
-        return _checkout_redirect("already_paid", order.id)
+        return _checkout_redirect("already_paid", order.id, lang)
 
     try:
         capture = await paypal_service.capture_order(paypal_id)
@@ -1235,14 +1303,14 @@ async def checkout_return(
         if capture is None:
             order.notes = f"capture failed: {exc}"[:500]
             db.commit()
-            return _checkout_redirect("payment_error", order.id)
+            return _checkout_redirect("payment_error", order.id, lang)
 
     problem = _capture_problem(capture, order)
     if problem:
         order.notes = problem[:500]
         db.commit()
         log.warning("order %s not marked paid: %s", order.id, problem)
-        return _checkout_redirect("payment_incomplete", order.id)
+        return _checkout_redirect("payment_incomplete", order.id, lang)
 
     # Claim the order atomically so two concurrent returns cannot both send
     # the confirmation email and submit it to CJ twice.
@@ -1254,7 +1322,7 @@ async def checkout_return(
     db.commit()
     db.refresh(order)
     if not claimed:
-        return _checkout_redirect("already_paid", order.id)
+        return _checkout_redirect("already_paid", order.id, lang)
 
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     try:
@@ -1317,9 +1385,9 @@ async def checkout_return(
         order.notes = f"paid but CJ submit failed: {exc}"[:800]
         order.status = "paid"  # keep paid; manual retry later
         db.commit()
-        return _checkout_redirect("paid_cj_pending", order.id)
+        return _checkout_redirect("paid_cj_pending", order.id, lang)
 
-    return _checkout_redirect("success", order.id)
+    return _checkout_redirect("success", order.id, lang)
 
 
 async def _fulfil(order: Order, db: Session) -> None:

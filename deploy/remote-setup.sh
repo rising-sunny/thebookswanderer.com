@@ -79,6 +79,42 @@ PY
   systemctl reload nginx
 fi
 
+# Spanish edition: /es/ pages are rendered by the app.
+if [ -f "$CONF" ] && ! grep -q 'location /es/' "$CONF"; then
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("/etc/nginx/sites-enabled/thebookswanderer.com")
+text = p.read_text()
+proxy = """proxy_pass http://127.0.0.1:8010;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;"""
+block = f"""
+    # Spanish edition (server/i18n.py)
+    location = /es {{
+        {proxy}
+    }}
+
+    location /es/ {{
+        {proxy}
+    }}
+"""
+needle = "location / {"
+idx = text.find(needle)
+if idx == -1:
+    raise SystemExit("could not find location / in nginx conf")
+p.write_text(text[:idx] + block.lstrip("\n") + "\n    " + text[idx:])
+print("inserted /es/ locations")
+PY
+  if nginx -t; then
+    systemctl reload nginx
+  else
+    echo "nginx -t failed after adding /es/ — check $CONF"
+  fi
+fi
+
 # Daily product reel for Facebook + Instagram (server/scripts/daily_social_post.py).
 # Cron fires at 15:03 and 16:03 UTC; --at-hour 11 keeps only the run that is
 # 11:xx in New York, so the post holds its local time across DST.
