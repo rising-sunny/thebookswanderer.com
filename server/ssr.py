@@ -161,6 +161,10 @@ def _supplier_countries(supplier: str | None, from_country: str | None = None) -
     Printify products are US-only (checkout refuses anything else), so their
     merchant listing must not advertise the other 30 destinations.
     """
+    if supplier == "lulu":
+        from services import lulu
+
+        return lulu.ship_countries()
     if supplier == "printify":
         try:
             from services import printify
@@ -636,7 +640,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=4" defer></script>
 <script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=29" defer></script>
+<script src="/product.js?v=30" defer></script>
 </body>
 </html>
 """
