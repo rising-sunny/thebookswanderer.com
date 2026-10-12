@@ -613,6 +613,41 @@ def collection_page(slug: str, request: Request, db: Session = Depends(get_db)):
 
 _FEED_SKIP_COUNTRIES = {"KR"}
 
+# Google product taxonomy ids (taxonomy-with-ids.en-US.txt), first match on
+# the slug wins; otherwise the shop category decides.
+_GOOGLE_CATEGORY_BY_SLUG = (
+    ("advent-calendar", "5359"),        # Decor > Seasonal & Holiday Decorations > Advent Calendars
+    ("calendar", "927"),                # Office Supplies > Filing & Organization > Calendars, Organizers & Planners
+    ("reading-passport", "961"),        # Office Supplies > ... > Paper Products > Notebooks & Notepads
+    ("ornament", "3144"),               # Decor > Seasonal & Holiday Decorations > Holiday Ornaments
+    ("bookends", "587"),                # Home & Garden > Decor > Bookends
+    ("book-nook", "4175"),              # Hobbies & Creative Arts > Model Making > Scale Model Kits
+    ("lamp", "4636"),                   # Home & Garden > Lighting > Lamps
+    ("lantern", "505826"),              # Lighting > Night Lights & Ambient Lighting
+    ("book-light", "4941"),             # Office Supplies > Book Accessories > Book Lights
+    ("book-cover", "6176"),             # Office Supplies > Book Accessories > Book Covers
+    ("reading-stand", "6175"),          # Office Supplies > Book Accessories > Book Stands & Rests
+    ("book-holder", "6175"),
+    ("page-holder", "6175"),
+    ("stained-glass-stickers", "5989"), # Home & Garden > Decor > Window Treatments > Window Films
+    ("sticker", "4054"),                # Arts & Crafts > ... > Embellishments & Trims > Decorative Stickers
+    ("kindle", "4738"),                 # ... > E-Book Reader Accessories > E-Book Reader Cases
+    ("bookmark", "93"),                 # Office Supplies > Book Accessories > Bookmarks
+    ("book-clips", "93"),
+)
+_GOOGLE_CATEGORY_BY_SHOP = {
+    "book-accessories": "6174",         # Office Supplies > Book Accessories
+    "decor": "696",                     # Home & Garden > Decor
+    "ereader-accessories": "4736",      # ... > E-Book Reader Accessories
+}
+
+
+def _google_category(slug: str, shop_category: str) -> str:
+    for needle, gid in _GOOGLE_CATEGORY_BY_SLUG:
+        if needle in slug:
+            return gid
+    return _GOOGLE_CATEGORY_BY_SHOP.get(shop_category, "")
+
 
 def _feed_text(s: str, limit: int) -> str:
     s = re.sub(r"<[^>]+>", " ", s or "")
@@ -664,6 +699,9 @@ def google_products_feed(db: Session = Depends(get_db)):
                 "<g:identifier_exists>no</g:identifier_exists>",
                 f"<g:product_type>{xml_escape(meta['category'])}</g:product_type>",
             ]
+            gpc = _google_category(p.slug, meta["category_slug"])
+            if gpc:
+                parts.append(f"<g:google_product_category>{gpc}</g:google_product_category>")
             if group:
                 parts.append(f"<g:item_group_id>tbw-{p.id}</g:item_group_id>")
             for c in countries:
