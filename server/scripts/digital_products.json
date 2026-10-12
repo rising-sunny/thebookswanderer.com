@@ -48,5 +48,30 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "reading-passport-hardcover",
+    "supplier": "lulu",
+    "lulu_package": "0583X0827FCSTDCW080CW444MXX",
+    "title": "The Wanderer's Reading Passport — Hardcover Deluxe Edition",
+    "price_usd": 34.99,
+    "category": "book-accessories",
+    "description": "The deluxe edition of our reading journal disguised as a passport: hard boards wrapped in a matte forest-green cover with the gold Republic of Letters emblem, made to last on a shelf for years. Every book you finish is a journey: log it on a boarding pass, declare it at customs, and stamp a visa when it earns one.\n\nWhat's inside (40 full-colour pages):\n• Holder's data page and reading regulations\n• Travel log for the whole year and a world atlas to mark the countries your books took you to\n• 48 numbered boarding passes — title, author, departure and arrival dates, seat, rating\n• Customs declarations for your favourite quotes and DNF books\n• 8 blank visa pages, ready for stamps, stickers or doodles\n\nA5 (148 × 210 mm) casebound hardcover, matte laminated cover, full-colour pages on smooth paper. Printed to order and shipped in 3–5 business days, then 1–2 weeks by post. A gift that looks like it came from a bookish embassy.\n\nFree shipping to the United States, United Kingdom, Canada, Australia, Germany, France, the Netherlands and Ireland. English edition; a Spanish edition is available in the same listing. Looking for something lighter? See the paperback and printable editions.",
+    "image_url": "/assets/products/reading-passport-hardcover/main_en.jpg",
+    "gallery": [
+      "/assets/products/reading-passport-hardcover/covers_en.jpg",
+      "/assets/products/reading-passport-hardcover/open_en.jpg"
+    ],
+    "variants": [
+      {
+        "name": "English",
+        "image_url": "/assets/products/reading-passport-hardcover/main_en.jpg"
+      },
+      {
+        "name": "Español",
+        "image_url": "/assets/products/reading-passport-hardcover/main_es.jpg"
+      }
+    ],
+    "active": true
   }
 ]
