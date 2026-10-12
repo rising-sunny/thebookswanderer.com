@@ -4,6 +4,7 @@
   python scripts/lulu_check.py                 # Reading Passport formats, 40 pages
   python scripts/lulu_check.py 0600X0900BWSTDPB060UW444MXX 120
   python scripts/lulu_check.py --countries 0583X0827FCSTDPB080CW444GXX 40   # every country, MAIL + GROUND
+  python scripts/lulu_check.py --probe       # which hardcover / linen / calendar codes exist, US cost
 """
 from __future__ import annotations
 
@@ -55,10 +56,59 @@ for cc, a in MORE.items():
 del ADDRESSES["CL"]  # Lulu needs the recipient's tax id (RUT) for Chile
 
 
+def probe_candidates() -> list[tuple[str, int]]:
+    """Hardcover (casewrap, linen wrap with foil) in A5, and wall calendars.
+    Lulu's 27-char code: trim(9) colour(2) quality(3) binding(2) paper(8)
+    finish(1) linen(1) foil(1); invalid ones just come back as unknown."""
+    out = []
+    for q in ("STD", "PRE"):
+        for fin in ("G", "M"):
+            out.append((f"0583X0827FC{q}CW080CW444{fin}XX", 40))
+    for linen in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        for foil in ("G",):
+            for fin in ("M", "X"):
+                out.append((f"0583X0827FCSTDLW080CW444{fin}{linen}{foil}", 40))
+    for trim in ("1100X0850", "0850X1100", "1100X0817", "1200X0900"):
+        for q in ("PRE", "STD"):
+            for paper in ("100CW444", "080CW444"):
+                for fin in ("G", "M", "X"):
+                    out.append((f"{trim}FC{q}WO{paper}{fin}XX", 28))
+    return out
+
+
+async def probe() -> int:
+    us = ADDRESSES["US"]
+    found = 0
+    for pkg, pages in probe_candidates():
+        try:
+            c = await lulu.cost(pkg, pages, 1, us)
+        except lulu.LuluError as e:
+            if "does not exist" not in str(e.payload) and "auth" in str(e):
+                print(f"{pkg}: {e}")
+                return 1
+            if "does not exist" not in str(e.payload):
+                print(f"  {pkg} {pages}p: {str(e.payload)[:160]}")
+            continue
+        found += 1
+        item = (c.get("line_item_costs") or [{}])[0]
+        ship = c.get("shipping_cost") or {}
+        try:
+            dim = await lulu.request("POST", "/cover-dimensions/",
+                                     {"pod_package_id": pkg, "interior_page_count": pages, "unit": "pt"})
+        except lulu.LuluError:
+            dim = "?"
+        print(f"  OK {pkg} {pages}p: print {item.get('total_cost_excl_tax')} ship {ship.get('total_cost_excl_tax')} "
+              f"total US {c.get('total_cost_incl_tax')}  cover {dim}")
+    print(f"{found} valid package(s)")
+    return 0
+
+
 async def main() -> int:
     print(f"env={lulu.base()} configured={lulu.configured()}")
     if not lulu.configured():
         return 1
+    if "--probe" in sys.argv:
+        return await probe()
     argv = [a for a in sys.argv[1:] if a != "--countries"]
     every = "--countries" in sys.argv
     packages = {"custom": argv[0]} if argv else PACKAGES
