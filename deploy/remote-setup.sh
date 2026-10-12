@@ -166,3 +166,12 @@ cat > /etc/cron.d/tbw-social-post <<CRON
 3 15,16 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/daily_social_post.py --at-hour 11 >> /var/log/tbw-social.log 2>&1
 CRON
 chmod 644 /etc/cron.d/tbw-social-post
+
+# Lulu print jobs: tracking email to the buyer when a book ships, inbox alert
+# when a job is unpaid or rejected (server/scripts/sync_lulu_tracking.py).
+touch /var/log/tbw-lulu.log
+chown www-data:www-data /var/log/tbw-lulu.log
+cat > /etc/cron.d/tbw-lulu-tracking <<CRON
+17 */2 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/sync_lulu_tracking.py >> /var/log/tbw-lulu.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-lulu-tracking
