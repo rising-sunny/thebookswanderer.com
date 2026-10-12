@@ -176,3 +176,11 @@ cat > /etc/cron.d/tbw-order-tracking <<CRON
 17 */2 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/sync_order_tracking.py >> /var/log/tbw-tracking.log 2>&1
 CRON
 chmod 644 /etc/cron.d/tbw-order-tracking
+
+# Newsletter welcome series (server/scripts/send_welcome_series.py), hourly.
+touch /var/log/tbw-welcome.log
+chown www-data:www-data /var/log/tbw-welcome.log
+cat > /etc/cron.d/tbw-welcome-series <<CRON
+41 * * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/send_welcome_series.py >> /var/log/tbw-welcome.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-welcome-series

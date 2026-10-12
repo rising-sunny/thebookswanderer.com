@@ -19,3 +19,7 @@ server/scripts/_tmp_*.py
 
 # Claude Code local settings (per-machine, not shared)
 .claude/settings.local.json
+
+# Research notes and reports (not part of the site)
+research_notes/
+reports/

@@ -8,9 +8,10 @@ import logging
 import os
 import re
 from pathlib import Path
+from urllib.parse import quote as url_quote
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape as xml_escape
@@ -608,6 +609,75 @@ def collection_page(slug: str, request: Request, db: Session = Depends(get_db)):
     canonical = i18n.url_for(path, lang)
     page = render_collection_page(cat, products, canonical=canonical, all_cats=all_cats)
     return HTMLResponse(i18n.localize(page, lang, path))
+
+
+def _feed_text(s: str, limit: int) -> str:
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:limit]
+
+
+@app.get("/feeds/google-products.xml")
+def google_products_feed(db: Session = Depends(get_db)):
+    """Product feed (Google Merchant Center format, RSS 2.0 + g: namespace)
+    for free listings on Google, the Pinterest catalog and AI shopping feeds.
+    One item per variant, grouped by product. Downloads are left out: free
+    listings are for goods that ship."""
+    from ssr import _supplier_countries
+
+    ship_all = [d["code"] for d in SHIP_DESTINATIONS]
+    items: list[str] = []
+    rows = db.query(Product).filter(Product.active.is_(True)).order_by(Product.id).all()
+    for p in rows:
+        if digital_service.is_digital(p):
+            continue
+        only = _supplier_countries(p.supplier, p.from_country)
+        countries = [c for c in ship_all if only is None or c in only] or sorted(only or [])
+        meta = cat_service.public_meta(p.category)
+        gallery = [u for u in p.gallery() if u]
+        variants = p.active_variants() or [None]
+        group = len(variants) > 1
+        for v in variants:
+            title = p.title + (f" — {v.name}" if group and v and v.name else "")
+            image = (v.image_url if v and v.image_url else "") or p.image_url or (gallery[0] if gallery else "")
+            if not image:
+                continue
+            extra = [u for u in ([p.image_url] + gallery) if u and u != image][:8]
+            price = float(v.price_usd if v else p.price_usd)
+            link = f"{PUBLIC_BASE}/products/{p.slug}" + (f"?variant={v.id}" if group and v else "")
+            parts = [
+                f"<g:id>{xml_escape(f'tbw-{p.id}-{v.id}' if v else f'tbw-{p.id}')}</g:id>",
+                f"<title>{xml_escape(_feed_text(title, 150))}</title>",
+                f"<description>{xml_escape(_feed_text(p.description, 5000) or p.title)}</description>",
+                f"<link>{xml_escape(link)}</link>",
+                f"<g:image_link>{xml_escape(_abs_url(image))}</g:image_link>",
+                *[f"<g:additional_image_link>{xml_escape(_abs_url(u))}</g:additional_image_link>" for u in extra],
+                "<g:availability>in_stock</g:availability>",
+                f"<g:price>{price:.2f} USD</g:price>",
+                "<g:condition>new</g:condition>",
+                "<g:brand>The Books Wanderer</g:brand>",
+                "<g:identifier_exists>no</g:identifier_exists>",
+                f"<g:product_type>{xml_escape(meta['category'])}</g:product_type>",
+            ]
+            if group:
+                parts.append(f"<g:item_group_id>tbw-{p.id}</g:item_group_id>")
+            for c in countries:
+                parts.append(f"<g:shipping><g:country>{c}</g:country><g:price>0.00 USD</g:price></g:shipping>")
+            items.append("<item>" + "".join(parts) + "</item>")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>'
+        "<title>The Books Wanderer</title>"
+        f"<link>{PUBLIC_BASE}/</link>"
+        "<description>Accessories and printables for readers</description>"
+        + "".join(items)
+        + "</channel></rss>"
+    )
+    return Response(body, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
+
+
+def _abs_url(u: str) -> str:
+    return u if u.startswith("http") else f"{PUBLIC_BASE}{u if u.startswith('/') else '/' + u}"
 
 
 @app.get("/sitemap.xml")
@@ -1971,10 +2041,35 @@ def unsubscribe_token(email: str) -> str:
 
 class NewsletterIn(BaseModel):
     email: EmailStr
+    lang: str = "en"
+
+
+async def _send_welcome_step(subscriber_id: int, step: int) -> None:
+    """Send one welcome letter and record it. Used right after signup;
+    scripts/send_welcome_series.py sends the rest (and retries this one)."""
+    from datetime import datetime as _dt
+
+    from database import SessionLocal
+    from models import NewsletterSubscriber
+
+    db = SessionLocal()
+    try:
+        sub = db.get(NewsletterSubscriber, subscriber_id)
+        if not sub or not sub.active or (sub.welcome_step or 0) >= step:
+            return
+        link = f"{PUBLIC_BASE}/api/unsubscribe?email={url_quote(sub.email)}&t={unsubscribe_token(sub.email)}"
+        if await email_service.send_welcome(step, sub.email, sub.lang or "en", link):
+            sub.welcome_step = step
+            sub.welcome_at = _dt.utcnow()
+            db.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("welcome email %s failed for subscriber %s", step, subscriber_id)
+    finally:
+        db.close()
 
 
 @app.post("/api/newsletter/subscribe")
-def newsletter_subscribe(body: NewsletterIn, db: Session = Depends(get_db)):
+def newsletter_subscribe(body: NewsletterIn, background: BackgroundTasks, db: Session = Depends(get_db)):
     """Guarda la dirección de verdad.
 
     Antes el formulario de la portada solo respondía "You're in! Check your
@@ -1994,13 +2089,19 @@ def newsletter_subscribe(body: NewsletterIn, db: Session = Depends(get_db)):
         .filter(NewsletterSubscriber.email == normalized)
         .one_or_none()
     )
+    lang = "es" if body.lang == "es" else "en"
     if existing:
         existing.active = True
         db.commit()
+        if not existing.welcome_step:
+            background.add_task(_send_welcome_step, existing.id, 1)
         return {"ok": True, "already": True}
 
-    db.add(NewsletterSubscriber(email=normalized))
+    sub = NewsletterSubscriber(email=normalized, lang=lang)
+    db.add(sub)
     db.commit()
+    # The free Reading Challenge goes out straight away.
+    background.add_task(_send_welcome_step, sub.id, 1)
     return {"ok": True, "already": False}
 
 
