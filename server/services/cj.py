@@ -296,3 +296,10 @@ async def create_order(payload: dict) -> dict:
     """
     data = await _request("POST", "/shopping/order/createOrderV2", json_body=payload)
     return data or {}
+
+
+async def get_order(order_id: str) -> dict:
+    """GET /shopping/order/getOrderDetail: orderStatus (CREATED, UNPAID,
+    UNSHIPPED, SHIPPED, DELIVERED, CANCELLED…), trackNumber, logisticName."""
+    data = await _request("GET", "/shopping/order/getOrderDetail", params={"orderId": order_id})
+    return data or {}

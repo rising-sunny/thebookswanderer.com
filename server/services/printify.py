@@ -118,5 +118,11 @@ async def send_to_production(order_id: str) -> dict:
     return await _request("POST", f"/shops/{shop_id()}/orders/{order_id}/send_to_production.json")
 
 
+async def get_order(order_id: str) -> dict:
+    """status (on-hold, in-production, fulfilled, canceled, has-issues…) and
+    shipments [{carrier, number, url}]."""
+    return await _request("GET", f"/shops/{shop_id()}/orders/{order_id}.json")
+
+
 def auto_production() -> bool:
     return (os.getenv("PRINTIFY_AUTO_PRODUCTION", "0") or "").strip().lower() in ("1", "true", "yes", "on")
