@@ -2,6 +2,9 @@
 Import a CJ SPU as ONE store product with all variants + lifestyle gallery.
 Usage (on VPS or local with CJ_API_KEY + DB):
   .venv/bin/python scripts/import_cj_product.py CJJT1393855 --title "..." --price 12.99 --slug "..."
+  .venv/bin/python scripts/import_cj_product.py CJJT1393855 --spec
+      # title, slug, category and description from scripts/cj_products.json
+      # (the run-script workflow splits arguments on spaces, so long text goes there)
 """
 from __future__ import annotations
 
@@ -112,7 +115,15 @@ def main() -> None:
     ap.add_argument("--category", default="Collection")
     ap.add_argument("--price", type=float, default=None)
     ap.add_argument("--slug", default="")
+    ap.add_argument("--spec", action="store_true", help="Take title/slug/category/description from cj_products.json")
     args = ap.parse_args()
+    if args.spec:
+        specs = json.loads((Path(__file__).with_name("cj_products.json")).read_text(encoding="utf-8"))
+        if args.sku not in specs:
+            raise SystemExit(f"{args.sku} is not in cj_products.json")
+        for key, value in specs[args.sku].items():
+            if not getattr(args, key, None) or key == "category":
+                setattr(args, key, value)
 
     api_key = os.getenv("CJ_API_KEY", "")
     if not api_key:
