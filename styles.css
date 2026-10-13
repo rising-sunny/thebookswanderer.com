@@ -3416,3 +3416,127 @@ a.add-to-cart {
     cursor: pointer;
     padding: 0 var(--sp-1);
 }
+
+/* Gift guides: verdict box and product cards. */
+.guide {
+    max-width: 62rem;
+    margin-inline: auto;
+}
+
+.guide > p,
+.guide > h1 {
+    max-width: 46rem;
+}
+
+.guide-verdict {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: var(--sp-4);
+    align-items: center;
+    margin: var(--sp-5) 0 var(--sp-6);
+    padding: var(--sp-4);
+    border: 1px solid var(--gold-500);
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.guide-verdict img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+}
+
+.guide-verdict p {
+    margin: 0 0 var(--sp-2);
+}
+
+.guide-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--sp-6);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--sp-4);
+}
+
+.guide-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+}
+
+.guide-card__img img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--cream-200);
+}
+
+.guide-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4) var(--sp-4);
+    flex: 1;
+}
+
+.guide-card__body h3 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.guide-card__body h3 a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.guide-card__body p {
+    margin: 0;
+    font-size: var(--t-sm);
+}
+
+.guide-card__price {
+    font-weight: 700;
+    color: var(--green-900);
+}
+
+.guide-card__note {
+    color: var(--ink-muted);
+    font-size: var(--t-xs) !important;
+}
+
+.guide-card .btn {
+    margin-top: auto;
+    align-self: flex-start;
+}
+
+@media (max-width: 32rem) {
+    .guide-verdict {
+        grid-template-columns: 96px 1fr;
+    }
+}
+
+.guide-grid > li {
+    margin: 0;
+}
+
+.guide-verdict img,
+.guide-card__img img {
+    height: auto;
+}
+
+.guide .btn,
+.guide .btn:hover {
+    color: var(--btn-fg);
+    text-decoration: none;
+}
+
+.guide ul.guide-grid {
+    margin: 0 0 var(--sp-6);
+    list-style: none;
+}
