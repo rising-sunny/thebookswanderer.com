@@ -254,10 +254,8 @@
             bar.setAttribute("role", "dialog");
             bar.setAttribute("aria-label", "Cookie choices");
             bar.innerHTML =
-                '<p class="consent__text">We use our own cookies to run the shop. ' +
-                'With your consent we also use Meta cookies to measure our ads. ' +
-                'You can change your mind any time — see our ' +
-                '<a href="/privacy.html">privacy policy</a>.</p>' +
+                '<p class="consent__text">Cookies run the shop; with your OK, Meta cookies measure our ads. ' +
+                '<a href="/privacy.html">Privacy</a></p>' +
                 '<div class="consent__actions">' +
                 '<button type="button" class="btn btn--ghost btn--sm" data-consent="denied">Only essential</button>' +
                 '<button type="button" class="btn btn--sm" data-consent="granted">Accept all</button>' +

@@ -76,6 +76,33 @@
         addSwitcher();
     }
 
+    // A Spanish-speaking browser on an English page that has a Spanish
+    // edition: offer it once, without redirecting anyone who never asked.
+    function offerSpanish() {
+        if (lang !== "en" || !localizable || saved()) return;
+        var langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ""]);
+        if (!String(langs[0] || "").toLowerCase().startsWith("es")) return;
+        var bar = document.createElement("div");
+        bar.className = "lang-offer";
+        bar.setAttribute("lang", "es");
+        bar.innerHTML =
+            '<span>¿Prefieres la tienda en español?</span>' +
+            '<a class="btn btn--sm" data-lang-switch="es" hreflang="es" href="' + esPath(here) + '">Ver en español</a>' +
+            '<button type="button" class="lang-offer__close" aria-label="No, gracias">×</button>';
+        bar.querySelector("button").addEventListener("click", function () {
+            remember("en");
+            bar.parentNode.removeChild(bar);
+        });
+        var header = document.querySelector(".header");
+        if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
+        else document.body.insertBefore(bar, document.body.firstChild);
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", offerSpanish);
+    } else {
+        offerSpanish();
+    }
+
     if (lang !== "es") return;
 
     // ── Spanish edition ────────────────────────────────────────────────
