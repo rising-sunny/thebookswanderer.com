@@ -164,5 +164,17 @@
       "/assets/products/color-the-classics-printed/bonus_es.jpg"
     ],
     "default_variant": "Español"
+  },
+  "wizard-of-oz-jigsaw-puzzle": {
+    "title": "El maravilloso Mago de Oz — Puzzle de 252 piezas",
+    "description": "La lámina a color de W. W. Denslow de la primera edición de 1900 de El maravilloso Mago de Oz: Dorothy regañando al León Cobarde en el camino de baldosas amarillas mientras Toto, el Espantapájaros y el Leñador de Hojalata miran. Escaneada del libro original, limpiada a mano y montada sobre un borde crema con la frase que ilustra. 252 piezas, unos 28 × 36 cm terminado, impresión brillante sobre cartón resistente, en caja de regalo con lámina de referencia. Se imprime bajo pedido en EE. UU.; solo envíos a direcciones de EE. UU."
+  },
+  "wizard-of-oz-bookmark-cowardly-lion": {
+    "title": "Marcapáginas de metal del León Cobarde — El Mago de Oz",
+    "description": "El León Cobarde de Denslow de la primera edición de 1900 de El Mago de Oz, impreso en un marcapáginas fino de aluminio con una ranura que se engancha a una sola página para que nunca se caiga. Unos 4 × 13 cm. Se imprime bajo pedido en EE. UU.; solo envíos a direcciones de EE. UU."
+  },
+  "wizard-of-oz-bookmark-tin-woodman": {
+    "title": "Marcapáginas de metal del Leñador de Hojalata — El Mago de Oz",
+    "description": "El Leñador de Hojalata de Denslow de la primera edición de 1900 de El Mago de Oz, impreso en un marcapáginas fino de aluminio con una ranura que se engancha a una sola página para que nunca se caiga. Unos 4 × 13 cm. Se imprime bajo pedido en EE. UU.; solo envíos a direcciones de EE. UU."
   }
 }
