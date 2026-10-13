@@ -56,6 +56,11 @@ ACTIVE_FUNNEL_WINDOW = 30 * 60
 EVENT_RETENTION_DAYS = int(os.getenv("LIVE_EVENT_RETENTION_DAYS", "365"))
 SITE_HOST = "thebookswanderer.com"
 
+# Events left out of the visitor numbers: purchases recorded server-side, and
+# bare page loads from data-centre IPs (crawlers and scanners that run JS, so
+# the user-agent filter misses them). They still show in the live feed.
+_NOT_HUMAN = ("server", "datacenter")
+
 VALID_EVENTS = {
     "pageview",
     "product_view",
@@ -240,6 +245,13 @@ async def track(request: Request, db: Session = Depends(get_db)):
     meta_bot = _meta_bot(ip, geo_info, payload)
     if meta_bot:
         return {"ok": True, "dropped": meta_bot}
+    # A page view from a hosting network with no referrer and no campaign is a
+    # crawler or scanner far more often than a person (people browse from home
+    # and mobile networks). Kept, but labelled and left out of the counts. Cart
+    # and checkout events are never relabelled: someone on a VPN still counts.
+    if (payload.type in ("pageview", "product_view") and geo_info.get("hosting")
+            and not payload.referrer and not payload.source and not payload.medium):
+        ua_class = "datacenter"
 
     ref_domain = None
     if payload.referrer:
@@ -396,7 +408,7 @@ def _build_snapshot(db: Session) -> dict:
     # excluding server-side synthetic events (purchases recorded by webhooks).
     active_visitors = db.query(func.count(func.distinct(LiveEvent.session_id))) \
         .filter(LiveEvent.ts >= visitor_cutoff,
-                func.coalesce(LiveEvent.ua_class, "") != "server").scalar() or 0
+                func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)).scalar() or 0
 
     # Last event per session in funnel window — used for cart/checkout state
     sub = db.query(
@@ -430,10 +442,11 @@ def _build_snapshot(db: Session) -> dict:
 
     # Today aggregates
     today_pageviews = db.query(func.count(LiveEvent.id)) \
-        .filter(LiveEvent.ts >= today_start, LiveEvent.event_type == "pageview").scalar() or 0
+        .filter(LiveEvent.ts >= today_start, LiveEvent.event_type == "pageview",
+                func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)).scalar() or 0
     today_sessions = db.query(func.count(func.distinct(LiveEvent.session_id))) \
         .filter(LiveEvent.ts >= today_start,
-                func.coalesce(LiveEvent.ua_class, "") != "server").scalar() or 0
+                func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)).scalar() or 0
     today_purchases = db.query(func.count(LiveEvent.id)) \
         .filter(LiveEvent.ts >= today_start, LiveEvent.event_type == "purchase").scalar() or 0
     today_revenue = db.query(func.coalesce(func.sum(LiveEvent.value_usd), 0)) \
@@ -485,6 +498,8 @@ def _build_snapshot(db: Session) -> dict:
 
     def _fmt_ev(e: LiveEvent) -> dict:
         grp, emo = _normalize_source(e.source, e.referrer_domain, e.medium)
+        if e.ua_class == "datacenter":
+            grp, emo = "Datacenter", "🤖"
         return {
             "ts": e.ts.isoformat() + "Z",
             "ago_s": int((now - e.ts).total_seconds()),
@@ -685,11 +700,11 @@ def _history_payload(db: Session, days: int) -> dict:
     def _totals(t0, t1):
         pv = db.query(func.count(LiveEvent.id)).filter(
             LiveEvent.event_type == "pageview", LiveEvent.ts >= t0, LiveEvent.ts < t1,
-            func.coalesce(LiveEvent.ua_class, "") != "server",
+            func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN),
         ).scalar() or 0
         ses = db.query(func.count(func.distinct(LiveEvent.session_id))).filter(
             LiveEvent.ts >= t0, LiveEvent.ts < t1,
-            func.coalesce(LiveEvent.ua_class, "") != "server",
+            func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN),
         ).scalar() or 0
         pur = db.query(func.count(LiveEvent.id)).filter(
             LiveEvent.event_type == "purchase", LiveEvent.ts >= t0, LiveEvent.ts < t1,
@@ -710,7 +725,7 @@ def _history_payload(db: Session, days: int) -> dict:
         func.sum(case((LiveEvent.event_type == "purchase", 1), else_=0)).label("pur"),
         func.sum(case((LiveEvent.event_type == "purchase", LiveEvent.value_usd), else_=0)).label("rev"),
     ).filter(LiveEvent.ts >= start, LiveEvent.ts < end,
-             func.coalesce(LiveEvent.ua_class, "") != "server") \
+             func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)) \
      .group_by(func.date(LiveEvent.ts)).all()
     by_day = {str(r.d): r for r in raw_daily}
 
@@ -747,7 +762,7 @@ def _history_payload(db: Session, days: int) -> dict:
         func.count(LiveEvent.id).label("pv"),
         func.count(func.distinct(LiveEvent.session_id)).label("ses"),
     ).filter(LiveEvent.event_type == "pageview", LiveEvent.ts >= last24,
-             func.coalesce(LiveEvent.ua_class, "") != "server") \
+             func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)) \
      .group_by(func.strftime("%H", LiveEvent.ts)).all()
     hourly_map = {r.h: (int(r.pv), int(r.ses)) for r in raw_hourly}
     current_hour = now.hour
@@ -763,13 +778,13 @@ def _history_payload(db: Session, days: int) -> dict:
     top_pages = db.query(_np.label("p"), func.count(LiveEvent.id).label("c")) \
         .filter(LiveEvent.event_type == "pageview", LiveEvent.ts >= start, LiveEvent.ts < end,
                 LiveEvent.path.isnot(None),
-                func.coalesce(LiveEvent.ua_class, "") != "server") \
+                func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)) \
         .group_by(_np).order_by(func.count(LiveEvent.id).desc()).limit(10).all()
 
     src_rows = db.query(
         LiveEvent.session_id, LiveEvent.source, LiveEvent.referrer_domain, LiveEvent.medium,
     ).filter(LiveEvent.ts >= start, LiveEvent.ts < end,
-             func.coalesce(LiveEvent.ua_class, "") != "server").all()
+             func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)).all()
     src_groups: dict = {}
     for sid_v, src_v, ref_v, med_v in src_rows:
         grp, emo = _normalize_source(src_v, ref_v, med_v)
@@ -790,7 +805,7 @@ def _history_payload(db: Session, days: int) -> dict:
         LiveEvent.country, LiveEvent.country_name,
         func.count(func.distinct(LiveEvent.session_id)).label("c"),
     ).filter(LiveEvent.ts >= start, LiveEvent.ts < end, LiveEvent.country.isnot(None),
-             func.coalesce(LiveEvent.ua_class, "") != "server") \
+             func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)) \
      .group_by(LiveEvent.country, LiveEvent.country_name) \
      .order_by(func.count(func.distinct(LiveEvent.session_id)).desc()).limit(10).all()
 
