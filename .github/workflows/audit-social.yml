@@ -1,0 +1,40 @@
+name: Audit social scheduler
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      VPS_HOST: root@5.78.125.169
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH setup
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: bash deploy/ci-ssh-setup.sh
+      - name: Read production status
+        run: |
+          task_dir=$(ssh -o BatchMode=yes "$VPS_HOST" 'mktemp -d /tmp/tbw-social-audit.XXXXXX')
+          trap 'ssh -o BatchMode=yes "$VPS_HOST" "rm -rf -- $task_dir"' EXIT
+          scp -o BatchMode=yes audit/social_status.py audit/audit-certificate.pem "$VPS_HOST:$task_dir/"
+          ssh -o BatchMode=yes "$VPS_HOST" "/var/www/thebookswanderer.com/server/.venv/bin/python $task_dir/social_status.py $task_dir/audit-certificate.pem $task_dir/report.enc"
+          scp -o BatchMode=yes "$VPS_HOST:$task_dir/report.enc" /tmp/social-report.enc
+      - name: Return encrypted report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIT_BRANCH: ${{ github.ref_name }}
+          AUDIT_REPO: ${{ github.repository }}
+          AUDIT_RUN: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import os,json,base64
+          from pathlib import Path
+          payload={'message':'Record encrypted read-only social audit','branch':os.environ['AUDIT_BRANCH'],
+                   'content':base64.b64encode(Path('/tmp/social-report.enc').read_bytes()).decode()}
+          Path('/tmp/social-report-upload.json').write_text(json.dumps(payload))
+          PY
+          gh api --method PUT "repos/$AUDIT_REPO/contents/audit/reports/social-$AUDIT_RUN.enc" --input /tmp/social-report-upload.json --silent
