@@ -3540,3 +3540,43 @@ a.add-to-cart {
     margin: 0 0 var(--sp-6);
     list-style: none;
 }
+
+/* Free colouring pages: preview image and signup box. */
+.guide-hero {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 46rem;
+    border-radius: var(--r-md);
+    margin: var(--sp-4) 0;
+}
+
+.guide-form {
+    display: block;
+    max-width: 46rem;
+}
+
+.guide-form h2 {
+    margin-top: 0;
+}
+
+.guide-form form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin: var(--sp-3) 0;
+}
+
+.guide-form input[type="email"] {
+    flex: 1 1 14rem;
+    min-height: 44px;
+    padding: 0 var(--sp-3);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font: inherit;
+    background: #fff;
+}
+
+.guide-form #colorStatus .btn {
+    margin-top: var(--sp-2);
+}

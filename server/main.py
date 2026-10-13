@@ -2108,7 +2108,7 @@ async def _send_welcome_step(subscriber_id: int, step: int) -> None:
         if not sub or not sub.active or (sub.welcome_step or 0) >= step:
             return
         link = f"{PUBLIC_BASE}/api/unsubscribe?email={url_quote(sub.email)}&t={unsubscribe_token(sub.email)}"
-        if await email_service.send_welcome(step, sub.email, sub.lang or "en", link):
+        if await email_service.send_welcome(step, sub.email, sub.lang or "en", link, sub.source or ""):
             sub.welcome_step = step
             sub.welcome_at = _dt.utcnow()
             db.commit()

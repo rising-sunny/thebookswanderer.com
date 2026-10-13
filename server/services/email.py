@@ -894,9 +894,80 @@ _WELCOME = {
 }
 
 
-async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str) -> bool:
+# Signups from the free colouring pages get those pages first and the full
+# book second; the gift-guide letter (step 3) is shared.
+_WELCOME_COLORING = {
+    "en": {
+        1: {
+            "subject": "Your free coloring pages are here",
+            "pre": "The Cheshire Cat, the Cowardly Lion and the Mad Hatter, ready to print.",
+            "eyebrow": "Welcome",
+            "paras": [
+                "Thank you for joining us. Here are your three free coloring pages: Tenniel's Cheshire Cat "
+                "grinning over the croquet ground, Denslow's Cowardly Lion meeting Dorothy on the yellow brick "
+                "road, and the Mad Hatter on his way to court.",
+                "Print them on Letter or A4, one side only, and slip a sheet of card behind the page if you "
+                "use markers. They are free for personal use, so print as many as you like.",
+            ],
+            "cta": ("Download the coloring pages (PDF)", "/assets/downloads/free-literary-coloring-pages.pdf"),
+            "after": "We write once a month at most: new arrivals, a few reading picks, nothing else. "
+                     "If you just hit reply, it reaches a real person.",
+        },
+        2: {
+            "subject": "Twenty-four more pictures to color",
+            "pre": "Oz, Wonderland, the Looking-Glass, Austen and the fairy tales.",
+            "eyebrow": "From the shop",
+            "paras": [
+                "If you enjoyed the three pages, they come from a whole book: Color the Classics, "
+                "27 illustrations from first and early editions, each cleaned by hand into clear lines and "
+                "paired with the words it illustrates.",
+                "The Tin Woodman, the Jabberwock, Humpty Dumpty, Elizabeth and Darcy, Cinderella fleeing the "
+                "ball and more. It comes as a printable PDF ($6.99) or as a printed paperback ($19.99) with "
+                "every picture on its own page, shipped free to the US, UK, Canada, Australia and much of Europe.",
+            ],
+            "cta": ("See Color the Classics", "/products/color-the-classics-printed"),
+            "after": "No pressure: the three free pages are yours to keep either way.",
+        },
+    },
+    "es": {
+        1: {
+            "subject": "Aquí están tus láminas para colorear",
+            "pre": "El Gato de Cheshire, el León Cobarde y el Sombrerero, listos para imprimir.",
+            "eyebrow": "Bienvenida",
+            "paras": [
+                "Gracias por suscribirte. Aquí tienes tus tres láminas para colorear gratis: el Gato de "
+                "Cheshire de Tenniel sonriendo sobre el campo de croquet, el León Cobarde de Denslow con "
+                "Dorothy en el camino de baldosas amarillas y el Sombrerero camino del juicio.",
+                "Imprímelas en A4 o Carta, por una sola cara, y si usas rotuladores pon una cartulina detrás "
+                "de la página. Son gratis para uso personal: imprime todas las que quieras.",
+            ],
+            "cta": ("Descargar las láminas (PDF)", "/assets/downloads/laminas-para-colorear-gratis.pdf"),
+            "after": "Escribimos una vez al mes como mucho: novedades y algunas recomendaciones, nada más. "
+                     "Si respondes a este correo, lo lee una persona de verdad.",
+        },
+        2: {
+            "subject": "Veinticuatro ilustraciones más para colorear",
+            "pre": "Oz, Maravillas, el Espejo, Austen y los cuentos de hadas.",
+            "eyebrow": "De la tienda",
+            "paras": [
+                "Si te gustaron las tres láminas, vienen de un libro completo: Colorea los clásicos, "
+                "27 ilustraciones de primeras ediciones, limpiadas a mano en líneas claras y acompañadas "
+                "de las palabras que ilustran.",
+                "El Leñador de Hojalata, el Jabberwock, Humpty Dumpty, Elizabeth y Darcy, Cenicienta huyendo "
+                "del baile y más. Viene en PDF imprimible (6,99 USD) o en tapa blanda impresa (19,99 USD), cada "
+                "ilustración en su propia página, con envío gratis a EE. UU., Reino Unido, Canadá, Australia y "
+                "buena parte de Europa.",
+            ],
+            "cta": ("Ver Colorea los clásicos", "/es/products/color-the-classics-printed"),
+            "after": "Sin presión: las tres láminas son tuyas de todos modos.",
+        },
+    },
+}
+
+
+async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str, source: str = "") -> bool:
     lang = "es" if lang == "es" else "en"
-    w = _WELCOME[lang][step]
+    w = (_WELCOME_COLORING[lang].get(step) if (source or "").startswith("coloring") else None) or _WELCOME[lang][step]
     base = _public_base()
     utm = f"utm_source=newsletter&utm_medium=email&utm_campaign=welcome_{step}"
     href = f"{base}{w['cta'][1]}{'&' if '?' in w['cta'][1] else '?'}{utm}"
