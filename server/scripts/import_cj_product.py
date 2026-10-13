@@ -242,10 +242,12 @@ def main() -> None:
 
     for i, v in enumerate(cj_variants):
         cost = float(v.get("variantSellPrice") or default_cost or 0)
+        # Checkout charges each variant's own price, so the shipping allowance
+        # has to be in it too, not only in the product's headline price.
         price = (
             args.price
             if args.price is not None
-            else pricing_service.retail_from_cost(cost)
+            else _round99(pricing_service.retail_from_cost(cost) + ship_allowance)
         )
         name = (v.get("variantKey") or "").strip()
         if not name:
