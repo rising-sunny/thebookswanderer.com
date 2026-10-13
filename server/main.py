@@ -676,7 +676,7 @@ def google_products_feed(db: Session = Depends(get_db)):
     for free listings on Google, the Pinterest catalog and AI shopping feeds.
     One item per variant, grouped by product. Downloads are left out: free
     listings are for goods that ship."""
-    from ssr import _supplier_countries
+    from ssr import _free_shipping, _supplier_countries
 
     # Google won't convert USD for South Korea (it wants KRW prices), so the
     # feed leaves it out rather than carry a disapproval for every item.
@@ -710,7 +710,6 @@ def google_products_feed(db: Session = Depends(get_db)):
                 "<g:availability>in_stock</g:availability>",
                 f"<g:price>{price:.2f} USD</g:price>",
                 "<g:condition>new</g:condition>",
-                "<g:brand>The Books Wanderer</g:brand>",
                 "<g:identifier_exists>no</g:identifier_exists>",
                 f"<g:product_type>{xml_escape(meta['category'])}</g:product_type>",
             ]
@@ -719,8 +718,9 @@ def google_products_feed(db: Session = Depends(get_db)):
                 parts.append(f"<g:google_product_category>{gpc}</g:google_product_category>")
             if group:
                 parts.append(f"<g:item_group_id>tbw-{p.id}</g:item_group_id>")
-            for c in countries:
-                parts.append(f"<g:shipping><g:country>{c}</g:country><g:price>0.00 USD</g:price></g:shipping>")
+            if p.supplier == "lulu" or _free_shipping():
+                for c in countries:
+                    parts.append(f"<g:shipping><g:country>{c}</g:country><g:price>0.00 USD</g:price></g:shipping>")
             items.append("<item>" + "".join(parts) + "</item>")
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'

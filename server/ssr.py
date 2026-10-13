@@ -121,40 +121,6 @@ def _ship_countries() -> list[str]:
         return ["GB", "US"]
 
 
-# Transit bands from shipping-returns.html (carrier working-day guide).
-# shippingRate uses maxValue (Google allows value OR maxValue) because the
-# live quote is destination + variant via CJ — a single flat value would lie.
-_SHIP_TRANSIT_BANDS: list[dict[str, Any]] = [
-    {
-        "codes": ["GB", "ES", "IT", "FR", "PT", "PL", "IE", "JP", "NZ", "AT", "DK", "FI"],
-        "transit_min": 4,
-        "transit_max": 11,
-        "rate_max_usd": 18.0,
-    },
-    {
-        "codes": ["US", "SG", "CH", "NO", "SE", "AU"],
-        "transit_min": 5,
-        "transit_max": 11,
-        "rate_max_usd": 18.0,
-    },
-    {
-        "codes": ["CA", "DE", "NL", "BE"],
-        "transit_min": 7,
-        "transit_max": 15,
-        "rate_max_usd": 22.0,
-    },
-    # MY sits here, not with SG, despite being closer to the CN origin: the quote
-    # picks the cheapest carrier and for MY that is a 15-30 day line, while SG
-    # gets 5-10 days for a similar price.
-    {
-        "codes": ["CL", "MX", "BR", "AR", "CO", "PE", "KR", "AE", "MY"],
-        "transit_min": 12,
-        "transit_max": 60,
-        "rate_max_usd": 35.0,
-    },
-]
-
-
 def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
     """Countries a supplier can deliver to, when narrower than the shop's list.
 
@@ -179,19 +145,18 @@ def _supplier_countries(supplier: str | None, from_country: str | None = None) -
 
 
 def _merchant_return_policy(only: set[str] | None = None) -> dict[str, Any]:
-    """JSON-LD MerchantReturnPolicy aligned with shipping-returns.html.
+    """Only policy terms stated on the public shipping-and-returns page.
 
-    Change-of-mind: 14 days from delivery. For most of the catalogue we do not
-    ask the customer to post the item back (KeepProduct + FreeReturn). Damaged
-    goods: 30-day replace/refund without return — FreeReturn still fits.
+    Customers can cancel within 14 days. Most refunds need no physical return;
+    when one is requested, the customer pays postage. No Schema.org return
+    method describes keeping the item, so omit optional method/fee fields
+    rather than promising return-by-mail or universally free return postage.
     """
     return {
         "@type": "MerchantReturnPolicy",
         "applicableCountry": [c for c in _ship_countries() if only is None or c in only],
         "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
         "merchantReturnDays": 14,
-        "returnMethod": "https://schema.org/KeepProduct",
-        "returnFees": "https://schema.org/FreeReturn",
         "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
     }
 
@@ -206,89 +171,29 @@ def _free_shipping() -> bool:
         return False
 
 
-def _shipping_rate(band: dict[str, Any]) -> dict[str, Any]:
-    """What Google is told shipping costs.
+def _shipping_details(
+    only: set[str] | None = None, *, supplier: str | None = None
+) -> list[dict[str, Any]]:
+    """Publish known rates, not invented caps or guaranteed delivery windows.
 
-    With shipping priced into the product this must be a flat 0, not a
-    ceiling — a merchant listing that advertises a rate we never charge is
-    worse than no rate at all.
+    Lulu always includes shipping. Other physical suppliers use FREE_SHIPPING.
+    Paid CJ/Printify rates need a live destination/variant quote, so omit them.
+    The public transit guide excludes packing and promises no fixed handling
+    time; it cannot be turned into a complete ShippingDeliveryTime guarantee.
     """
-    if _free_shipping():
-        return {"@type": "MonetaryAmount", "value": 0, "currency": "USD"}
-    return {
-        "@type": "MonetaryAmount",
-        # Ceiling, not a quote — exact amount is calculated at PDP/cart.
-        "maxValue": float(band["rate_max_usd"]),
-        "currency": "USD",
-    }
-
-
-def _shipping_details(only: set[str] | None = None) -> list[dict[str, Any]]:
-    """OfferShippingDetails per transit band for countries we actually ship to."""
-    allowed = set(_ship_countries())
+    if supplier == "digital" or (supplier != "lulu" and not _free_shipping()):
+        return []
+    countries = _ship_countries()
     if only is not None:
-        allowed &= only
-    details: list[dict[str, Any]] = []
-    covered: set[str] = set()
-    for band in _SHIP_TRANSIT_BANDS:
-        codes = [c for c in band["codes"] if c in allowed]
-        if not codes:
-            continue
-        covered.update(codes)
-        details.append(
-            {
-                "@type": "OfferShippingDetails",
-                "shippingDestination": {
-                    "@type": "DefinedRegion",
-                    "addressCountry": codes,
-                },
-                "shippingRate": _shipping_rate(band),
-                "deliveryTime": {
-                    "@type": "ShippingDeliveryTime",
-                    "handlingTime": {
-                        "@type": "QuantitativeValue",
-                        "minValue": 1,
-                        "maxValue": 3,
-                        "unitCode": "DAY",
-                    },
-                    "transitTime": {
-                        "@type": "QuantitativeValue",
-                        "minValue": int(band["transit_min"]),
-                        "maxValue": int(band["transit_max"]),
-                        "unitCode": "DAY",
-                    },
-                },
-            }
-        )
-    # Any SHIP_DESTINATIONS code not in a band still needs a row (wide window).
-    leftover = sorted(allowed - covered)
-    if leftover:
-        details.append(
-            {
-                "@type": "OfferShippingDetails",
-                "shippingDestination": {
-                    "@type": "DefinedRegion",
-                    "addressCountry": leftover,
-                },
-                "shippingRate": _shipping_rate({"rate_max_usd": 35.0}),
-                "deliveryTime": {
-                    "@type": "ShippingDeliveryTime",
-                    "handlingTime": {
-                        "@type": "QuantitativeValue",
-                        "minValue": 1,
-                        "maxValue": 3,
-                        "unitCode": "DAY",
-                    },
-                    "transitTime": {
-                        "@type": "QuantitativeValue",
-                        "minValue": 7,
-                        "maxValue": 60,
-                        "unitCode": "DAY",
-                    },
-                },
-            }
-        )
-    return details
+        countries = [c for c in countries if c in only]
+    return [
+        {
+            "@type": "OfferShippingDetails",
+            "shippingDestination": {"@type": "DefinedRegion", "addressCountry": country},
+            "shippingRate": {"@type": "MonetaryAmount", "value": 0, "currency": "USD"},
+        }
+        for country in countries
+    ]
 
 
 def _related_block_html(related: list[dict[str, Any]]) -> str:
@@ -328,7 +233,7 @@ def render_product_page(
     if not desc:
         desc = (
             f"{title} from The Books Wanderer - a curated reading accessory "
-            f"for book lovers. Ships worldwide with secure PayPal checkout."
+            f"for book lovers. Secure PayPal checkout."
         )
     meta_desc = _meta_description(desc)
 
@@ -350,6 +255,10 @@ def render_product_page(
                    and v.get("price_usd") is not None), None)
     if chosen:
         price = price_max = chosen["price_usd"]
+        if chosen.get("image_url"):
+            img = chosen["image_url"]
+            if img.startswith("/"):
+                img = PUBLIC_BASE + img
 
     tiene_rango = (
         price is not None
@@ -363,43 +272,21 @@ def render_product_page(
     else:
         price_block = ""
 
-    # Microdatos del precio.
-    #
-    # Antes el importe visible iba dentro de itemprop="price", asi que Google
-    # leia "$9.99 USD" -- o peor, "$9.99-$27.99 USD" -- donde espera un numero
-    # pelado. De ahi el "formato de precio no valido" de Search Console. El dato
-    # legible por maquina va ahora en <meta content>, y el texto para personas
-    # queda fuera del itemprop, que es como se marca esto.
-    if price is None:
-        price_microdata = ""
-    else:
-        tipo = "AggregateOffer" if tiene_rango else "Offer"
-        if tiene_rango:
-            importes = (
-                f'<meta itemprop="lowPrice" content="{float(price):.2f}">'
-                f'<meta itemprop="highPrice" content="{float(price_max):.2f}">'
-            )
-        else:
-            importes = f'<meta itemprop="price" content="{float(price):.2f}">'
-        price_microdata = (
-            '<p class="pdp__price">'
-            f'<strong itemprop="offers" itemscope itemtype="https://schema.org/{tipo}">'
-            '<meta itemprop="priceCurrency" content="USD">'
-            f"{importes}"
-            '<meta itemprop="availability" content="https://schema.org/InStock">'
-            f"{_esc_text(price_block)}"
-            "</strong></p>"
-        )
+    # JSON-LD is the single product/offer declaration; visible prices are HTML.
+    price_html = (
+        f'<p class="pdp__price"><strong>{_esc_text(price_block)}</strong></p>'
+        if price is not None else ""
+    )
 
     # JSON-LD Product + BreadcrumbList (helps avoid thin-page / soft-404 signals)
     json_ld_product: dict[str, Any] = {
         "@context": "https://schema.org",
         "@type": "Product",
+        "@id": canonical + "#product",
         "name": title,
         "description": desc,
         "sku": str(detail.get("cj_sku") or slug),
         "url": canonical,
-        "brand": {"@type": "Brand", "name": "The Books Wanderer"},
         "category": category,
     }
     if img:
@@ -411,43 +298,43 @@ def render_product_page(
         ]
     only = _supplier_countries(detail.get("supplier"), detail.get("from_country"))
     digital = detail.get("supplier") == "digital"
-    if price is not None:
-        # Con variantes a distintos precios, un solo "price" contradice al rango
-        # que se ve en pantalla. AggregateOffer es lo que describe eso.
-        if tiene_rango:
-            importe: dict[str, Any] = {
-                "@type": "AggregateOffer",
-                "lowPrice": f"{float(price):.2f}",
-                "highPrice": f"{float(price_max):.2f}",
-                "offerCount": max(len(variants), 1),
-            }
-        else:
-            importe = {"@type": "Offer", "price": f"{float(price):.2f}"}
-        json_ld_product["offers"] = {
-            **importe,
-            "url": f"{canonical}?variant={chosen['id']}" if chosen else canonical,
+
+    def make_offer(offer_price: Any, variant: dict[str, Any] | None = None) -> dict[str, Any]:
+        offer_url = f"{canonical}?variant={variant['id']}" if variant else canonical
+        offer: dict[str, Any] = {
+            "@type": "Offer",
+            "@id": offer_url + "#offer",
+            "url": offer_url,
+            "price": f"{float(offer_price):.2f}",
             "priceCurrency": "USD",
             "availability": "https://schema.org/InStock",
             "itemCondition": "https://schema.org/NewCondition",
             "seller": {"@type": "Organization", "name": "The Books Wanderer"},
-            # Merchant listings (GSC): return policy + shipping bands.
-            # Policy text source of truth: shipping-returns.html.
-            "hasMerchantReturnPolicy": _merchant_return_policy(only),
-            "shippingDetails": _shipping_details(only),
         }
-        if digital:
-            # A download ships nowhere; no shipping rows, no return window.
-            json_ld_product["offers"].pop("shippingDetails", None)
-            json_ld_product["offers"]["hasMerchantReturnPolicy"] = {
-                "@type": "MerchantReturnPolicy",
-                "applicableCountry": _ship_countries(),
-                "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
-                "merchantReturnLink": f"{PUBLIC_BASE}/shipping-returns.html",
-            }
-    # mpn helps the "identifier / brand" merchant signal (no GTIN from CJ).
-    mpn = str(detail.get("cj_sku") or detail.get("sku") or "").strip()
-    if mpn:
-        json_ld_product["mpn"] = mpn
+        if variant:
+            offer["sku"] = str(variant.get("cj_sku") or f"{slug}-{variant['id']}")
+            if variant.get("name"):
+                offer["name"] = variant["name"]
+        if not digital:
+            offer["hasMerchantReturnPolicy"] = _merchant_return_policy(only)
+            shipping = _shipping_details(only, supplier=detail.get("supplier"))
+            if shipping:
+                offer["shippingDetails"] = shipping
+        # There is no published digital no-refund policy. Do not invent one.
+        return offer
+
+    if chosen:
+        json_ld_product["sku"] = str(chosen.get("cj_sku") or f"{slug}-{chosen['id']}")
+        json_ld_product["offers"] = make_offer(chosen["price_usd"], chosen)
+    elif variants:
+        offers = [make_offer(v["price_usd"], v) for v in variants
+                  if v.get("price_usd") is not None]
+        if offers:
+            json_ld_product["offers"] = offers
+    elif price is not None:
+        json_ld_product["offers"] = make_offer(price)
+    # Supplier SKUs are internal inventory identifiers, not manufacturer MPNs.
+    # No verified brand, GTIN, reviews or ratings exist in the product model.
 
     json_ld_breadcrumb = {
         "@context": "https://schema.org",
@@ -474,7 +361,7 @@ def render_product_page(
         ],
     }
 
-    ld_product = json.dumps(json_ld_product, ensure_ascii=False)
+    ld_product = json.dumps(json_ld_product, ensure_ascii=False).replace("</", "<\\/")
     ld_crumbs = json.dumps(json_ld_breadcrumb, ensure_ascii=False)
     v = _css_ver()
 
@@ -510,26 +397,20 @@ def render_product_page(
             "</section>"
         )
 
-    # itemprop="image" es lo que faltaba: la etiqueta estaba, pero sin declarar
-    # que era la imagen del producto. El <article> de microdatos es un item
-    # aparte del JSON-LD y Google los valida por separado, asi que tener la
-    # imagen solo en el JSON-LD no salvaba a este.
     hero = (
-        f'<img itemprop="image" {_cj_img_attrs(img, base_w=900, sizes=SIZES_PDP_HERO)} alt="{_esc(title)}" width="800" height="1000" fetchpriority="high" '
+        f'<img {_cj_img_attrs(img, base_w=900, sizes=SIZES_PDP_HERO)} alt="{_esc(title)}" width="800" height="1000" fetchpriority="high" '
         f'style="max-width:min(100%,420px);height:auto;border-radius:12px;display:block;margin:1rem 0">'
-        if img
-        # Sin foto de producto, el logo mantiene el item valido.
-        else f'<meta itemprop="image" content="{PUBLIC_BASE}/assets/logo.png">'
+        if img else ""
     )
 
     # Substantial article body — Google Soft 404 is often thin / empty pages.
     ssr_body = f"""
-<article class="pdp-ssr" data-ssr="1" itemscope itemtype="https://schema.org/Product">
+<article class="pdp-ssr" data-ssr="1">
   <p class="eyebrow">{_esc_text(category)}</p>
-  <h1 itemprop="name">{_esc_text(title)}</h1>
-  {price_microdata}
+  <h1>{_esc_text(title)}</h1>
+  {price_html}
   {hero}
-  <div itemprop="description">
+  <div>
     <p>{_esc_text(desc)}</p>
   </div>
   <section class="pdp-ssr__section">
