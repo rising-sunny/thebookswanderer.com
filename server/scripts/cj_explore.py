@@ -252,7 +252,9 @@ def render(result: dict[str, Any]) -> None:
 
 async def main() -> int:
     ap = argparse.ArgumentParser(description="Explore CJ product candidates")
-    ap.add_argument("--keyword", action="append", help="Repeatable; overrides defaults")
+    ap.add_argument("--keyword", action="append",
+                    help="Repeatable; overrides defaults. Use _ for spaces (book_annotation_kit): "
+                         "the run-script workflow splits arguments on spaces")
     ap.add_argument("--size", type=int, default=20, help="Results per keyword")
     ap.add_argument("--max-cost", type=float, default=12.0, help="Max CJ unit cost USD")
     ap.add_argument("--top", type=int, default=15, help="Rows to show")
@@ -271,7 +273,7 @@ async def main() -> int:
     args = ap.parse_args()
 
     result = await explore(
-        args.keyword or DEFAULT_KEYWORDS,
+        [k.replace("_", " ") for k in args.keyword] if args.keyword else DEFAULT_KEYWORDS,
         size=args.size,
         max_cost=args.max_cost,
         top=args.top,
