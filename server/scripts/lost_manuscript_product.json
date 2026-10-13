@@ -1,0 +1,22 @@
+{
+  "slug": "the-lost-manuscript",
+  "supplier": "lulu",
+  "lulu_package": "0600X0900BWSTDPB060UW444MXX",
+  "title": "The Lost Manuscript — Six Literary Mysteries (English Paperback)",
+  "price_usd": 27.99,
+  "cost_usd": 4.39,
+  "pages": 96,
+  "category": "book-accessories",
+  "image_url": "/assets/products/the-lost-manuscript/main_en.jpg",
+  "gallery": [
+    "/assets/products/the-lost-manuscript/letter_en.jpg",
+    "/assets/products/the-lost-manuscript/catalogue_en.jpg",
+    "/assets/products/the-lost-manuscript/map_en.jpg"
+  ],
+  "description": "Bellwether Books is reopening, and its new keeper has inherited a rumour: an unpublished manuscript waits somewhere in the archive, scattered into six gatherings. Follow the documents, solve the mysteries and bring the story home.\n\nSix connected cases take you from the bookshop to a map room, a composing room, an old greenhouse, a parcel office and a lighthouse archive. Each case contains four puzzles and reveals another fragment of an original story about a city whose library lends hours instead of books.\n\nInside: 24 puzzles built from letters, shelf records, ciphers, maps and numerical clues; illustrated archive documents; space for your working notes; progressive hints and complete explanations at the back. Play alone or share the evidence with another reader. You need a pencil and the book; no internet, outside research or knowledge of existing novels is required.\n\nPhysical paperback, 6 × 9 inches (152.4 × 228.6 mm), 96 black-and-white interior pages, full-colour matte cover. English edition only. Printed on demand by Lulu. Estimated delivery: 10–20 days. Free shipping to the United States, United Kingdom, Canada, Australia, Germany, France, the Netherlands and Ireland.\n\nThis is a complete six-case book, not the earlier first-case prototype or a digital download. The fiction, puzzles and artwork were developed with AI assistance.",
+  "details_html": "<h3>Look inside</h3><p><a href=\"/assets/products/the-lost-manuscript/sample_en.pdf\" target=\"_blank\" rel=\"noopener\">Read sample pages (PDF)</a>. The sample contains no solutions.</p><h3>Six places, one lost story</h3><p>The Keeper’s Letter · The Cartographer’s Margin · The Printer’s Errata · The Glasshouse Ledger · The Unclaimed Ticket · The Lighthouse Door.</p><p>English paperback · 96 pages · 6 × 9 inches · printed on demand by Lulu.</p>",
+  "sha256": {
+    "lost-manuscript-interior.pdf": "dd97639a7ad0bf4dcb03d4b278050ad8f357c471d99b5df3e3f4af51d90a0505",
+    "lost-manuscript-cover.pdf": "a7ae423d401cde1067476b91535236eb36b2b449e1ac9b4f381796830b1dccb7"
+  }
+}
