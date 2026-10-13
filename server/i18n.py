@@ -32,7 +32,7 @@ _LOCALIZED = re.compile(
     r"^/(?:$|index\.html$|#|products/|collections(?:/|$)|"
     r"(?:about|contact|privacy|shipping-returns|cart|checkout)\.html)"
 )
-I18N_JS_VERSION = "1"
+I18N_JS_VERSION = "2"
 STATIC_PAGES = ("about", "contact", "privacy", "shipping-returns", "cart", "checkout")
 
 

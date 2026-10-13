@@ -415,6 +415,11 @@
   <p class="eyebrow">${escapeHtml(cat)}</p>
   <h1>${escapeHtml(title)}</h1>
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
+  <p class="pdp__shipnote">${isDigital()
+        ? "Instant download — PDF, no shipping"
+        : isPrinted()
+        ? "Free shipping to the US, UK, CA, AU, DE, FR, NL and IE"
+        : "Free shipping worldwide"}</p>
   ${desc ? `<p class="pdp__lead">${desc}</p>` : ""}
   ${variantPicker}
   ${cartPanelHtml()}
