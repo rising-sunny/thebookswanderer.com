@@ -98,6 +98,61 @@ PRODUCTS = [
         "hero_mockup_camera": "60004",
         "variant_name": "Wall calendar, 11 × 8.5 in",
     },
+    {
+        "slug": "wizard-of-oz-jigsaw-puzzle",
+        "printify_id": "6acd94f6fd7dc1c56b0b3a44",
+        "title": "The Wonderful Wizard of Oz — 252-Piece Jigsaw Puzzle",
+        "category": "decor",
+        "description": (
+            "W. W. Denslow's colour plate from the 1900 first edition of The Wonderful Wizard of Oz: "
+            "Dorothy scolding the Cowardly Lion on the yellow brick road while Toto, the Scarecrow and "
+            "the Tin Woodman look on. Scanned from the original book, cleaned by hand and set on a cream "
+            "border with the line it illustrates. 252 pieces, about 11 × 14 in finished, glossy print on "
+            "sturdy chipboard, in a gift box with a reference print. An evening's puzzle for a reader. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "hero": f"{LOCAL}/oz-puzzle-art.jpg",
+        "local": [],
+        # the back of a puzzle is grey board; leave it out
+        "skip_mockup_camera": {"59170"},
+        # the box-and-pieces scene sells it best
+        "hero_mockup_camera": "101813",
+        "variant_name": "252 pieces, vertical",
+    },
+    {
+        "slug": "wizard-of-oz-bookmark-cowardly-lion",
+        "printify_id": "6acd94f948c79d41740e6531",
+        "title": "Cowardly Lion Metal Bookmark — The Wizard of Oz",
+        "category": "book-accessories",
+        "description": (
+            "Denslow's Cowardly Lion from the 1900 first edition of The Wizard of Oz, printed on a slim "
+            "aluminium bookmark with a slot that clips over a single page, so it never falls out. "
+            "About 1.5 × 5.25 in. A small gift that lasts as long as the book. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "hero": f"{LOCAL}/oz-bookmark-lion.jpg",
+        "local": [],
+        "skip_mockup_camera": {"19802"},
+        "hero_mockup_camera": "19797",
+        "variant_name": "Aluminium bookmark, 1.5 × 5.25 in",
+    },
+    {
+        "slug": "wizard-of-oz-bookmark-tin-woodman",
+        "printify_id": "6acd94fbb4b7a98e6a05cbb4",
+        "title": "Tin Woodman Metal Bookmark — The Wizard of Oz",
+        "category": "book-accessories",
+        "description": (
+            "Denslow's Tin Woodman from the 1900 first edition of The Wizard of Oz, printed on a slim "
+            "aluminium bookmark with a slot that clips over a single page, so it never falls out. "
+            "About 1.5 × 5.25 in. A small gift that lasts as long as the book. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "hero": f"{LOCAL}/oz-bookmark-tin-woodman.jpg",
+        "local": [],
+        "skip_mockup_camera": {"19802"},
+        "hero_mockup_camera": "19797",
+        "variant_name": "Aluminium bookmark, 1.5 × 5.25 in",
+    },
 ]
 
 
