@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "pdf_files_checked": 5,
+  "checks": [
+    "Page counts and 6 x 9 trim",
+    "All fonts embedded",
+    "Clues and task data preserved",
+    "No explicit answers before hints",
+    "Internal page references",
+    "Alternating text margins",
+    "Grayscale interior images",
+    "Illustration at least 300 dpi",
+    "Unique shelf solution across 120 permutations",
+    "Cipher and arithmetic"
+  ],
+  "limits": "Editorial proof, not Lulu PDF validation or physical sample approval."
+}
