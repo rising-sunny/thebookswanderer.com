@@ -318,7 +318,18 @@ async def get_product_by_slug(slug: str, lang: str = Query("en"), db: Session = 
     if not p:
         raise HTTPException(404, "Product not found")
     await _ensure_product_media(p, db)
-    return i18n.product(p.to_detail(), lang)
+    return _with_ship_only(p, i18n.product(p.to_detail(), lang))
+
+
+def _with_ship_only(p: Product, detail: dict) -> dict:
+    """Add ship_only: the countries this product can go to when narrower than
+    the shop's list (Printify and CJ-US: the US; Lulu: its countries), else null.
+    The product page uses it to say so up front and to block the add button."""
+    from ssr import _supplier_countries
+
+    only = None if p.supplier == "digital" else _supplier_countries(p.supplier, p.from_country)
+    detail["ship_only"] = sorted(only) if only else None
+    return detail
 
 
 # ── SEO: pretty URLs, 301 from query shells, dynamic sitemap ──
@@ -841,7 +852,7 @@ async def get_product(product_id: int, lang: str = Query("en"), db: Session = De
     if not p or not p.active:
         raise HTTPException(404, "Product not found")
     await _ensure_product_media(p, db)
-    return i18n.product(p.to_detail(), lang)
+    return _with_ship_only(p, i18n.product(p.to_detail(), lang))
 
 
 async def _ensure_product_media(p: Product, db: Session) -> None:

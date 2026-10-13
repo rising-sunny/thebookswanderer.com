@@ -43,6 +43,8 @@
     }
   },
   "templates": [
+    ["^This item ships to US addresses only, so it can't be sent to (.+)\\.$", "Este producto solo se envía a direcciones de EE. UU., así que no puede llegar a $1."],
+    ["^This item can't be shipped to (.+)\\. Pick another country above if you are sending it as a gift\\.$", "Este producto no se puede enviar a $1. Elige otro país arriba si es un regalo para otra persona."],
     [
       "^(.+) is part of The Books Wanderer literary boutique — accessories chosen for everyday reading, not novelty clutter\\. We list real stock options, clear USD pricing, and ship with tracking\\. Checkout is secured with PayPal\\.$",
       "$1 forma parte de la boutique literaria The Books Wanderer: accesorios elegidos para leer todos los días, no adornos de relleno. Mostramos opciones reales en stock, precios claros en USD y envíos con seguimiento. El pago se hace de forma segura con PayPal."
@@ -367,6 +369,8 @@
     "Your browser does not support the video tag.": "Tu navegador no puede reproducir este vídeo.",
     "Free shipping worldwide — no cost added at checkout": "Envío gratis a todo el mundo: no se suma nada al pagar",
     "Free shipping worldwide": "Envío gratis a todo el mundo",
+    "Free shipping · US addresses only": "Envío gratis · solo direcciones de EE. UU.",
+    "within the United States — this item ships to US addresses only": "dentro de EE. UU.: este producto solo se envía a direcciones de EE. UU.",
     "Cookies run the shop; with your OK, Meta cookies measure our ads.": "Las cookies hacen funcionar la tienda; si aceptas, las de Meta miden nuestros anuncios.",
     "Privacy": "Privacidad",
     "Secure checkout with PayPal": "Pago seguro con PayPal",

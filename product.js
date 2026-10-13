@@ -231,6 +231,58 @@
         return Boolean(product && product.supplier === "lulu");
     }
 
+    /** Countries this product ships to when narrower than the shop's list, else null. */
+    function shipOnly() {
+        return product && Array.isArray(product.ship_only) && product.ship_only.length ? product.ship_only : null;
+    }
+
+    function usOnly() {
+        const only = shipOnly();
+        return Boolean(only && only.length === 1 && only[0] === "US");
+    }
+
+    /** False once we know the chosen country cannot receive this product. */
+    function shipsToSelected() {
+        if (isDigital() || !selectedCountry) return true;
+        const only = shipOnly();
+        if (only && !only.includes(selectedCountry)) return false;
+        return shippingStatus !== "unavailable";
+    }
+
+    function countryName(code) {
+        const d = destinations.find((x) => x.code === code);
+        return d ? d.name : code;
+    }
+
+    /** Disable adding to the cart, with a reason, when the item cannot reach the visitor. */
+    function paintAvailability() {
+        const ok = shipsToSelected();
+        root.querySelectorAll("[data-add-to-cart]").forEach((btn) => {
+            btn.disabled = !ok;
+            btn.setAttribute("aria-disabled", ok ? "false" : "true");
+        });
+        const sticky = document.querySelector(".pdp-sticky .btn");
+        if (sticky) sticky.disabled = !ok;
+        let msg = root.querySelector("[data-ship-block]");
+        if (ok) {
+            if (msg) msg.hidden = true;
+            return;
+        }
+        const row = root.querySelector(".pdp__add-row");
+        if (!row) return;
+        if (!msg) {
+            msg = document.createElement("p");
+            msg.className = "pdp__ship-block";
+            msg.setAttribute("data-ship-block", "");
+            msg.setAttribute("role", "status");
+            row.parentNode.insertBefore(msg, row);
+        }
+        msg.hidden = false;
+        msg.textContent = usOnly()
+            ? "This item ships to US addresses only, so it can't be sent to " + countryName(selectedCountry) + "."
+            : "This item can't be shipped to " + countryName(selectedCountry) + ". Pick another country above if you are sending it as a gift.";
+    }
+
     function shippingBlockHtml() {
         if (isDigital()) {
             return `
@@ -273,7 +325,9 @@
         return `
 <div class="pdp__variants pdp__shipping" id="pdpShipping">
   <h2 class="pdp__variants-title">Shipping</h2>
-  <p class="pdp__variants-label">${isPrinted()
+  <p class="pdp__variants-label">${usOnly()
+      ? "<strong>Free shipping</strong> within the United States — this item ships to US addresses only"
+      : isPrinted()
       ? "<strong>Free shipping</strong> to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland — pick your country for the delivery estimate"
       : "<strong>Free worldwide</strong> — pick your country for the delivery estimate"}</p>
   <label class="pdp__ship-label" for="pdpCountry">Ship to</label>
@@ -417,6 +471,8 @@
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
   <p class="pdp__shipnote">${isDigital()
         ? "Instant download — PDF, no shipping"
+        : usOnly()
+        ? "Free shipping · US addresses only"
         : isPrinted()
         ? "Free shipping to the US, UK, CA, AU, DE, FR, NL and IE"
         : "Free shipping worldwide"}</p>
@@ -558,6 +614,7 @@
             shippingQuote = null;
             shippingStatus = "error";
         }
+        paintAvailability();
         patchShippingUi();
     }
 
@@ -623,6 +680,7 @@
 
     function bindAddBar(scope) {
         const el = scope || root;
+        setTimeout(paintAvailability, 0);
         const qtyInput = el.querySelector("[data-add-qty]");
         el.querySelector('[data-add-act="dec"]')?.addEventListener("click", () => {
             addQty = Math.max(1, addQty - 1);
@@ -792,6 +850,16 @@
             selectedCountry = localStorage.getItem("tbw:ship_country") || "";
         } catch (_) {
             selectedCountry = "";
+        }
+        if (!selectedCountry) {
+            // Best guess from the IP, so visitors see availability without
+            // touching the selector. Not saved: only a real choice is remembered.
+            try {
+                const r = await fetch("/api/geo/country", { headers: { Accept: "application/json" } });
+                if (r.ok) selectedCountry = (await r.json()).country || "";
+            } catch (_) {
+                /* keep empty */
+            }
         }
     }
 
