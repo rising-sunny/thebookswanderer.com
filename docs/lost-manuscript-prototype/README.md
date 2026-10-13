@@ -19,6 +19,8 @@ La paginación del interior comienza después de la portada. Las pistas están e
 
 Formato de 6 × 9 pulgadas (152,4 × 228,6 mm), márgenes alternos para encuadernación, tipografía de libro, inicial capitular, cabeceras y folios. La carta tiene papelería y sello propios; las fichas de catálogo, el registro de trabajo, la estantería y el certificado forman parte del mundo de la historia. Un grabado original abre el caso.
 
+El logo oficial de **The Books Wanderer** aparece como medallón en la portada y en la página editorial. Se reutilizó el archivo original de alta resolución `assets/brand/logo-master.png`, siguiendo su presentación en la portada de **Color the Classics**. Se conserva en color en la cubierta y pasa a escala de grises junto con el interior.
+
 Las referencias visuales fueron las imágenes de producto del repositorio: los documentos y sellos de **Reading Passport** y los grabados de **Color the Classics**. No se copiaron sus contenidos ni ilustraciones. La nueva ilustración se generó con asistencia de IA.
 
 El interior usa escala de grises; sus fuentes están incrustadas y la ilustración supera 300 ppp al tamaño colocado. Se comprobaron los márgenes de texto, las referencias de página, las pistas, el cifrado y el cálculo horario. La disposición de los libros mantiene una sola solución entre las 120 permutaciones posibles.
