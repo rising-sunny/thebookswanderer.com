@@ -5,7 +5,9 @@ Run from the repository root:
 """
 import copy
 import json
+import os
 import sys
+import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
@@ -219,6 +221,11 @@ class ProductSchemaTests(unittest.TestCase):
 
 class StorefrontRegressionTests(unittest.TestCase):
     def setUp(self):
+        research_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(research_dir.cleanup)
+        research_env = patch.dict(os.environ, {"COLLABORATORS_DATA_DIR": research_dir.name})
+        research_env.start()
+        self.addCleanup(research_env.stop)
         # Dependency overrides leave the actual catalog and store.db untouched.
         self.engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
                                     poolclass=StaticPool)

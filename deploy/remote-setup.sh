@@ -38,6 +38,11 @@ chmod 755 "$REMOTE_PATH/server/data"
 # www-data needs write for sqlite
 chown www-data:www-data "$REMOTE_PATH/server/data"
 
+# Professional-contact research must never live under the public web root.
+mkdir -p /var/lib/tbw-collaborators
+chown www-data:www-data /var/lib/tbw-collaborators
+chmod 700 /var/lib/tbw-collaborators
+
 systemctl daemon-reload
 systemctl enable thebookswanderer.service
 systemctl restart thebookswanderer.service

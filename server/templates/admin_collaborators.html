@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><title>Colaboradores · The Books Wanderer</title>
+  <style>
+    :root{--ink:#22382c;--muted:#667165;--paper:#faf6ec;--line:#dfd8c7;--gold:#b58629}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 system-ui,sans-serif}
+    header{padding:24px max(20px,calc((100vw - 1200px)/2));border-top:4px solid var(--gold);border-bottom:1px solid var(--line);background:#fffdf8;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    h1{font:28px Georgia,serif;margin:0}h2{font:24px Georgia,serif}h3{margin:0;font-size:18px}a{color:#2b6247;text-underline-offset:3px}main{max-width:1240px;margin:auto;padding:28px 20px}p{margin:.5em 0 1em}.muted,small{color:var(--muted)}
+    .stats,.filters,.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.stats{margin:22px 0}.stat{padding:14px 22px;background:#fffdf8;border:1px solid var(--line);border-radius:12px}.stat strong{display:block;font-size:26px}.filters{margin:20px 0}label{display:block;font-weight:600;font-size:13px}input,select,textarea,button,.button{font:inherit;border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:white;color:var(--ink)}button,.button{cursor:pointer;background:#2b5240;color:white;text-decoration:none;display:inline-block}input,textarea{width:100%}textarea{resize:vertical}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+    .candidate{background:#fffdf8;border:1px solid var(--line);border-radius:14px;padding:22px;margin:16px 0;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px}.candidate a,.evidence{overflow-wrap:anywhere}.tag{font-size:12px;padding:3px 9px;border-radius:20px;background:#eee9dd;margin-left:8px}.email{font-size:18px;font-weight:600;display:block;margin:8px 0}.evidence{padding:10px 14px;border-left:3px solid var(--gold);background:#f5efdf;font-size:13px;margin:12px 0}.review label{margin:0 0 5px}.review select,.review textarea{width:100%;margin-bottom:12px}
+    .empty{padding:36px;background:#fffdf8;border:1px dashed var(--line);border-radius:14px;text-align:center}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px;background:#fffdf8}th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}td:first-child{min-width:170px}details{margin-top:32px}summary{cursor:pointer;font-weight:600;font-size:18px}.source-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#fffdf8;padding:20px;border:1px solid var(--line);border-radius:12px;margin:16px 0}.source-form .wide{grid-column:1/-1}code{font-size:12px}.note{padding:14px 18px;background:#efe9d9;border-radius:10px}
+    @media(max-width:760px){header{align-items:flex-start;flex-direction:column}.candidate,.source-form{grid-template-columns:1fr}.source-form .wide{grid-column:auto}.stats{gap:8px}.stat{flex:1;min-width:125px}}
+  </style>
+</head>
+<body>
+<header><div><small>THE BOOKS WANDERER · ADMINISTRACIÓN</small><h1>Posibles colaboradores</h1></div><nav><a href="/admin/live">Panel Live</a> · <a href="#fuentes">Fuentes</a> · <a href="/admin/live/logout">Salir</a></nav></header>
+<main>
+  <p>Contactos profesionales publicados por blogs, medios y comunidades de lectura. Revisa su pertinencia antes de proponer una colaboración.</p>
+  <div class="stats">{% for key,label in labels.items() %}<div class="stat"><strong>{{ counts[key] }}</strong>{{ label }}</div>{% endfor %}</div>
+  <div class="note">Revisión diaria de hasta 20 webs en español e inglés. Estos contactos no están suscritos a la newsletter. Cambiar un estado o exportar no envía ningún correo.</div>
+  <form class="filters" method="get">
+    <div><label for="status">Estado</label><select id="status" name="status"><option value="">Todos</option>{% for key,label in labels.items() %}<option value="{{ key }}" {% if selected_status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label for="lang">Idioma</label><select id="lang" name="lang"><option value="">Ambos</option><option value="es" {% if selected_lang == 'es' %}selected{% endif %}>Español</option><option value="en" {% if selected_lang == 'en' %}selected{% endif %}>Inglés</option></select></div>
+    <button type="submit">Filtrar</button><a class="button" href="/admin/collaborators/export.csv?status=approved&amp;lang={{ selected_lang }}">Exportar aprobados</a>
+  </form>
+  <small>Se muestran hasta 500 candidatos por filtro. Las fechas usan la hora de Chile (Santiago). La afinidad procede de la selección de la fuente; el correo aún requiere revisión.</small>
+  {% for c in candidates %}
+  <article class="candidate">
+    <div>
+      <h3>{{ c.name }} <span class="tag">{{ 'Español' if c.lang == 'es' else 'Inglés' }}</span></h3>
+      <span class="email">{{ c.email }}</span>
+      <p><strong>{{ c.category }}</strong> · {{ c.reason }}</p>
+      <p><a href="{{ c.source_url }}" target="_blank" rel="noopener noreferrer">Ver página donde se publicó ↗</a></p>
+      <div class="evidence">{{ c.evidence }}</div>
+      <small>{{ c.purpose }}<br>Encontrado: {{ c.found_at|collaborator_date }} · Visto de nuevo: {{ c.last_seen_at|collaborator_date }}</small>
+    </div>
+    <form class="review" method="post" action="/admin/collaborators/candidates/{{ c.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="status-{{ c.id }}">Decisión</label><select name="status" id="status-{{ c.id }}">{% for key,label in labels.items() %}<option value="{{ key }}" {% if c.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <label for="notes-{{ c.id }}">Notas</label><textarea name="notes" id="notes-{{ c.id }}" rows="3" maxlength="2000" placeholder="Idea de colaboración o motivo de descarte">{{ c.notes }}</textarea>
+      <button type="submit">Guardar revisión</button>
+    </form>
+  </article>
+  {% else %}<div class="empty"><h2>No hay candidatos con este filtro</h2><p>Consulta las fuentes y el historial de revisiones. Algunos sitios solo ofrecen un formulario de contacto.</p></div>{% endfor %}
+
+  <details id="fuentes" open><summary>Webs seleccionadas ({{ sources|length }})</summary>
+    <p class="muted">Añade una web pública relacionada con lectores. Se revisará su portada y hasta cuatro páginas de contacto o colaboración enlazadas desde ella. Pausar detiene las revisiones futuras.</p>
+    <div class="table-wrap"><table><thead><tr><th>Web / idioma</th><th>Afinidad</th><th>Última revisión</th><th>Estado</th></tr></thead><tbody>
+      {% for s in sources %}<tr><td><a href="{{ s.url }}" target="_blank" rel="noopener noreferrer">{{ s.name }}</a><br>{{ s.lang|upper }}</td><td>{{ s.reason }}</td><td>{{ s.last_status }}<br><small>{{ s.checked_at|collaborator_date }}</small></td><td><form method="post" action="/admin/collaborators/sources/{{ s.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="active" value="{{ 0 if s.active else 1 }}"><button type="submit">{{ 'Pausar' if s.active else 'Reactivar' }}</button></form></td></tr>{% endfor %}
+    </tbody></table></div>
+    <form class="source-form" method="post" action="/admin/collaborators/sources">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div><label for="name">Nombre</label><input id="name" name="name" required maxlength="150"></div>
+      <div><label for="url">URL pública</label><input id="url" name="url" type="url" required maxlength="500" placeholder="https://blog-literario.com/"></div>
+      <div><label for="source-lang">Idioma</label><select id="source-lang" name="lang"><option value="es">Español</option><option value="en">Inglés</option></select></div>
+      <div><label for="category">Tipo de colaborador</label><input id="category" name="category" required maxlength="100" placeholder="Blog, librería, club de lectura…"></div>
+      <div class="wide"><label for="reason">Por qué encaja</label><input id="reason" name="reason" required maxlength="500" placeholder="Qué comparte su audiencia con la nuestra"></div>
+      <div class="wide"><button type="submit">Añadir a la próxima revisión</button></div>
+    </form>
+  </details>
+  <details><summary>Historial de ejecución</summary><div class="table-wrap"><table><thead><tr><th>Inicio · Chile</th><th>Estado</th><th>Webs</th><th>Contactos vistos</th><th>Nuevos</th><th>Incidencias</th></tr></thead><tbody>
+  {% for r in runs %}<tr><td>{{ r.started_at|collaborator_date }}</td><td>{{ r.status }}</td><td>{{ r.sites }}</td><td>{{ r.found }}</td><td>{{ r.added }}</td><td>{{ r.errors }}</td></tr>{% else %}<tr><td colspan="6">La primera revisión todavía no se ha ejecutado.</td></tr>{% endfor %}
+  </tbody></table></div></details>
+</main>
+</body></html>
