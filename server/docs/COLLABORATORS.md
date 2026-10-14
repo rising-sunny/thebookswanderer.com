@@ -33,6 +33,15 @@ There are no mail sends or newsletter writes. Export defaults to approved record
 and neutralizes spreadsheet formula injection. A published professional address
 is not newsletter consent; review purpose and relevance before any outreach.
 
+## Email draft preview
+
+`/admin/collaborators/email-preview` shows a bilingual, branded first-contact
+draft. Each inbox candidate links to a preview with its blog name and language.
+The preview supports HTML download and a plain-text version. It uses the existing
+Live session and private response headers. It performs no sending, scheduling,
+candidate-state changes, or newsletter writes. Its invitation and reply-based
+do-not-contact wording are draft copy for review, not an active sending system.
+
 ## Operations
 
 Data and the collector lock are in `/var/lib/tbw-collaborators`, outside nginx's

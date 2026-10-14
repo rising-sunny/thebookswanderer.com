@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:0;background:#f3eddf;color:#25372c;">
+  <div style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;">{{ paragraphs[2] }}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3eddf;"><tr><td align="center" style="padding:28px 12px 36px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:580px;background:#fffdf8;border:1px solid #e1d7c2;border-radius:12px;overflow:hidden;">
+      <tr><td style="height:4px;background:#bd953e;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:28px 30px 22px;border-bottom:1px solid #e9e0cc;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+          <td style="padding-right:14px;vertical-align:middle;"><img src="{{ base }}/assets/logo-email.png" alt="" width="58" height="58" style="display:block;border-radius:50%;border:1px solid #e4dac3;"></td>
+          <td style="vertical-align:middle;"><p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;margin:0;color:#1b3728;">The Books Wanderer</p><p style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:2px;color:#937335;text-transform:uppercase;margin:7px 0 0;">{{ eyebrow }}</p></td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:28px 30px 12px;">
+        <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:29px;line-height:1.2;font-weight:400;letter-spacing:-.4px;color:#1b3728;margin:0 0 26px;">{{ heading }}</h1>
+        {% for paragraph in paragraphs %}<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;color:#39433a;margin:0 0 18px;">{{ paragraph }}</p>{% endfor %}
+        <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;margin:22px 0 0;color:#39433a;">{{ closing }}<br><strong style="color:#1b3728;">The Books Wanderer</strong></p>
+        <p style="margin:18px 0 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;"><a href="{{ base }}{{ about_path }}" target="_blank" rel="noopener noreferrer" style="color:#2b6247;text-decoration:underline;">{{ cta }} &rarr;</a></p>
+      </td></tr>
+      <tr><td style="padding:20px 30px;background:#f8f2e5;border-top:1px solid #e9e0cc;"><p style="font-family:Georgia,'Times New Roman',serif;font-size:14px;font-style:italic;line-height:1.6;color:#6b735f;margin:0;">For those who wander between pages.</p><p style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#6a7165;margin:12px 0 0;">{{ optout }}</p></td></tr>
+    </table>
+  </td></tr></table>
+</body></html>

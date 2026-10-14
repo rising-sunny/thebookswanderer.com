@@ -23,7 +23,7 @@
   <form class="filters" method="get">
     <div><label for="status">Estado</label><select id="status" name="status"><option value="">Todos</option>{% for key,label in labels.items() %}<option value="{{ key }}" {% if selected_status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div><label for="lang">Idioma</label><select id="lang" name="lang"><option value="">Ambos</option><option value="es" {% if selected_lang == 'es' %}selected{% endif %}>Español</option><option value="en" {% if selected_lang == 'en' %}selected{% endif %}>Inglés</option></select></div>
-    <button type="submit">Filtrar</button><a class="button" href="/admin/collaborators/export.csv?status=approved&amp;lang={{ selected_lang }}">Exportar aprobados</a>
+    <button type="submit">Filtrar</button><a class="button" href="/admin/collaborators/export.csv?status=approved&amp;lang={{ selected_lang }}">Exportar aprobados</a><a href="/admin/collaborators/email-preview">Ver borrador del correo</a>
   </form>
   <small>Se muestran hasta 500 candidatos por filtro. Las fechas usan la hora de Chile (Santiago). La afinidad procede de la selección de la fuente; el correo aún requiere revisión.</small>
   {% for c in candidates %}
@@ -35,6 +35,7 @@
       <p><a href="{{ c.source_url }}" target="_blank" rel="noopener noreferrer">Ver página donde se publicó ↗</a></p>
       <div class="evidence">{{ c.evidence }}</div>
       <small>{{ c.purpose }}<br>Encontrado: {{ c.found_at|collaborator_date }} · Visto de nuevo: {{ c.last_seen_at|collaborator_date }}</small>
+      <p><a href="/admin/collaborators/email-preview?candidate_id={{ c.id }}">Previsualizar propuesta para este contacto</a></p>
     </div>
     <form class="review" method="post" action="/admin/collaborators/candidates/{{ c.id }}">
       <input type="hidden" name="csrf" value="{{ csrf }}">

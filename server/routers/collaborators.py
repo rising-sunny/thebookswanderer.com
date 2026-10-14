@@ -19,6 +19,8 @@ from fastapi.routing import APIRoute
 from live import ADMIN_COOKIE, ADMIN_MAX_AGE, _admin_password, _admin_user, _valid_cookie, templates
 from services import collaborators_store as store
 from services.collaborators import ResearchError, normalize_url
+from services.email import _from_header
+from urls import PUBLIC_BASE
 
 
 class PrivateRoute(APIRoute):
@@ -34,7 +36,7 @@ class PrivateRoute(APIRoute):
             response.headers.update({
                 "Cache-Control": "no-store, private", "X-Robots-Tag": "noindex, nofollow, nosnippet",
                 "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
-                "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+                "Content-Security-Policy": "default-src 'self'; img-src 'self' https://thebookswanderer.com https://www.thebookswanderer.com; style-src 'self' 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'",
             })
             return response
         return handler
@@ -109,6 +111,61 @@ def inbox(request: Request, status: str = "", lang: str = ""):
         "selected_status": status, "selected_lang": lang,
         "labels": {"pending": "Pendiente", "approved": "Aprobado", "discarded": "Descartado", "contacted": "Contactado"},
     })
+
+
+@router.get("/admin/collaborators/email-preview", response_class=HTMLResponse)
+def email_preview(request: Request, candidate_id: int = 0, lang: str = "", format: str = "view"):
+    if not browser_admin(request) and not api_admin(request):
+        return RedirectResponse("/admin/live/login", status_code=303)
+    filters("", lang)
+    if format not in ("view", "html", "download", "text"):
+        raise HTTPException(400, "Invalid preview format")
+    with store.connect() as db:
+        query = "SELECT c.id,c.email,s.name,s.lang FROM candidates c JOIN sources s ON s.id=c.source_id"
+        if candidate_id:
+            row = db.execute(query + " WHERE c.id=?", (candidate_id,)).fetchone()
+            if not row:
+                raise HTTPException(404, "Candidate not found")
+        else:
+            row = db.execute(query + " WHERE s.lang=? ORDER BY c.id DESC LIMIT 1", (lang or "es",)).fetchone()
+    chosen_lang = lang or (row["lang"] if row else "es")
+    name = row["name"] if row else ("tu comunidad lectora" if chosen_lang == "es" else "your reading community")
+    subject = ("Una idea para " if chosen_lang == "es" else "An idea for ") + name
+    if chosen_lang == "es":
+        paragraphs = [
+            "Hola:",
+            f"Te escribo por {name}. Soy del equipo de The Books Wanderer, una pequeña boutique online de accesorios y recursos para lectores.",
+            "Me gustaría explorar una colaboración con tu comunidad: compartir nuestro reto de lectura gratuito y, si encaja con tu contenido, preparar una propuesta en torno a los libros y los hábitos lectores.",
+            "¿Te interesaría que te enviara una idea breve adaptada a tu blog? Podemos conversar sobre el formato y las condiciones antes de acordar nada.",
+            "Gracias por tu tiempo y por el espacio que dedicas a la lectura.",
+        ]
+        heading, eyebrow, cta = "Una idea para compartir lecturas", "Entre lectores", "Conocer The Books Wanderer"
+        closing, optout = "Un saludo,", "Si prefieres que no volvamos a escribirte, basta con responder «no contactar»."
+    else:
+        paragraphs = [
+            "Hi there,",
+            f"I'm reaching out about {name}. I'm part of The Books Wanderer, a small online boutique of reading accessories and resources for book lovers.",
+            "I'd love to explore a collaboration with your community: sharing our free reading challenge and, if it suits your content, putting together an idea around books and reading habits.",
+            "Would you be interested in a short proposal tailored to your blog? We can discuss the format and terms before agreeing to anything.",
+            "Thank you for your time and for the space you create for readers.",
+        ]
+        heading, eyebrow, cta = "An idea to bring readers together", "Between readers", "Meet The Books Wanderer"
+        closing, optout = "Warmly,", "If you'd prefer not to hear from us again, just reply 'do not contact'."
+    context = {"lang": chosen_lang, "subject": subject, "paragraphs": paragraphs,
+               "heading": heading, "eyebrow": eyebrow, "cta": cta, "closing": closing,
+               "optout": optout, "base": PUBLIC_BASE, "name": name,
+               "about_path": "/es/about.html" if chosen_lang == "es" else "/about.html",
+               "from_address": _from_header() or "The Books Wanderer",
+               "to_address": row["email"] if row else "Destinatario por seleccionar",
+               "candidate_id": row["id"] if row else 0}
+    if format == "text":
+        text = "\n\n".join(paragraphs + [closing + "\nThe Books Wanderer", PUBLIC_BASE, optout])
+        return Response(text, media_type="text/plain; charset=utf-8")
+    if format in ("html", "download"):
+        html = templates.env.get_template("collaborator_email.html").render(context)
+        headers = {"Content-Disposition": f'attachment; filename="colaboracion-{chosen_lang}.html"'} if format == "download" else {}
+        return HTMLResponse(html, headers=headers)
+    return templates.TemplateResponse(request, "admin_collaborator_email.html", context)
 
 
 @router.get("/api/admin/collaborators")

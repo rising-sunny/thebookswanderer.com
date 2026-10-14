@@ -195,6 +195,35 @@ class StoreAndAdminTests(unittest.TestCase):
         self.assertIn("no-store", response.headers["cache-control"])
         self.assertEqual(response.json()["candidates"][0]["email"], "hello@realbooks.org")
 
+    def test_email_preview_languages_formats_and_no_sending(self):
+        self.login()
+        before = store.snapshot()
+        with patch("services.email._send_sync") as send:
+            for lang in ("es", "en"):
+                for format in ("view", "html", "download", "text"):
+                    response = self.client.get(f"/admin/collaborators/email-preview?candidate_id=1&lang={lang}&format={format}")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn("no-store", response.headers["cache-control"])
+                    self.assertNotIn("test-api-key", response.text)
+                    self.assertIn("Real Books", response.text)
+                    if format == "html":
+                        self.assertIn(f'<html lang="{lang}">', response.text)
+                        self.assertNotIn("placed an order", response.text)
+                    if format == "download":
+                        self.assertIn("attachment", response.headers["content-disposition"])
+            send.assert_not_called()
+        self.assertEqual(before, store.snapshot())
+
+    def test_email_preview_requires_authentication_and_escapes_source_name(self):
+        for format in ("view", "html", "text", "download"):
+            self.assertEqual(self.client.get(f"/admin/collaborators/email-preview?format={format}", follow_redirects=False).status_code, 303)
+        with store.connect() as db:
+            db.execute("UPDATE sources SET name=?", ('<script>alert("xss")</script>',))
+        self.login()
+        response = self.client.get("/admin/collaborators/email-preview?candidate_id=1&format=html")
+        self.assertNotIn('<script>alert("xss")</script>', response.text)
+        self.assertIn("&lt;script&gt;", response.text)
+
     def test_cookie_login_csrf_and_review_preserved_on_rediscovery(self):
         self.login()
         page = self.client.get("/admin/collaborators")
