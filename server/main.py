@@ -58,6 +58,7 @@ from live import router as live_router  # noqa: E402
 import i18n  # noqa: E402
 from routers.pinterest import router as pinterest_router  # noqa: E402
 from routers.collaborators import router as collaborators_router  # noqa: E402
+from routers.outreach import router as outreach_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 
 # Shipping is priced into the product instead of charged at checkout. CJ is
@@ -104,6 +105,7 @@ app = FastAPI(title="The Books Wanderer API", version="0.1.0")
 app.include_router(live_router)
 app.include_router(pinterest_router)
 app.include_router(collaborators_router)
+app.include_router(outreach_router)
 
 app.add_middleware(
     CORSMiddleware,

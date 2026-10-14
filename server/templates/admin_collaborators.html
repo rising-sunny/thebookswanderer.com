@@ -17,9 +17,10 @@
 <body>
 <header><div><small>THE BOOKS WANDERER · ADMINISTRACIÓN</small><h1>Posibles colaboradores</h1></div><nav><a href="/admin/live">Panel Live</a> · <a href="#fuentes">Fuentes</a> · <a href="/admin/live/logout">Salir</a></nav></header>
 <main>
-  <p>Contactos profesionales publicados por blogs, medios y comunidades de lectura. Revisa su pertinencia antes de proponer una colaboración.</p>
+  <p>Contactos profesionales publicados por blogs, medios y comunidades de lectura.</p>
   <div class="stats">{% for key,label in labels.items() %}<div class="stat"><strong>{{ counts[key] }}</strong>{{ label }}</div>{% endfor %}</div>
-  <div class="note">Revisión diaria de hasta 20 webs en español e inglés. Estos contactos no están suscritos a la newsletter. Cambiar un estado o exportar no envía ningún correo.</div>
+  <div class="note">Campaña autónoma: descubre nuevas webs a través de enlaces de comunidades literarias, revisa hasta 20 sitios y envía como máximo 10 invitaciones cada 24 horas. Una sola invitación por dirección y sitio. Estos contactos no están suscritos a la newsletter. Descarta un contacto o pausa su fuente para excluirlo de los próximos envíos.</div>
+  {% if deliveries %}<details open><summary>Envíos de la campaña</summary><p class="muted">«Enviado» significa que SMTP aceptó el mensaje; no confirma su lectura. Los resultados inciertos no se reenvían automáticamente.</p><div class="table-wrap"><table><thead><tr><th>Contacto</th><th>Estado</th><th>Fecha · Chile</th><th>Detalle</th></tr></thead><tbody>{% for d in deliveries %}<tr><td>{{ d.name }}<br>{{ d.email }}</td><td>{{ {'queued':'En cola','sending':'En proceso','sent':'Enviado','suppressed':'Excluido','uncertain':'Revisar resultado'}[d.status] }}</td><td>{{ (d.sent_at or d.attempted_at or d.created_at)|collaborator_date }}</td><td>{{ d.detail }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
   <form class="filters" method="get">
     <div><label for="status">Estado</label><select id="status" name="status"><option value="">Todos</option>{% for key,label in labels.items() %}<option value="{{ key }}" {% if selected_status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div><label for="lang">Idioma</label><select id="lang" name="lang"><option value="">Ambos</option><option value="es" {% if selected_lang == 'es' %}selected{% endif %}>Español</option><option value="en" {% if selected_lang == 'en' %}selected{% endif %}>Inglés</option></select></div>

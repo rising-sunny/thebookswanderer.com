@@ -19,7 +19,7 @@
         <p style="margin:22px 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;"><a href="{{ cta_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:13px 20px;border-radius:8px;background:#2b5240;color:#fffdf8;text-decoration:none;font-weight:bold;">{{ cta }}</a></p>
         <p style="margin:0 0 26px;font-family:Arial,Helvetica,sans-serif;font-size:13px;"><a href="{{ shop_url }}" target="_blank" rel="noopener noreferrer" style="color:#2b6247;text-decoration:underline;">{{ secondary_cta }} &rarr;</a></p>
       </td></tr>
-      <tr><td style="padding:20px 30px;background:#f8f2e5;border-top:1px solid #e9e0cc;"><p style="font-family:Georgia,'Times New Roman',serif;font-size:14px;font-style:italic;line-height:1.6;color:#6b735f;margin:0;">For those who wander between pages.</p><p style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#6a7165;margin:12px 0 0;">{{ optout }}</p></td></tr>
+      <tr><td style="padding:20px 30px;background:#f8f2e5;border-top:1px solid #e9e0cc;"><p style="font-family:Georgia,'Times New Roman',serif;font-size:14px;font-style:italic;line-height:1.6;color:#6b735f;margin:0;">For those who wander between pages.</p><p style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#6a7165;margin:12px 0 0;">{{ optout }}{% if unsubscribe_url %}<br><a href="{{ unsubscribe_url }}" style="color:#2b6247;text-decoration:underline;">{{ unsubscribe_label }}</a>{% endif %}</p></td></tr>
     </table>
   </td></tr></table>
 </body></html>

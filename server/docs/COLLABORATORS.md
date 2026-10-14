@@ -29,7 +29,7 @@ The affinity reason is manually supplied source metadata, not a measured score.
 Every new address starts pending. Rediscovery preserves review status and notes.
 Pausing a source stops future collection, but retains prior candidates.
 
-There are no mail sends or newsletter writes. Export defaults to approved records
+The research collector itself never sends mail or writes newsletter records. Export defaults to approved records
 and neutralizes spreadsheet formula injection. A published professional address
 is not newsletter consent; review purpose and relevance before any outreach.
 
@@ -40,8 +40,52 @@ with a direct newsletter-signup link for the existing free 2027 Reading Challeng
 Each inbox candidate links to a preview with its recipient and language.
 The preview supports HTML download and a plain-text version. It uses the existing
 Live session and private response headers. It performs no sending, scheduling,
-candidate-state changes, or newsletter writes. Its invitation and reply-based
-do-not-contact wording are draft copy for review, not an active sending system.
+candidate-state changes, or newsletter writes. Actual sends use the same approved
+copy and include a signed unsubscribe link in the footer.
+
+## Autonomous invitation campaign
+
+The owner authorized autonomous discovery and sending. The daily Actions workflow
+first runs `discover_literary_sources.py`, then `collect_collaborators.py`, then
+`send_store_invitations.py --campaign store-invitation --auto --send`.
+
+Discovery follows public links from known literary sites, checks the linked
+homepage for book/review/community relevance, and determines Spanish or English
+from its visible text. It does not scrape search results or private social
+profiles and needs no search API key. Up to six parent sites, twelve linked
+homepages and eight additions per execution are permitted. Robots directives,
+public-address validation and time budgets still apply. This is bounded link
+discovery; it does not search the entire web or guarantee a new match every day.
+
+Invitations use `hello@thebookswanderer.com` for From and Reply-To, with the
+existing SMTP account. TLS authentication and SMTP acceptance of that envelope
+sender are checked before queueing. No invitation subscribes its recipient.
+The sender selects at most one address per source, preferring the site's own
+professional-domain mailbox, and checks source activity, review exclusions,
+fresh evidence, previous invitations, existing subscriptions and global opt-outs.
+New candidates are selected automatically under the owner's authorization;
+discarded contacts and paused sources are never selected.
+
+The private delivery ledger records the exact subject, HTML/text, stable
+Message-ID and SMTP outcome. Email and site identities are checked across all
+campaign labels; relabeling cannot repeat a shop invitation. A process lock and
+committed pre-send claim prevent concurrent duplicates. No more than ten SMTP
+attempts are made in a rolling 24 hours. Ambiguous outcomes and interrupted
+attempts require review and are never retried automatically.
+
+Each message has a signed, cookie-free unsubscribe link and List-Unsubscribe
+headers. GET shows confirmation without changing state (for link scanners);
+POST applies the opt-out and supports one-click email-provider requests. Both
+the private suppression and existing global marketing opt-out are recorded.
+Replies requesting no contact can be handled by discarding the candidate in the
+panel; mailbox replies are not automatically read by this implementation.
+
+For a preflight without sending, use Actions `Run server script` with
+`send_store_invitations.py` and `--campaign store-invitation --auto`.
+For an immediate authorized cycle, dispatch `collect-collaborators.yml`.
+Disable that workflow in Actions to stop autonomous processing; pausing sources
+or discarding individual candidates excludes those contacts. Re-enable only
+within the owner's intended campaign scope.
 
 ## Operations
 

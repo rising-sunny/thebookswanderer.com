@@ -19,8 +19,7 @@ from fastapi.routing import APIRoute
 from live import ADMIN_COOKIE, ADMIN_MAX_AGE, _admin_password, _admin_user, _valid_cookie, templates
 from services import collaborators_store as store
 from services.collaborators import ResearchError, normalize_url
-from services.email import _from_header
-from urls import PUBLIC_BASE
+from services.invitation import draft, SENDER_HEADER
 
 
 class PrivateRoute(APIRoute):
@@ -130,43 +129,15 @@ def email_preview(request: Request, candidate_id: int = 0, lang: str = "", forma
             row = db.execute(query + " WHERE s.lang=? ORDER BY c.id DESC LIMIT 1", (lang or "es",)).fetchone()
     chosen_lang = lang or (row["lang"] if row else "es")
     name = row["name"] if row else ("tu comunidad lectora" if chosen_lang == "es" else "your reading community")
-    subject = "Te invitamos a The Books Wanderer" if chosen_lang == "es" else "You're invited to The Books Wanderer"
-    if chosen_lang == "es":
-        paragraphs = [
-            "Hola:",
-            "Queremos invitarte a conocer The Books Wanderer, nuestra tienda de accesorios y recursos para quienes disfrutan de la lectura.",
-            "Si te suscribes, recibirás gratis nuestro reto de lectura 2027: un imprimible con 52 propuestas y una página para registrar tus lecturas.",
-            "También te compartiremos novedades de la tienda y recomendaciones lectoras.",
-            "¡Nos encantará que nos visites!",
-        ]
-        heading, eyebrow, cta = "Un regalo para tus lecturas", "The Books Wanderer te invita", "Recibir mi reto gratuito"
-        secondary_cta = "Visitar la tienda"
-        closing, optout = "Un saludo,", "Si prefieres que no volvamos a escribirte, basta con responder «no contactar»."
-    else:
-        paragraphs = [
-            "Hi there,",
-            "We'd love to welcome you to The Books Wanderer, our shop of reading accessories and resources for book lovers.",
-            "Subscribe to receive our free 2027 Reading Challenge: a printable with 52 prompts and a page to log your reading year.",
-            "We'll also share shop updates and reading recommendations.",
-            "We'd love to see you there!",
-        ]
-        heading, eyebrow, cta = "A gift for your reading life", "An invitation from The Books Wanderer", "Get my free reading challenge"
-        secondary_cta = "Visit the shop"
-        closing, optout = "Warmly,", "If you'd prefer not to hear from us again, just reply 'do not contact'."
-    shop_url = PUBLIC_BASE + ("/es/" if chosen_lang == "es" else "/") + "?utm_source=outreach&utm_medium=email&utm_campaign=store_invitation"
-    cta_url = shop_url + "#newsletter"
-    context = {"lang": chosen_lang, "subject": subject, "paragraphs": paragraphs,
-               "heading": heading, "eyebrow": eyebrow, "cta": cta, "closing": closing,
-               "optout": optout, "base": PUBLIC_BASE, "name": name,
-               "cta_url": cta_url, "shop_url": shop_url, "secondary_cta": secondary_cta,
-               "from_address": _from_header() or "The Books Wanderer",
+    content = draft(chosen_lang)
+    context = {**content, "name": name,
+               "from_address": SENDER_HEADER,
                "to_address": row["email"] if row else "Destinatario por seleccionar",
                "candidate_id": row["id"] if row else 0}
     if format == "text":
-        text = "\n\n".join(paragraphs + [cta + ":\n" + cta_url, secondary_cta + ":\n" + shop_url, closing + "\nThe Books Wanderer", optout])
-        return Response(text, media_type="text/plain; charset=utf-8")
+        return Response(content["text"], media_type="text/plain; charset=utf-8")
     if format in ("html", "download"):
-        html = templates.env.get_template("collaborator_email.html").render(context)
+        html = content["html"]
         headers = {"Content-Disposition": f'attachment; filename="invitacion-{chosen_lang}.html"'} if format == "download" else {}
         return HTMLResponse(html, headers=headers)
     return templates.TemplateResponse(request, "admin_collaborator_email.html", context)
