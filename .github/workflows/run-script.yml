@@ -46,8 +46,7 @@ jobs:
           SCRIPT: ${{ inputs.script }}
           ARGS: ${{ inputs.args }}
         run: |
-          read -ra argv <<< "$ARGS"
-          cmd=$(printf '%q' "scripts/$SCRIPT")
-          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
+          [[ "$SCRIPT" == "meta_performance_report.py" ]] || exit 1
           ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
+            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python -" \
+            < server/scripts/meta_performance_report.py
