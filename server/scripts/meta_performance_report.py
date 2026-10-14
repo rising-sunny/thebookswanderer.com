@@ -70,6 +70,12 @@ if url.drivername.startswith('sqlite'):
     campaigns={r['campaign'] for r in rows if r['campaign']}
     report['website']['campaigns_30d']=[{'campaign':c,'sources':sorted({r['source'] or '' for r in rows if r['campaign']==c}),**summary([r for r in rows if r['campaign']==c])} for c in sorted(campaigns)]
     con.close()
+def safe_output(value):
+    if isinstance(value,dict):
+        return {k:safe_output(v) for k,v in value.items() if k not in ('paging','access_token')}
+    if isinstance(value,list):return [safe_output(v) for v in value]
+    return value
+
 print('META_REPORT_BEGIN')
-print(json.dumps(report,ensure_ascii=False,indent=2))
+print(json.dumps(safe_output(report),ensure_ascii=False,indent=2))
 print('META_REPORT_END')
