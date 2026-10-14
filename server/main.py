@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sqlite3
 from pathlib import Path
 from urllib.parse import quote as url_quote
 
@@ -56,6 +57,7 @@ from urls import (  # noqa: E402
 from live import router as live_router  # noqa: E402
 import i18n  # noqa: E402
 from routers.pinterest import router as pinterest_router  # noqa: E402
+from routers.collaborators import router as collaborators_router  # noqa: E402
 SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 
 # Shipping is priced into the product instead of charged at checkout. CJ is
@@ -101,6 +103,7 @@ SHIP_UPGRADE_MAX_USD = float(os.getenv("SHIPPING_UPGRADE_MAX_USD", "3.0"))
 app = FastAPI(title="The Books Wanderer API", version="0.1.0")
 app.include_router(live_router)
 app.include_router(pinterest_router)
+app.include_router(collaborators_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -120,6 +123,13 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    from services import collaborators_store
+    try:
+        collaborators_store.init_store()
+        collaborators_store.seed_sources()
+    except (OSError, sqlite3.Error):
+        # A research-storage issue must not take checkout or the storefront down.
+        log.error("Collaborator research storage unavailable; check its private directory permissions")
 
 
 # ── Schemas ──────────────────────────────────────────────────────────

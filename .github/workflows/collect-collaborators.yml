@@ -1,0 +1,33 @@
+name: Research collaborators
+
+on:
+  schedule:
+    - cron: '15 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-collaborators-vps
+  cancel-in-progress: false
+
+env:
+  VPS_HOST: root@5.78.125.169
+  REMOTE: /var/www/thebookswanderer.com
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: bash deploy/ci-ssh-setup.sh
+      - name: Collect published professional contacts
+        run: |
+          ssh -o BatchMode=yes "$VPS_HOST" \
+            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/collect_collaborators.py --limit 20"
