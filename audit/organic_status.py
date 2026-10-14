@@ -47,6 +47,10 @@ def main():
     report['pinterest_config']={'configured':pin.is_configured(),'token_health':pin.token_health(),'auto_enabled':jobs.auto_pin_enabled(),'launch_enabled':jobs.launch_pin_enabled(),'pins_per_day':jobs.pins_per_day(),'cooldown_days':jobs.repin_cooldown_days()}
     try:
         import asyncio
+        profile=asyncio.run(pin.api_request('GET','/user_account'))
+        report['pinterest_profile']={k:profile.get(k) for k in ['username','account_type','website_url']}
+        boards=asyncio.run(pin.api_request('GET','/boards',params={'page_size':100}))
+        report['pinterest_boards']=[{k:b.get(k) for k in ['name','privacy','pin_count']} for b in boards.get('items',[])]
         metrics=asyncio.run(pin.api_request('GET','/user_account/analytics',params={
             'start_date':(NOW-timedelta(days=30)).strftime('%Y-%m-%d'),
             'end_date':(NOW-timedelta(days=1)).strftime('%Y-%m-%d'),
