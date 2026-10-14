@@ -60,8 +60,14 @@ with httpx.Client(timeout=20, follow_redirects=False) as client:
             else:
                 access['accounts']=[]
                 for account in accounts.get('data',[]):
+                    if account['id'] not in ('act_2206299143461363','act_1636887674121801','act_1696378237957660'):continue
                     row={**account}
-                    row['ads']=get(client,token,account['id']+'/ads',fields='id,name,status,effective_status,campaign{id,name,status,objective},adset{id,name,daily_budget,lifetime_budget,status}',limit=50)
+                    row['ads']=get(client,token,account['id']+'/ads',fields='id,name,status,effective_status,created_time,updated_time,campaign{id,name,status,objective,daily_budget,lifetime_budget,created_time},adset{id,name,daily_budget,lifetime_budget,status,start_time,end_time,optimization_goal,billing_event,targeting}',limit=50)
+                    row['ads']['data']=[ad for ad in row['ads'].get('data',[]) if 'tbw' in (ad.get('name','')+' '+ad.get('campaign',{}).get('name','')).lower()]
+                    ad_ids=[ad['id'] for ad in row['ads']['data']]
+                    if not ad_ids:continue
+                    filters=json.dumps([{'field':'ad.id','operator':'IN','value':ad_ids}])
+                    row['insights_including_today']=get(client,token,account['id']+'/insights',time_range=json.dumps({'since':(now.astimezone(local).date()-timedelta(days=6)).isoformat(),'until':now.astimezone(local).date().isoformat()}),time_increment=1,level='ad',fields='ad_id,ad_name,campaign_name,spend,impressions,reach,clicks,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,cpm,actions,action_values',filtering=filters,limit=100)
                     row['insights_7d']=get(client,token,account['id']+'/insights',date_preset='last_7d',level='ad',fields='ad_id,ad_name,campaign_name,spend,impressions,reach,clicks,inline_link_clicks,ctr,cpc,cpm,actions,action_values',limit=50)
                     row['insights_today']=get(client,token,account['id']+'/insights',date_preset='today',level='ad',fields='ad_id,ad_name,spend,impressions,clicks,inline_link_clicks,actions',limit=50)
                     access['accounts'].append(row)
