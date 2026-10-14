@@ -130,40 +130,44 @@ def email_preview(request: Request, candidate_id: int = 0, lang: str = "", forma
             row = db.execute(query + " WHERE s.lang=? ORDER BY c.id DESC LIMIT 1", (lang or "es",)).fetchone()
     chosen_lang = lang or (row["lang"] if row else "es")
     name = row["name"] if row else ("tu comunidad lectora" if chosen_lang == "es" else "your reading community")
-    subject = ("Una idea para " if chosen_lang == "es" else "An idea for ") + name
+    subject = "Te invitamos a The Books Wanderer" if chosen_lang == "es" else "You're invited to The Books Wanderer"
     if chosen_lang == "es":
         paragraphs = [
             "Hola:",
-            f"Te escribo por {name}. Soy del equipo de The Books Wanderer, una pequeña boutique online de accesorios y recursos para lectores.",
-            "Me gustaría explorar una colaboración con tu comunidad: compartir nuestro reto de lectura gratuito y, si encaja con tu contenido, preparar una propuesta en torno a los libros y los hábitos lectores.",
-            "¿Te interesaría que te enviara una idea breve adaptada a tu blog? Podemos conversar sobre el formato y las condiciones antes de acordar nada.",
-            "Gracias por tu tiempo y por el espacio que dedicas a la lectura.",
+            "Queremos invitarte a conocer The Books Wanderer, nuestra tienda de accesorios y recursos para quienes disfrutan de la lectura.",
+            "Si te suscribes, recibirás gratis nuestro reto de lectura 2027: un imprimible con 52 propuestas y una página para registrar tus lecturas.",
+            "También te compartiremos novedades de la tienda y recomendaciones lectoras.",
+            "¡Nos encantará que nos visites!",
         ]
-        heading, eyebrow, cta = "Una idea para compartir lecturas", "Entre lectores", "Conocer The Books Wanderer"
+        heading, eyebrow, cta = "Un regalo para tus lecturas", "The Books Wanderer te invita", "Recibir mi reto gratuito"
+        secondary_cta = "Visitar la tienda"
         closing, optout = "Un saludo,", "Si prefieres que no volvamos a escribirte, basta con responder «no contactar»."
     else:
         paragraphs = [
             "Hi there,",
-            f"I'm reaching out about {name}. I'm part of The Books Wanderer, a small online boutique of reading accessories and resources for book lovers.",
-            "I'd love to explore a collaboration with your community: sharing our free reading challenge and, if it suits your content, putting together an idea around books and reading habits.",
-            "Would you be interested in a short proposal tailored to your blog? We can discuss the format and terms before agreeing to anything.",
-            "Thank you for your time and for the space you create for readers.",
+            "We'd love to welcome you to The Books Wanderer, our shop of reading accessories and resources for book lovers.",
+            "Subscribe to receive our free 2027 Reading Challenge: a printable with 52 prompts and a page to log your reading year.",
+            "We'll also share shop updates and reading recommendations.",
+            "We'd love to see you there!",
         ]
-        heading, eyebrow, cta = "An idea to bring readers together", "Between readers", "Meet The Books Wanderer"
+        heading, eyebrow, cta = "A gift for your reading life", "An invitation from The Books Wanderer", "Get my free reading challenge"
+        secondary_cta = "Visit the shop"
         closing, optout = "Warmly,", "If you'd prefer not to hear from us again, just reply 'do not contact'."
+    shop_url = PUBLIC_BASE + ("/es/" if chosen_lang == "es" else "/") + "?utm_source=outreach&utm_medium=email&utm_campaign=store_invitation"
+    cta_url = shop_url + "#newsletter"
     context = {"lang": chosen_lang, "subject": subject, "paragraphs": paragraphs,
                "heading": heading, "eyebrow": eyebrow, "cta": cta, "closing": closing,
                "optout": optout, "base": PUBLIC_BASE, "name": name,
-               "about_path": "/es/about.html" if chosen_lang == "es" else "/about.html",
+               "cta_url": cta_url, "shop_url": shop_url, "secondary_cta": secondary_cta,
                "from_address": _from_header() or "The Books Wanderer",
                "to_address": row["email"] if row else "Destinatario por seleccionar",
                "candidate_id": row["id"] if row else 0}
     if format == "text":
-        text = "\n\n".join(paragraphs + [closing + "\nThe Books Wanderer", PUBLIC_BASE, optout])
+        text = "\n\n".join(paragraphs + [cta + ":\n" + cta_url, secondary_cta + ":\n" + shop_url, closing + "\nThe Books Wanderer", optout])
         return Response(text, media_type="text/plain; charset=utf-8")
     if format in ("html", "download"):
         html = templates.env.get_template("collaborator_email.html").render(context)
-        headers = {"Content-Disposition": f'attachment; filename="colaboracion-{chosen_lang}.html"'} if format == "download" else {}
+        headers = {"Content-Disposition": f'attachment; filename="invitacion-{chosen_lang}.html"'} if format == "download" else {}
         return HTMLResponse(html, headers=headers)
     return templates.TemplateResponse(request, "admin_collaborator_email.html", context)
 

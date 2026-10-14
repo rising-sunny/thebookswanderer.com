@@ -35,7 +35,7 @@
       <p><a href="{{ c.source_url }}" target="_blank" rel="noopener noreferrer">Ver página donde se publicó ↗</a></p>
       <div class="evidence">{{ c.evidence }}</div>
       <small>{{ c.purpose }}<br>Encontrado: {{ c.found_at|collaborator_date }} · Visto de nuevo: {{ c.last_seen_at|collaborator_date }}</small>
-      <p><a href="/admin/collaborators/email-preview?candidate_id={{ c.id }}">Previsualizar propuesta para este contacto</a></p>
+      <p><a href="/admin/collaborators/email-preview?candidate_id={{ c.id }}">Previsualizar invitación para este contacto</a></p>
     </div>
     <form class="review" method="post" action="/admin/collaborators/candidates/{{ c.id }}">
       <input type="hidden" name="csrf" value="{{ csrf }}">

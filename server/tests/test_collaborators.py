@@ -205,7 +205,8 @@ class StoreAndAdminTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                     self.assertIn("no-store", response.headers["cache-control"])
                     self.assertNotIn("test-api-key", response.text)
-                    self.assertIn("Real Books", response.text)
+                    if format == "view":
+                        self.assertIn("Real Books", response.text)
                     if format == "html":
                         self.assertIn(f'<html lang="{lang}">', response.text)
                         self.assertNotIn("placed an order", response.text)
@@ -220,7 +221,7 @@ class StoreAndAdminTests(unittest.TestCase):
         with store.connect() as db:
             db.execute("UPDATE sources SET name=?", ('<script>alert("xss")</script>',))
         self.login()
-        response = self.client.get("/admin/collaborators/email-preview?candidate_id=1&format=html")
+        response = self.client.get("/admin/collaborators/email-preview?candidate_id=1")
         self.assertNotIn('<script>alert("xss")</script>', response.text)
         self.assertIn("&lt;script&gt;", response.text)
 
