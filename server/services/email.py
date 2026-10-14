@@ -70,6 +70,8 @@ def _send_sync(
     html: str | None = None,
     reply_to: str | None = None,
     headers: dict[str, str] | None = None,
+    message_id: str | None = None,
+    from_address: str | None = None,
 ) -> bool:
     if not configured():
         log.info("email skipped (SMTP not configured): %s → %s", subject, list(to))
@@ -88,9 +90,9 @@ def _send_sync(
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = _from_header()
+    msg["From"] = formataddr((_shop_name(), from_address)) if from_address else _from_header()
     msg["To"] = ", ".join(recipients)
-    msg["Message-ID"] = make_msgid(domain=_env("MAIL_FROM").split("@")[-1] or "thebookswanderer.com")
+    msg["Message-ID"] = message_id or make_msgid(domain=_env("MAIL_FROM").split("@")[-1] or "thebookswanderer.com")
     if reply_to or _env("MAIL_REPLY_TO"):
         msg["Reply-To"] = reply_to or _env("MAIL_REPLY_TO")
     # List-Unsubscribe: Gmail y Outlook muestran su propio boton de baja con

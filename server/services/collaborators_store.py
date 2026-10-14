@@ -53,6 +53,7 @@ def init_store() -> None:
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL UNIQUE,
             lang TEXT NOT NULL, category TEXT NOT NULL, reason TEXT NOT NULL,
             active INTEGER NOT NULL DEFAULT 1, checked_at TEXT,
+            discovery_checked_at TEXT, origin TEXT NOT NULL DEFAULT 'manual',
             last_status TEXT NOT NULL DEFAULT 'Pendiente de revisión'
         );
         CREATE TABLE IF NOT EXISTS candidates (
@@ -69,7 +70,30 @@ def init_store() -> None:
             found INTEGER NOT NULL DEFAULT 0, added INTEGER NOT NULL DEFAULT 0,
             errors INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS outreach_campaigns (
+            id TEXT PRIMARY KEY, created_at TEXT NOT NULL, last_run_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS outreach_deliveries (
+            id INTEGER PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES outreach_campaigns(id),
+            candidate_id INTEGER NOT NULL REFERENCES candidates(id), source_id INTEGER NOT NULL,
+            site_key TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL, lang TEXT NOT NULL, subject TEXT NOT NULL,
+            html TEXT NOT NULL, text TEXT NOT NULL, message_id TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','sending','sent','suppressed','uncertain')),
+            created_at TEXT NOT NULL, attempted_at TEXT, sent_at TEXT,
+            detail TEXT NOT NULL DEFAULT '',
+            UNIQUE(campaign_id,email), UNIQUE(campaign_id,source_id)
+        );
+        CREATE TABLE IF NOT EXISTS outreach_suppressions (
+            email TEXT PRIMARY KEY, created_at TEXT NOT NULL
+        );
         """)
+        # Existing research installations predate autonomous source discovery.
+        columns = {r["name"] for r in db.execute("PRAGMA table_info(sources)")}
+        if "discovery_checked_at" not in columns:
+            db.execute("ALTER TABLE sources ADD COLUMN discovery_checked_at TEXT")
+        if "origin" not in columns:
+            db.execute("ALTER TABLE sources ADD COLUMN origin TEXT NOT NULL DEFAULT 'manual'")
 
 
 def seed_sources() -> int:
@@ -115,4 +139,6 @@ def snapshot(status: str = "", lang: str = "", limit: int | None = 500) -> dict:
             "candidates": candidates, "counts": counts,
             "sources": [dict(r) for r in db.execute("SELECT * FROM sources ORDER BY lang,name")],
             "runs": [dict(r) for r in db.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 10")],
+            "campaigns": [dict(r) for r in db.execute("SELECT c.id,c.created_at,c.last_run_at,d.status,count(d.id) AS total FROM outreach_campaigns c LEFT JOIN outreach_deliveries d ON d.campaign_id=c.id GROUP BY c.id,d.status ORDER BY c.created_at DESC")],
+            "deliveries": [dict(r) for r in db.execute("SELECT d.id,d.campaign_id,d.candidate_id,d.email,d.lang,d.status,d.created_at,d.attempted_at,d.sent_at,d.detail,s.name FROM outreach_deliveries d JOIN sources s ON s.id=d.source_id ORDER BY d.id DESC LIMIT 100")],
         }
