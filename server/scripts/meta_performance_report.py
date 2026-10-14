@@ -34,7 +34,27 @@ with httpx.Client(timeout=20, follow_redirects=False) as client:
             debug=get(client,token,'debug_token',input_token=token)
             if 'data' in debug:
                 data=debug['data'];access.update(valid=data.get('is_valid'),scopes=data.get('scopes'),expires_at=data.get('expires_at'))
+                access['token_type']=data.get('type')
             accounts=get(client,token,'me/adaccounts',fields='id,name,currency,timezone_name,account_status',limit=30)
+            if accounts.get('unavailable') and name=='FB_PAGE_TOKEN':
+                known=get(client,token,'120249344610600244',fields='id,name,account_id,status,effective_status,objective')
+                access['known_campaign']=known
+                if known.get('account_id'):
+                    account=get(client,token,'act_'+known['account_id'],fields='id,name,currency,timezone_name,account_status')
+                    if not account.get('unavailable'):accounts={'data':[account]}
+                if accounts.get('unavailable') and debug.get('data',{}).get('user_id'):
+                    accounts=get(client,token,debug['data']['user_id']+'/adaccounts',fields='id,name,currency,timezone_name,account_status',limit=30)
+                if accounts.get('unavailable') and os.getenv('FB_PAGE_ID'):
+                    page=get(client,token,os.environ['FB_PAGE_ID'],fields='business')
+                    if page.get('business',{}).get('id'):
+                        business=page['business']['id']
+                        access['business_accounts']=[]
+                        found=[]
+                        for edge in ('owned_ad_accounts','client_ad_accounts'):
+                            answer=get(client,token,business+'/'+edge,fields='id,name,currency,timezone_name,account_status',limit=30)
+                            access['business_accounts'].append({'edge':edge,'result':answer})
+                            found.extend(answer.get('data',[]))
+                        if found:accounts={'data':found}
             if accounts.get('unavailable'):
                 access['accounts']=accounts
             else:
