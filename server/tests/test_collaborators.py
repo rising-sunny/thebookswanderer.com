@@ -195,6 +195,16 @@ class StoreAndAdminTests(unittest.TestCase):
         self.assertIn("no-store", response.headers["cache-control"])
         self.assertEqual(response.json()["candidates"][0]["email"], "hello@realbooks.org")
 
+    def test_sample_endpoint_requires_admin_and_passes_explicit_recipient(self):
+        body={"email":"reader@example.org","lang":"es","request_id":"sample-request-1"}
+        path="/api/admin/collaborators/email-sample"
+        with patch("services.outreach.send_sample",return_value={"status":"sent"}) as send:
+            self.assertEqual(self.client.post(path,json=body).status_code,401)
+            send.assert_not_called()
+            response=self.client.post(path,json=body,headers={"X-Admin-Key":"test-api-key"})
+            self.assertEqual(response.status_code,200)
+            send.assert_called_once_with("reader@example.org","es","sample-request-1")
+
     def test_email_preview_languages_formats_and_no_sending(self):
         self.login()
         before = store.snapshot()

@@ -114,3 +114,10 @@ Direct fetches pin public DNS answers to socket destinations, preserving hostnam
 verification for TLS. If an environment proxy is configured it is retained and
 the destination is also checked; the trusted proxy enforces its own DNS/egress
 policy. Review this adapter when upgrading the pinned httpx dependency.
+
+Requested samples use the authenticated POST `/api/admin/collaborators/email-sample`
+with `email`, `lang`, and a unique stable `request_id`. Retry only with that same ID:
+sent or ambiguous samples are never automatically resent. Samples use the approved
+invitation and hello sender, with separate test links. They are stored separately
+from campaign deliveries and never create a prospect or newsletter subscription.
+Test links disable Live and Meta tracking for the current browser tab session.

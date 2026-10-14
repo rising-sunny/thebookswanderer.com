@@ -11,7 +11,7 @@ SENDER = "hello@thebookswanderer.com"
 SENDER_HEADER = formataddr(("The Books Wanderer", SENDER))
 
 
-def draft(lang: str, unsubscribe_url: str = "") -> dict:
+def draft(lang: str, unsubscribe_url: str = "", *, test: bool = False) -> dict:
     if lang not in ("es", "en"):
         raise ValueError("Unsupported invitation language")
     if lang == "es":
@@ -40,7 +40,8 @@ def draft(lang: str, unsubscribe_url: str = "") -> dict:
         secondary_cta, closing = "Visit the shop", "Warmly,"
         optout = "If you'd prefer not to hear from us again, just reply 'do not contact'."
         unsubscribe_label = "Stop receiving invitations"
-    shop_url = PUBLIC_BASE + ("/es/" if lang == "es" else "/") + "?utm_source=outreach&utm_medium=email&utm_campaign=store_invitation"
+    tracking = "?utm_source=outreach_test&utm_medium=email&utm_campaign=store_invitation_test&tbw_test=1" if test else "?utm_source=outreach&utm_medium=email&utm_campaign=store_invitation"
+    shop_url = PUBLIC_BASE + ("/es/" if lang == "es" else "/") + tracking
     cta_url = shop_url + "#newsletter"
     context = {"lang": lang, "subject": subject, "paragraphs": paragraphs,
                "heading": heading, "eyebrow": eyebrow, "cta": cta, "closing": closing,

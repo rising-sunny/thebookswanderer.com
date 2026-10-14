@@ -227,3 +227,44 @@ def run(campaign_id: str, candidate_ids: list[int], send: bool = False, automati
         added = prepare(campaign_id, rows)
         totals = deliver(campaign_id)
         return {"mode": "send", "campaign": campaign_id, **preflight, "new_records": added, "totals": totals}
+
+
+def send_sample(email: str, lang: str, request_id: str) -> dict:
+    """One explicitly requested sample; never adds a lead or newsletter signup.
+
+    The durable request ID prevents re-sending after an HTTP timeout or retry.
+    This requested sample leaves existing marketing opt-outs unchanged.
+    """
+    email = normalized_email(email)
+    if lang not in ("es", "en") or not re.fullmatch(r"[a-z0-9][a-z0-9-]{2,79}", request_id):
+        raise ValueError("Invalid sample language or request ID")
+    store.init_store()
+    with (store.data_dir() / "outreach.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError("Another sender is running; retry with the same request ID")
+        with store.connect() as db:
+            db.execute("""CREATE TABLE IF NOT EXISTS outreach_samples (
+                request_id TEXT PRIMARY KEY,email TEXT NOT NULL,lang TEXT NOT NULL,
+                message_id TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,sent_at TEXT
+            )""")
+            previous = db.execute("SELECT * FROM outreach_samples WHERE request_id=?", (request_id,)).fetchone()
+            if previous:
+                if previous["email"] != email or previous["lang"] != lang:
+                    raise ValueError("Request ID already belongs to another sample")
+                return {"status": "already_sent" if previous["status"] == "sent" else "uncertain", "sender": SENDER, "request_id": request_id}
+        smtp_preflight()
+        link = unsubscribe_url(email, lang)
+        content = draft(lang, link, test=True)
+        message_id = make_msgid(domain=SENDER.split("@")[1])
+        with store.connect() as db:
+            db.execute("INSERT INTO outreach_samples(request_id,email,lang,message_id,status,created_at) VALUES(?,?,?,?,'sending',?)", (request_id, email, lang, message_id, store.now()))
+        try:
+            accepted = mail._send_sync(to=[email], subject=content["subject"], text=content["text"], html=content["html"], from_address=SENDER, reply_to=SENDER, message_id=message_id, headers={"List-Unsubscribe": f"<{link}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click", "X-TBW-Campaign": "store-invitation-sample"})
+        except Exception:
+            accepted = False
+        status = "sent" if accepted else "uncertain"
+        with store.connect() as db:
+            db.execute("UPDATE outreach_samples SET status=?,sent_at=? WHERE request_id=?", (status, store.now() if accepted else None, request_id))
+        return {"status": status, "sender": SENDER, "subject": content["subject"], "request_id": request_id}
