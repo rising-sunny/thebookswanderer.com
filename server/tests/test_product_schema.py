@@ -17,10 +17,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import main
 import ssr
 import i18n
+import database
 from database import Base, get_db
 from fastapi.testclient import TestClient
 from models import Product, ProductVariant
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -143,6 +144,27 @@ class ProductSchemaTests(unittest.TestCase):
                     "review", "aggregateRating"):
             self.assertNotIn(key, product)
         self.assertEqual(product["sku"], "SUPPLIER-SKU")
+
+    def test_verified_identifiers_follow_selected_variant(self):
+        self.detail.update(brand='Verified & Co', mpn='FAMILY', gtin='09506000134352')
+        self.detail['variants'][0].update(mpn='SMALL-MPN', gtin='09506000134352')
+        _, markup = self.render(variant_id=10)
+        product = markup.product()
+        self.assertEqual(product['brand'], {'@type': 'Brand', 'name': 'Verified & Co'})
+        self.assertEqual(product['mpn'], 'SMALL-MPN')
+        self.assertEqual(product['gtin'], '09506000134352')
+        _, markup = self.render(variant_id=20)
+        self.assertNotIn('mpn', markup.product())
+        self.assertNotIn('gtin', markup.product())
+        _, markup = self.render()
+        self.assertIn('brand', markup.product())
+        self.assertNotIn('mpn', markup.product())
+        self.assertNotIn('gtin', markup.product())
+
+    def test_invalid_gtin_is_omitted(self):
+        self.detail.update(variants=[], gtin='09506000134351')
+        _, markup = self.render()
+        self.assertNotIn('gtin', markup.product())
 
     def test_return_policy_does_not_claim_free_postage_or_keep_method(self):
         _, markup = self.render()
@@ -309,6 +331,38 @@ class StorefrontRegressionTests(unittest.TestCase):
                 self.assertEqual([s.findtext("g:country", namespaces=ns)
                                   for s in item.findall("g:shipping", ns)], ["US"])
 
+    def test_verified_variant_metadata_matches_api_both_languages_and_feed(self):
+        with self.sessions() as db:
+            product = db.get(Product, 2)
+            product.brand = 'Verified & Co'
+            product.mpn = 'FAMILY-MPN'
+            product.gtin = '09506000134352'
+            product.variants[0].mpn = 'SMALL-MPN'
+            product.variants[0].gtin = '09506000134352'
+            db.commit()
+        detail = self.client.get('/api/products/2').json()
+        self.assertEqual(detail['brand'], 'Verified & Co')
+        self.assertEqual(detail['variants'][0]['gtin'], '09506000134352')
+        for prefix in ('', '/es'):
+            product = Markup(self.client.get(f'{prefix}/products/printify-fixture?variant=20').text).product()
+            self.assertEqual(product['brand']['name'], 'Verified & Co')
+            self.assertEqual(product['mpn'], 'SMALL-MPN')
+            self.assertEqual(product['gtin'], '09506000134352')
+            sibling = Markup(self.client.get(f'{prefix}/products/printify-fixture?variant=21').text).product()
+            self.assertNotIn('gtin', sibling)
+            self.assertNotIn('mpn', sibling)
+        ns = {'g': 'http://base.google.com/ns/1.0'}
+        items = ET.fromstring(self.client.get('/api/feeds/google-products.xml').text).findall('channel/item')
+        small = next(i for i in items if i.findtext('g:id', namespaces=ns) == 'tbw-2-20')
+        large = next(i for i in items if i.findtext('g:id', namespaces=ns) == 'tbw-2-21')
+        self.assertEqual(small.findtext('g:brand', namespaces=ns), 'Verified & Co')
+        self.assertEqual(small.findtext('g:mpn', namespaces=ns), 'SMALL-MPN')
+        self.assertEqual(small.findtext('g:gtin', namespaces=ns), '09506000134352')
+        self.assertEqual(small.findtext('g:identifier_exists', namespaces=ns), 'yes')
+        self.assertIsNone(large.find('g:gtin', ns))
+        self.assertIsNone(large.find('g:mpn', ns))
+
+
     def test_paid_shipping_feed_does_not_advertise_free_cj_or_printify(self):
         with patch.object(main, "FREE_SHIPPING", False):
             root = ET.fromstring(self.client.get("/api/feeds/google-products.xml").text)
@@ -320,6 +374,53 @@ class StorefrontRegressionTests(unittest.TestCase):
             else:
                 self.assertEqual(rows, [])
 
+
+class IdentifierMigrationTests(unittest.TestCase):
+    def test_existing_catalog_migrates_and_backfill_is_exact_and_idempotent(self):
+        from services.identifiers import OWN_CALENDAR
+        engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+        self.addCleanup(engine.dispose)
+        Base.metadata.create_all(engine)
+        sessions = sessionmaker(bind=engine)
+        with sessions() as db:
+            db.add(Product(slug=OWN_CALENDAR['slug'], title='Readers', supplier='printify',
+                           printify_product_id=OWN_CALENDAR['printify_product_id']))
+            db.add(Product(slug='reading-log-bookmarks', title='Reading Log', supplier='cj'))
+            db.commit()
+        with engine.begin() as conn:
+            for column in ('brand', 'mpn', 'gtin'):
+                conn.execute(text(f'ALTER TABLE products DROP COLUMN {column}'))
+            for column in ('mpn', 'gtin'):
+                conn.execute(text(f'ALTER TABLE product_variants DROP COLUMN {column}'))
+        with patch.object(database, 'engine', engine), patch('live._ensure_schema'):
+            database.init_db()
+            database.init_db()
+            self.assertTrue({'brand', 'mpn', 'gtin'} <= {c['name'] for c in inspect(engine).get_columns('products')})
+            with sessions() as db:
+                calendar = db.query(Product).filter_by(slug=OWN_CALENDAR['slug']).one()
+                self.assertEqual(calendar.brand, OWN_CALENDAR['brand'])
+                self.assertEqual(calendar.mpn, OWN_CALENDAR['mpn'])
+                self.assertFalse(calendar.gtin)
+                cj = db.query(Product).filter_by(slug='reading-log-bookmarks').one()
+                self.assertFalse(cj.brand)
+                self.assertFalse(cj.mpn)
+                calendar.brand = 'Owner override'
+                calendar.mpn = 'Owner reference'
+                db.commit()
+            database.init_db()
+            with sessions() as db:
+                calendar = db.query(Product).filter_by(slug=OWN_CALENDAR['slug']).one()
+                self.assertEqual(calendar.brand, 'Owner override')
+                self.assertEqual(calendar.mpn, 'Owner reference')
+                calendar.brand = ''
+                calendar.mpn = ''
+                calendar.printify_product_id = 'a-different-product'
+                db.commit()
+            database.init_db()
+            with sessions() as db:
+                calendar = db.query(Product).filter_by(slug=OWN_CALENDAR['slug']).one()
+                self.assertFalse(calendar.brand)
+                self.assertFalse(calendar.mpn)
 
 if __name__ == "__main__":
     unittest.main()

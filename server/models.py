@@ -31,6 +31,11 @@ class Product(Base):
     cj_vid: Mapped[str] = mapped_column(String(80), default="")
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
 
+    # Verified manufacturer data only; empty means unknown, not invented.
+    brand: Mapped[str] = mapped_column(String(70), default="")
+    mpn: Mapped[str] = mapped_column(String(70), default="")
+    gtin: Mapped[str] = mapped_column(String(14), default="")
+
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     price_usd: Mapped[float] = mapped_column(Float, default=0.0)
     from_country: Mapped[str] = mapped_column(String(8), default="CN")
@@ -112,6 +117,9 @@ class Product(Base):
             "lifestyle_images": lifestyle,
             "details_html": self.details_html or "",
             "cj_sku": self.cj_sku,
+            "brand": self.brand or "",
+            "mpn": self.mpn or "",
+            "gtin": self.gtin or "",
             "video_url": self.video_url or "",
             "video_poster": self.video_poster or "",
             "variants": [v.to_public() for v in variants],
@@ -129,6 +137,8 @@ class ProductVariant(Base):
     name: Mapped[str] = mapped_column(String(200), default="")  # e.g. design name
     cj_vid: Mapped[str] = mapped_column(String(80), index=True, default="")
     cj_sku: Mapped[str] = mapped_column(String(80), default="")
+    mpn: Mapped[str] = mapped_column(String(70), default="")
+    gtin: Mapped[str] = mapped_column(String(14), default="")
     printify_variant_id: Mapped[int] = mapped_column(Integer, default=0)
     # Digital variants (e.g. "Printable A5" vs "Tablet PDF") may each carry
     # their own file; empty falls back to the product's. Lulu variants keep
@@ -151,6 +161,8 @@ class ProductVariant(Base):
             "price_usd": round(self.price_usd, 2),
             "cj_sku": self.cj_sku,
             "cj_vid": self.cj_vid,
+            "mpn": self.mpn or "",
+            "gtin": self.gtin or "",
         }
 
 

@@ -484,6 +484,8 @@
   ${lifestyleBox}
   ${shippingBlockHtml()}
   <ul class="pdp__meta">
+    ${product.brand ? `<li>${escapeHtml(product.brand)}</li>` : ""}
+    ${(v?.mpn || (variants.length <= 1 && product.mpn)) ? `<li>MPN ${escapeHtml(v?.mpn || product.mpn)}</li>` : ""}
     ${isDigital()
         ? `<li>Instant download — PDF, no shipping</li>
     <li>Secure checkout with PayPal</li>
