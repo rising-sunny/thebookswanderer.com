@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import asyncio
 import hashlib
 import hmac
 import io
@@ -15,11 +16,13 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.routing import APIRoute
+from pydantic import BaseModel, EmailStr, Field
 
 from live import ADMIN_COOKIE, ADMIN_MAX_AGE, _admin_password, _admin_user, _valid_cookie, templates
 from services import collaborators_store as store
 from services.collaborators import ResearchError, normalize_url
 from services.invitation import draft, SENDER_HEADER
+from services import outreach
 
 
 class PrivateRoute(APIRoute):
@@ -148,6 +151,22 @@ def list_candidates(request: Request, status: str = "", lang: str = ""):
     require_read(request)
     filters(status, lang)
     return store.snapshot(status, lang)
+
+
+class SampleRequest(BaseModel):
+    email: EmailStr
+    lang: str = Field(default="es", pattern=r"^(es|en)$")
+    request_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{2,79}$")
+    csrf: str = Field(default="", max_length=64)
+
+
+@router.post("/api/admin/collaborators/email-sample")
+async def requested_sample(request: Request, body: SampleRequest):
+    require_write(request, body.csrf)
+    try:
+        return await asyncio.to_thread(outreach.send_sample, str(body.email), body.lang, body.request_id)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 def csv_cell(value) -> str:

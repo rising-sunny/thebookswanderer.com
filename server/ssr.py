@@ -526,7 +526,7 @@ def render_product_page(
     </div>
     </div>
 </footer>
-<script src="/track.js?v=5" defer></script>
+<script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=3" defer></script>
 <script src="/product.js?v=32" defer></script>
 </body>
@@ -756,7 +756,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     </div>
     </div>
 </footer>
-<script src="/track.js?v=5" defer></script>
+<script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=3" defer></script>
 <script src="/affiliate-data.js?v=5" defer></script>
 <script src="/pick.js?v=5" defer></script>
@@ -960,7 +960,7 @@ def render_collection_page(
   </section>
 </main>
 {_site_footer(note=name)}
-<script src="/track.js?v=5" defer></script>
+<script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=3" defer></script>
 </body>
 </html>
@@ -1105,7 +1105,7 @@ def render_catalog_page(
   </section>
 </main>
 {_site_footer(note="Shop")}
-<script src="/track.js?v=5" defer></script>
+<script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=3" defer></script>
 </body>
 </html>
@@ -1203,7 +1203,7 @@ def render_collections_index(
   </section>
 </main>
 {_site_footer()}
-<script src="/track.js?v=5" defer></script>
+<script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=3" defer></script>
 </body>
 </html>

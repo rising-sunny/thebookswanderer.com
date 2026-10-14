@@ -9,6 +9,17 @@
 (function () {
     "use strict";
     try {
+        var qs = new URLSearchParams(location.search);
+        var testVisit = qs.get("tbw_test") === "1";
+        try {
+            if (testVisit) sessionStorage.setItem("tbw_test_visit", "1");
+            testVisit = testVisit || sessionStorage.getItem("tbw_test_visit") === "1";
+        } catch (_) { /* The URL flag still works when storage is unavailable. */ }
+        if (testVisit) {
+            window.tbwTestVisit = true;
+            window.tbwTrack = function () {};
+            return;
+        }
         var SID_KEY = "tbw_sid";
         var ATTR_KEY = "tbw_attr";
         var SITE_HOST = "thebookswanderer.com";
@@ -20,7 +31,6 @@
         }
         window.tbwSession = sid;
 
-        var qs = new URLSearchParams(location.search);
         var paidKeys = [
             "utm_source",
             "utm_medium",

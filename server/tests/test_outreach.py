@@ -147,6 +147,30 @@ class OutreachTests(unittest.TestCase):
             with self.assertRaises(ValueError):outreach.smtp_preflight()
             connect.assert_not_called()
 
+    def test_requested_sample_uses_exact_invitation_once_without_adding_a_lead(self):
+        before = store.snapshot()
+        with patch.object(outreach,"smtp_preflight"),patch.object(outreach.mail,"_send_sync",return_value=True) as send:
+            self.assertEqual(outreach.send_sample("owner@example.org","es","sample-request-1")["status"],"sent")
+            self.assertEqual(outreach.send_sample("owner@example.org","es","sample-request-1")["status"],"already_sent")
+            self.assertEqual(send.call_count,1)
+            args=send.call_args.kwargs
+            self.assertEqual(args["to"],["owner@example.org"])
+            self.assertEqual(args["from_address"],SENDER)
+            self.assertEqual(args["reply_to"],SENDER)
+            self.assertEqual(args["subject"],draft("es")["subject"])
+            self.assertIn("store_invitation_test",args["html"])
+            self.assertIn("tbw_test=1",args["text"])
+            self.assertNotIn("tbw_test",draft("es")["html"])
+            self.assertIn("List-Unsubscribe",args["headers"])
+            with self.assertRaises(ValueError):outreach.send_sample("other@example.org","es","sample-request-1")
+        self.assertEqual(store.snapshot(),before)
+
+    def test_uncertain_sample_is_not_automatically_retried(self):
+        with patch.object(outreach,"smtp_preflight"),patch.object(outreach.mail,"_send_sync",return_value=False) as send:
+            self.assertEqual(outreach.send_sample("owner@example.org","es","sample-request-2")["status"],"uncertain")
+            self.assertEqual(outreach.send_sample("owner@example.org","es","sample-request-2")["status"],"uncertain")
+            self.assertEqual(send.call_count,1)
+
 
 class DiscoveryTests(unittest.TestCase):
     def test_only_relevant_external_sites_are_candidates(self):
