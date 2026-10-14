@@ -45,6 +45,15 @@ def main():
     from services import pinterest as pin
     from services import pinterest_jobs as jobs
     report['pinterest_config']={'configured':pin.is_configured(),'token_health':pin.token_health(),'auto_enabled':jobs.auto_pin_enabled(),'launch_enabled':jobs.launch_pin_enabled(),'pins_per_day':jobs.pins_per_day(),'cooldown_days':jobs.repin_cooldown_days()}
+    try:
+        import asyncio
+        metrics=asyncio.run(pin.api_request('GET','/user_account/analytics',params={
+            'start_date':(NOW-timedelta(days=30)).strftime('%Y-%m-%d'),
+            'end_date':(NOW-timedelta(days=1)).strftime('%Y-%m-%d'),
+            'metric_types':'IMPRESSION,OUTBOUND_CLICK,SAVE'}))
+        report['pinterest_analytics']={k:v.get('summary_metrics') for k,v in metrics.items() if isinstance(v,dict)}
+    except Exception as exc:
+        report['pinterest_analytics']={'unavailable':type(exc).__name__}
     cron=[]
     markers=['pinterest','daily_social_post.py','send_welcome_series.py','indexnow_submit.py']
     for p in Path('/etc/cron.d').glob('*'):
