@@ -6,15 +6,15 @@
 </style></head>
 <body><main>
   <a href="/admin/collaborators">← Volver a colaboradores</a>
-  <h1>Así se vería la propuesta</h1>
-  <p class="muted">Borrador de primer contacto. Puedes revisar el diseño en español e inglés. Esta pantalla no envía mensajes.</p>
-  <div class="meta"><p><strong>De:</strong> {{ from_address }}</p><p><strong>Para:</strong> {{ to_address }}</p><p><strong>Asunto:</strong> {{ subject }}</p></div>
+  <h1>Así se vería la invitación</h1>
+  <p class="muted">Invitación a conocer la tienda y suscribirse para recibir el reto de lectura gratuito. Puedes revisar el diseño en español e inglés. Esta pantalla no envía mensajes.</p>
+  <div class="meta"><p><strong>De:</strong> {{ from_address }}</p><p><strong>Para:</strong> {{ to_address }} · {{ name }}</p><p><strong>Asunto:</strong> {{ subject }}</p></div>
   <div class="actions">
     <a class="button {{ 'active' if lang == 'es' else '' }}" href="?candidate_id={{ candidate_id }}&amp;lang=es">Español</a>
     <a class="button {{ 'active' if lang == 'en' else '' }}" href="?candidate_id={{ candidate_id }}&amp;lang=en">English</a>
     <a class="button" href="?candidate_id={{ candidate_id }}&amp;lang={{ lang }}&amp;format=download">Descargar HTML</a>
     <a href="?candidate_id={{ candidate_id }}&amp;lang={{ lang }}&amp;format=text" target="_blank" rel="noopener">Ver solo texto</a>
   </div>
-  <iframe src="/admin/collaborators/email-preview?candidate_id={{ candidate_id }}&amp;lang={{ lang }}&amp;format=html" title="Vista previa del correo de colaboración" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
-  <p><small>El nombre del blog se adapta al contacto seleccionado. Antes de enviar, conviene concretar la propuesta y personalizar el saludo. El aspecto puede variar ligeramente según el cliente de correo.</small></p>
+  <iframe src="/admin/collaborators/email-preview?candidate_id={{ candidate_id }}&amp;lang={{ lang }}&amp;format=html" title="Vista previa del correo de invitación" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+  <p><small>El botón lleva al formulario de suscripción; la persona decide si desea apuntarse. El aspecto puede variar ligeramente según el cliente de correo.</small></p>
 </main></body></html>

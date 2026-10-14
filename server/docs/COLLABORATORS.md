@@ -35,8 +35,9 @@ is not newsletter consent; review purpose and relevance before any outreach.
 
 ## Email draft preview
 
-`/admin/collaborators/email-preview` shows a bilingual, branded first-contact
-draft. Each inbox candidate links to a preview with its blog name and language.
+`/admin/collaborators/email-preview` shows a bilingual, branded shop invitation
+with a direct newsletter-signup link for the existing free 2027 Reading Challenge.
+Each inbox candidate links to a preview with its recipient and language.
 The preview supports HTML download and a plain-text version. It uses the existing
 Live session and private response headers. It performs no sending, scheduling,
 candidate-state changes, or newsletter writes. Its invitation and reply-based
