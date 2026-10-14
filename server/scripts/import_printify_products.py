@@ -205,6 +205,12 @@ def write(spec: dict, info: dict, retail: float) -> None:
     product.category = spec["category"]
     product.supplier = "printify"
     product.printify_product_id = spec["printify_id"]
+    from services.identifiers import OWN_CALENDAR
+
+    if (product.slug == OWN_CALENDAR["slug"]
+            and product.printify_product_id == OWN_CALENDAR["printify_product_id"]):
+        product.brand = product.brand or OWN_CALENDAR["brand"]
+        product.mpn = product.mpn or OWN_CALENDAR["mpn"]
     product.cj_pid = ""
     product.cj_vid = ""
     product.cj_sku = ""

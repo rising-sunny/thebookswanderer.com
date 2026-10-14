@@ -21,7 +21,7 @@ The source of truth is `shipping-returns.html`, with operational context in
 | Delivery timing | Transit guide only; no fixed packing turnaround | No invented 1–3-day handling time or universal delivery window |
 | Supplier restrictions | Printify/CJ-US: US only; Lulu: configured markets | Restrict shipping and return-policy countries accordingly; Lulu's shipping stays included regardless of the CJ/Printify flag |
 | Digital downloads | No physical delivery; no separate published no-refund policy | Omit physical shipping and the previously invented no-refund policy |
-| Identifiers/reputation | Catalog has supplier SKUs, no verified manufacturer brand/MPN/GTIN or reviews | Keep internal SKUs; omit unsupported brand/MPN/GTIN, reviews and ratings. The XML feed also omits its assumed brand |
+| Identifiers/reputation | Catalog stores verified brand/MPN/GTIN separately from supplier SKUs; reviews remain unavailable | Publish only verified metadata. Readers 2027 has the shop's own brand/reference; CJ identifiers await supplier evidence. See `PRODUCT_IDENTIFIERS.md` |
 
 Optional Google recommendations may remain for omitted methods, fees, delivery
 times, brand/identifiers or reviews. Add them only when backed by verified
@@ -37,7 +37,7 @@ server/.venv/bin/python -m unittest discover -s server/tests -v
 git diff --check
 ```
 
-The 22 offline regression tests cover JSON-LD extraction from rendered HTML,
+The offline regression tests cover JSON-LD extraction from rendered HTML,
 absence of duplicate microdata, exact variant prices/URLs/images, equal-price
 variants, supplier-specific shipping, paid-shipping overrides, returns,
 digital products, Spanish pages, JSON-LD escaping, storefront/catalog routes,

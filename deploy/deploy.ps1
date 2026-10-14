@@ -89,6 +89,7 @@ scp -o BatchMode=yes `
     "$Root\server\services\pinterest.py" `
     "$Root\server\services\pinterest_jobs.py" `
     "$Root\server\services\printify.py" `
+    "$Root\server\services\identifiers.py" `
     "${HostName}:${RemotePath}/server/services/"
 Assert-Ok "services upload"
 if (Test-Path "$Root\server\routers") {

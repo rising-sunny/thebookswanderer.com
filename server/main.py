@@ -677,6 +677,7 @@ def google_products_feed(db: Session = Depends(get_db)):
     One item per variant, grouped by product. Downloads are left out: free
     listings are for goods that ship."""
     from ssr import _free_shipping, _supplier_countries
+    from services.identifiers import for_product
 
     # Google won't convert USD for South Korea (it wants KRW prices), so the
     # feed leaves it out rather than carry a disapproval for every item.
@@ -692,6 +693,7 @@ def google_products_feed(db: Session = Depends(get_db)):
         gallery = [u for u in p.gallery() if u]
         variants = p.active_variants() or [None]
         group = len(variants) > 1
+        detail = p.to_detail()
         for v in variants:
             title = p.title + (f" — {v.name}" if group and v and v.name else "")
             image = (v.image_url if v and v.image_url else "") or p.image_url or (gallery[0] if gallery else "")
@@ -710,9 +712,13 @@ def google_products_feed(db: Session = Depends(get_db)):
                 "<g:availability>in_stock</g:availability>",
                 f"<g:price>{price:.2f} USD</g:price>",
                 "<g:condition>new</g:condition>",
-                "<g:identifier_exists>no</g:identifier_exists>",
                 f"<g:product_type>{xml_escape(meta['category'])}</g:product_type>",
             ]
+            identifiers = for_product(detail, v.to_public() if v else None)
+            for key, value in identifiers.items():
+                parts.append(f"<g:{key}>{xml_escape(value)}</g:{key}>")
+            exists = bool(identifiers.get("gtin") or (identifiers.get("brand") and identifiers.get("mpn")))
+            parts.append(f"<g:identifier_exists>{'yes' if exists else 'no'}</g:identifier_exists>")
             gpc = _google_category(p.slug, meta["category_slug"])
             if gpc:
                 parts.append(f"<g:google_product_category>{gpc}</g:google_product_category>")

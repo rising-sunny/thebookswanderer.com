@@ -58,6 +58,9 @@ def init_db() -> None:
         return
     cols = {c["name"] for c in insp.get_columns("products")}
     with engine.begin() as conn:
+        for column, length in (("brand", 70), ("mpn", 70), ("gtin", 14)):
+            if column not in cols:
+                conn.execute(text(f"ALTER TABLE products ADD COLUMN {column} VARCHAR({length}) DEFAULT ''"))
         if "gallery_json" not in cols:
             conn.execute(text("ALTER TABLE products ADD COLUMN gallery_json TEXT DEFAULT '[]'"))
         if "details_html" not in cols:
@@ -76,6 +79,10 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE products ADD COLUMN lulu_package VARCHAR(40) DEFAULT ''"))
     if "product_variants" in insp.get_table_names():
         vcols = {c["name"] for c in insp.get_columns("product_variants")}
+        with engine.begin() as conn:
+            for column, length in (("mpn", 70), ("gtin", 14)):
+                if column not in vcols:
+                    conn.execute(text(f"ALTER TABLE product_variants ADD COLUMN {column} VARCHAR({length}) DEFAULT ''"))
         if "printify_variant_id" not in vcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE product_variants ADD COLUMN printify_variant_id INTEGER DEFAULT 0"))
@@ -112,3 +119,15 @@ def init_db() -> None:
                 conn.execute(text("ALTER TABLE newsletter_subscribers ADD COLUMN welcome_step INTEGER DEFAULT 0"))
             if "welcome_at" not in ncols:
                 conn.execute(text("ALTER TABLE newsletter_subscribers ADD COLUMN welcome_at DATETIME"))
+
+    # Backfill only the exact first-party design, preserving existing metadata.
+    from services.identifiers import OWN_CALENDAR
+
+    with engine.begin() as conn:
+        for column in ("brand", "mpn"):
+            conn.execute(text(
+                f"UPDATE products SET {column} = :value "
+                "WHERE slug = :slug AND supplier = :supplier "
+                "AND printify_product_id = :printify_product_id "
+                f"AND ({column} IS NULL OR TRIM({column}) = '')"
+            ), {**OWN_CALENDAR, "value": OWN_CALENDAR[column]})

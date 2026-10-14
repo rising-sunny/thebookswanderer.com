@@ -333,8 +333,15 @@ def render_product_page(
             json_ld_product["offers"] = offers
     elif price is not None:
         json_ld_product["offers"] = make_offer(price)
-    # Supplier SKUs are internal inventory identifiers, not manufacturer MPNs.
-    # No verified brand, GTIN, reviews or ratings exist in the product model.
+    from services.identifiers import for_product
+
+    identifiers = for_product(detail, chosen)
+    if identifiers.get("brand"):
+        json_ld_product["brand"] = {"@type": "Brand", "name": identifiers["brand"]}
+    for key in ("mpn", "gtin"):
+        if identifiers.get(key):
+            json_ld_product[key] = identifiers[key]
+    # No supplier SKU fallback, fabricated identifiers, reviews or ratings.
 
     json_ld_breadcrumb = {
         "@context": "https://schema.org",
@@ -423,6 +430,8 @@ def render_product_page(
     </p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
+      {f'<li>Brand: {_esc_text(identifiers["brand"])}</li>' if identifiers.get("brand") else ""}
+      {f'<li>MPN: {_esc_text(identifiers["mpn"])}</li>' if identifiers.get("mpn") else ""}
       {"<li>Digital download (PDF) — the link arrives by email right after payment</li>" if digital else "<li>Ships from partner warehouses (typically China origin unless noted)</li>"}
       <li>Faulty or wrong items refunded in full within 30 days</li>
       <li>Secure checkout{"" if digital else " · shipping calculated by destination at cart"}</li>
@@ -528,7 +537,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=5" defer></script>
 <script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=32" defer></script>
+<script src="/product.js?v=33" defer></script>
 </body>
 </html>
 """
