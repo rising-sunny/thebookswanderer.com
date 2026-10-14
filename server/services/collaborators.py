@@ -258,6 +258,8 @@ def extract_contacts(html: str, url: str) -> list[dict]:
                 # from an address that happens to be embedded in a footer.
                 index = text.lower().find(label.lower()) if label.strip() else -1
                 context = text[max(0, index-130):index+len(label)+130] if index >= 0 else label
+                if not context.strip():
+                    context = f"Enlace mailto publicado en esta página: {m.group()}"
                 occurrences.append((m.group(), context))
     found = {}
     for raw, evidence in occurrences:
@@ -270,13 +272,16 @@ def extract_contacts(html: str, url: str) -> list[dict]:
             continue
         if any(w in local for w in ("noreply", "no-reply", "privacy", "privacidad", "abuse", "legal", "support", "soporte", "billing", "jobs", "career", "dpo", "newsletter", "unsubscribe")):
             continue
-        context = evidence.lower()
+        # The local part itself (e.g. contact@...) is not proof of purpose.
+        context = EMAIL_RE.sub("", evidence).lower()
         explicit = any(w in context for w in CONTACT_WORDS)
         role = any(local == w or local.startswith(w + ".") for w in ("contact", "contacto", "hello", "hola", "info", "editorial", "press", "prensa", "partnerships", "advertising", "colaboraciones"))
         if not explicit and not (page_is_contact and role):
             continue
         purpose = "Colaboraciones / publicidad" if any(w in context for w in ("colabor", "collabor", "partnership", "advertis", "publicidad", "sponsor")) else "Contacto profesional; revisar pertinencia"
-        found[email] = {"email": email, "source_url": url, "evidence": evidence[:300], "purpose": purpose}
+        # An empty icon/mailto label must not replace a useful visible excerpt.
+        if email not in found or len(evidence) > len(found[email]["evidence"]):
+            found[email] = {"email": email, "source_url": url, "evidence": evidence[:300], "purpose": purpose}
     return list(found.values())[:12]
 
 

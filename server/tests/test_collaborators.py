@@ -49,6 +49,17 @@ class ExtractionTests(unittest.TestCase):
     def test_meta_noindex_is_respected(self):
         self.assertEqual(research.extract_contacts('<meta name="robots" content="noindex"><p>Contact: hello@realbooks.org</p>', "https://realbooks.org/contact"), [])
 
+    def test_icon_mailto_has_evidence_without_inventing_professional_context(self):
+        page = '<a href="mailto:contact@realbooks.org"><img src="email.png"></a>'
+        items = research.extract_contacts(page, "https://realbooks.org/contact")
+        self.assertIn("Enlace mailto publicado", items[0]["evidence"])
+        self.assertEqual(research.extract_contacts(page, "https://realbooks.org/"), [])
+
+    def test_icon_mailto_does_not_replace_meaningful_visible_evidence(self):
+        page = '<p>Para colaboraciones con nuestra editorial, contact@realbooks.org</p><a href="mailto:contact@realbooks.org"><img src="email.png"></a>'
+        items = research.extract_contacts(page, "https://realbooks.org/contact")
+        self.assertIn("Para colaboraciones", items[0]["evidence"])
+
     def test_site_visits_only_four_same_site_contact_links(self):
         visited = []
         home = ''.join(f'<a href="/contact/{i}">Contact</a>' for i in range(10)) + '<a href="https://external.org/contact">Contact</a>'
@@ -199,6 +210,7 @@ class StoreAndAdminTests(unittest.TestCase):
             self.assertFalse(store.save_candidate(db, self.source, {"email": "hello@realbooks.org", "source_url": "https://realbooks.org/contact", "evidence": "New context", "purpose": "Contact"}))
         candidate = store.snapshot()["candidates"][0]
         self.assertEqual((candidate["status"], candidate["notes"]), ("approved", "Good fit"))
+        self.assertEqual(candidate["evidence"], "New context")
 
     def test_cookie_fails_closed_without_password_and_for_future_timestamp(self):
         self.login()

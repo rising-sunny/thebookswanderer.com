@@ -88,6 +88,8 @@ def save_candidate(db, source_id: int, item: dict) -> bool:
         return True
     # Never reset a decision or overwrite notes when the same email is seen again.
     db.execute("UPDATE candidates SET last_seen_at=? WHERE email=?", (stamp, item["email"]))
+    if item["evidence"]:
+        db.execute("UPDATE candidates SET source_url=?,evidence=?,purpose=? WHERE email=? AND source_id=?", (item["source_url"], item["evidence"], item["purpose"], item["email"], source_id))
     return False
 
 
