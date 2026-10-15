@@ -1,0 +1,45 @@
+{
+  "release": "reading-society-v1",
+  "products": [
+    {
+      "slug": "book-club-companion",
+      "supplier": "lulu",
+      "lulu_package": "0583X0827BWSTDPB060UW444MXX",
+      "pages": 100,
+      "title": "The Book Club Companion — An Undated Journal for Twelve Gatherings",
+      "price_usd": 24.99,
+      "cost_usd": 4.49,
+      "category": "book-accessories",
+      "image_url": "/assets/products/book-club-companion/main_en.jpg",
+      "gallery": [
+        "/assets/products/book-club-companion/open_en.jpg",
+        "/assets/products/book-club-companion/notes_en.jpg",
+        "/assets/products/book-club-companion/covers_en.jpg"
+      ],
+      "description": "A place for good books and longer conversations. The Book Club Companion helps you bring one thoughtful question to a meeting, notice what other readers see, and keep the ideas you want to carry home.\n\nAn undated journal for twelve gatherings, with six pages for each book: prepare before you meet, collect reading notes, explore three suggested questions, record the conversation, reflect afterwards and keep a thread of notes for next time. Each gathering has a different optional theme, from first impressions and perspective to endings, connections and what stays with us.\n\nInside the 100 pages:\n• A club charter, reader roster and shared reading plan\n• Twelve six-page gathering sections with 36 original discussion prompts\n• Space for quotes, page references and different points of view\n• Season reflections, recommendations and future reading plans\n• Twelve extra pages of ruled and dot-grid notes\n\nThe prompts can be adapted for fiction, memoir and narrative nonfiction. There are no dates to catch up with and no required reading list. This is a personal meeting journal; one reader can keep their own copy, or a club can use one as its shared record.\n\nPhysical A5 paperback (148 × 210 mm), 100 black-and-white pages on uncoated paper, full-colour matte cover. English edition. Original text, illustration and layout by The Books Wanderer. Printed to order by Lulu. Estimated delivery: 10–20 days.\n\nFree shipping to the United States, United Kingdom, Canada, Australia, Germany, France, the Netherlands and Ireland.",
+      "details_html": "<h3>Look inside</h3><p><a href=\"/assets/products/book-club-companion/sample_en.pdf\" target=\"_blank\" rel=\"noopener\">Read the eight-page sample (PDF)</a>, including the gathering index and a complete set of preparation, discussion and reflection pages.</p><h3>Made for the conversation</h3><p>Twelve gatherings · 36 suggested questions · 100 pages · Undated · English paperback.</p><p>Part of The Reading Society. Take your next book to the meeting in our <a href=\"/products/reading-society-tote\">original literary canvas tote</a>.</p>",
+      "sha256": {
+        "book-club-companion-interior.pdf": "d952d762d7916c78df78dd6b7818c60dd8d43769064f10d39b260d7c7078b70c",
+        "book-club-companion-cover.pdf": "237dc8f2728c5216e3883622b0bebb0b4bde934773a7a71915a80fb6396c7726"
+      }
+    },
+    {
+      "slug": "reading-society-tote",
+      "supplier": "printify",
+      "title": "The Reading Society — Literary Canvas Tote",
+      "printify_id": "6ad032d048356526e403dd12",
+      "artwork_upload_id": "6ad034c3ccf26bf3747d04e4",
+      "price_usd": 27.99,
+      "cost_usd": 9.67,
+      "category": "book-accessories",
+      "image_url": "/assets/products/reading-society-tote/main_en.jpg",
+      "gallery": [
+        "/assets/products/reading-society-tote/worn_en.jpg",
+        "/assets/products/reading-society-tote/detail_en.jpg",
+        "/assets/products/reading-society-tote/lifestyle_en.jpg"
+      ],
+      "description": "A small society for people who take the long way through a good book. Our original forest-green illustration opens a book into a moonlit library landscape, with the words ‘The Reading Society’ and ‘Good books. Long conversations.’\n\nPrinted on the front of a natural cotton canvas tote, with a plain back. For library visits, the next book-club gathering, or the paperback that goes everywhere with you.\n\n• 100% cotton canvas, heavy 12 oz/yd² fabric\n• 15 × 16 inches (38.1 × 40.6 cm)\n• 20-inch (50.8 cm) handles and an open top\n• One natural canvas colour with a forest-green print\n• Original artwork by The Books Wanderer\n\nSpot clean with mild detergent and leave to air dry. Do not iron directly on the print.\n\nPrinted to order in the United States. US delivery only; free standard shipping. Estimated delivery: 5–10 days.",
+      "details_html": "<h3>The Reading Society</h3><p>An original illustration of an open book, a winding path and a moonlit library landscape, printed in forest green on natural canvas. The artwork is printed on one side; the reverse is plain.</p><h3>For your next gathering</h3><p>Pair it with <a href=\"/products/book-club-companion\">The Book Club Companion</a>, our undated journal for twelve book-club meetings.</p><p>Natural canvas · 15 × 16 in · 100% cotton · Printed to order · US delivery.</p>"
+    }
+  ]
+}
