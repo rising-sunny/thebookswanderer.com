@@ -1,4 +1,4 @@
-"""Offline checks for the exact A5 cover draft and fulfillment mapping."""
+"""Offline checks for the exact A5 cover publication and fulfillment mapping."""
 import copy
 import sys
 import unittest
@@ -39,7 +39,7 @@ class CoverDraftTests(unittest.TestCase):
         self.addCleanup(self.db.close)
         self.spec = {'slug': cover.SLUG, 'pid': cover.PID, 'vid': cover.VID, 'sku': cover.SKU,
                      'price_usd': 19.99, 'title': 'Japanese A5 Book Cover', 'description': 'Cover only.',
-                     'details_html': '', 'category': 'book-accessories', 'variant_name': 'Navy crane · A5 cover',
+                     'details_html': '', 'category': 'book-accessories', 'variant_name': 'Navy & gold · A5 cover',
                      'image_url': '/assets/products/japanese-a5-book-cover/main.jpg', 'gallery': []}
 
     def test_idempotent_draft_preserves_unrelated_products_and_exact_cj_reference(self):
@@ -57,6 +57,28 @@ class CoverDraftTests(unittest.TestCase):
         self.assertEqual(self.db.query(ProductVariant).count(), 1)
         self.assertEqual(self.db.query(Product).count(), 2)
         self.assertTrue(self.db.query(Product).filter_by(slug='existing').one().active)
+
+    def test_publish_activates_existing_draft_without_duplicate_or_new_variant_ids(self):
+        p = cover.stage_product(self.db, self.spec, 2.61)
+        self.db.commit()
+        product_id, variant_id = p.id, p.default_variant().id
+        self.spec['description'] = 'Navy fabric A5 cover. Cover only.'
+        for _ in range(2):
+            p = cover.stage_product(self.db, self.spec, 2.61, publish=True)
+            self.db.commit()
+        self.assertTrue(p.active)
+        self.assertEqual((p.id, p.default_variant().id), (product_id, variant_id))
+        self.assertEqual(p.description, self.spec['description'])
+        self.assertEqual(p.default_variant().cj_vid, cover.VID)
+        self.assertEqual(p.default_variant().price_usd, 19.99)
+        self.assertEqual(self.db.query(Product).count(), 1)
+        self.assertEqual(self.db.query(ProductVariant).count(), 1)
+
+    def test_publish_rejects_a_different_cover_variant_before_writing(self):
+        self.spec['vid'] = 'unreviewed-variant'
+        with self.assertRaises(ValueError):
+            cover.stage_product(self.db, self.spec, 2.61, publish=True)
+        self.assertEqual(self.db.query(Product).count(), 0)
 
     def test_active_listing_is_not_hidden_on_draft_rerun(self):
         p = cover.stage_product(self.db, self.spec, 2.61)

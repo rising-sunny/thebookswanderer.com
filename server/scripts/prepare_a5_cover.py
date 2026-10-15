@@ -1,7 +1,8 @@
-"""Prepare one CJ A5 cover for sample review. Never activates sales or orders.
+"""Prepare or publish the selected CJ A5 cover. Never creates orders or payments.
 
 --assets checks current supplier data and imports original supplier photographs.
 --draft checks the final specification/images, then upserts an inactive listing.
+--publish applies the reviewed copy and activates this one selected product.
 No arguments prints the intended SKU and retail only.
 """
 from __future__ import annotations
@@ -65,7 +66,7 @@ async def validate_supplier():
         quotes[zipcode] = {k: best.get(k) for k in ('logisticName', 'logisticAging', 'logisticPrice', 'totalPostageFee')}
     report = {'pid': PID, 'vid': VID, 'sku': SKU, 'cost_usd': float(variant['variantSellPrice']),
               'stock': [{k: x.get(k) for k in ('countryCode', 'cjInventoryNum', 'factoryInventoryNum', 'totalInventoryNum')} for x in stock],
-              'quotes': quotes, 'sample_review': 'pending', 'sales_active': False}
+              'quotes': quotes, 'physical_sample_requested': False, 'sales_active': False}
     return details, variant, report
 
 
@@ -106,7 +107,7 @@ async def import_assets(details, variant):
     return downloaded
 
 
-def stage_product(db, spec, cost):
+def stage_product(db, spec, cost, *, publish=False):
     from models import Product, ProductVariant
     if (spec['slug'], spec['pid'], spec['vid'], spec['sku'], spec['price_usd']) != (SLUG, PID, VID, SKU, PRICE):
         raise ValueError('Draft specification does not match the reviewed variant')
@@ -116,7 +117,7 @@ def stage_product(db, spec, cost):
     duplicate = db.query(Product).filter(Product.cj_pid == PID, Product.slug != SLUG).first()
     if duplicate:
         raise ValueError('This supplier product already has a different store listing')
-    if product and product.active:
+    if product and product.active and not publish:
         raise ValueError('An active listing exists; draft preparation must not hide it')
     if product is None:
         product = Product(slug=SLUG, supplier='cj', cj_pid=PID, active=False)
@@ -124,7 +125,7 @@ def stage_product(db, spec, cost):
     for key in ('title', 'description', 'details_html', 'category', 'price_usd', 'image_url'):
         setattr(product, key, spec[key])
     product.cj_vid = VID; product.cj_sku = SKU; product.cost_usd = cost
-    product.from_country = 'CN'; product.active = False
+    product.from_country = 'CN'; product.active = publish
     product.gallery_json = json.dumps(spec['gallery'])
     db.flush()
     variant = next((v for v in product.variants if v.cj_vid == VID), None)
@@ -145,8 +146,9 @@ async def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--assets', action='store_true')
     mode.add_argument('--draft', action='store_true')
+    mode.add_argument('--publish', action='store_true')
     args = parser.parse_args()
-    if not args.assets and not args.draft:
+    if not args.assets and not args.draft and not args.publish:
         print(json.dumps({'slug': SLUG, 'sku': SKU, 'price_usd': PRICE, 'active': False}))
         return
     details, variant, report = await validate_supplier()
@@ -160,14 +162,15 @@ async def main():
         from database import SessionLocal, init_db
         init_db()
         with SessionLocal() as db:
-            product = stage_product(db, spec, report['cost_usd'])
+            product = stage_product(db, spec, report['cost_usd'], publish=args.publish)
             db.commit()
             report['product_id'] = product.id
-        print('Prepared inactive draft:', product.id, SLUG, 'USD', PRICE, flush=True)
+            report['sales_active'] = product.active
+        print('Published:' if args.publish else 'Prepared inactive draft:', product.id, SLUG, 'USD', PRICE, flush=True)
     data = ROOT / 'data'
     data.mkdir(exist_ok=True)
     (data / 'a5-cover-validation.json').write_text(json.dumps(report, indent=2))
-    print('Verified supplier variant and US shipping. No listing activated, order created or payment made.')
+    print('Verified supplier variant and US shipping. No customer order, sample order or payment created.')
 
 
 if __name__ == '__main__':
