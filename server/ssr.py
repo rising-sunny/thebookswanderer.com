@@ -1367,6 +1367,50 @@ def _inject_christmas_shelf(html_doc: str, products: list[dict[str, Any]]) -> st
     return html_doc.replace("<!-- christmas-gifts -->", cards, 1)
 
 
+HOME_EDIT_SLUGS = (
+    "reading-society-notebook",
+    "commonplace-book",
+    "reading-society-tote",
+    "book-club-companion",
+    "usb-clip-reading-light",
+    "japanese-a5-book-cover",
+)
+
+
+def _home_edit_card(p: dict[str, Any]) -> str:
+    """The editorial home uses live product data, never the preview snapshot."""
+    slug = p.get("slug") or ""
+    title = p.get("title") or "Product"
+    image = p.get("image_url") or "/assets/logo.webp"
+    price = p.get("price_usd")
+    upper = p.get("price_max_usd")
+    price_text = f"US${float(price):.2f}" if price is not None else ""
+    if price is not None and upper is not None and float(upper) > float(price):
+        price_text += f"–{float(upper):.2f}"
+    category = p.get("category") or ""
+    tag = '<span class="tag">The nature editions</span>' if slug in HOME_EDIT_SLUGS[:2] else ""
+    return (
+        f'<a class="product" data-ssr-card="1" data-product-id="{_esc(p.get("id"))}" '
+        f'href="/products/{_esc(slug)}">'
+        f'<div class="product-picture"><img loading="lazy" decoding="async" '
+        f'{_cj_img_attrs(image)} alt="{_esc(title)}" width="600" height="600">{tag}</div>'
+        f'<div class="product-meta"><h3>{_esc_text(title)}</h3>'
+        f'<span class="price">{_esc_text(price_text)}</span></div>'
+        f'<p class="product-sub">{_esc_text(category)}</p></a>'
+    )
+
+
+def _inject_home_edit(html_doc: str, products: list[dict[str, Any]]) -> str:
+    by_slug = {p.get("slug"): p for p in products}
+    selected = [by_slug[slug] for slug in HOME_EDIT_SLUGS if slug in by_slug]
+    # Retired products disappear, and other active pieces fill the small shelf.
+    selected += [p for p in products if p.get("slug") not in HOME_EDIT_SLUGS]
+    cards = "\n".join(_home_edit_card(p) for p in selected[:6])
+    if not cards:
+        cards = '<p class="catalog-empty">Nothing on this shelf just yet. Explore the full collection.</p>'
+    return html_doc.replace("<!-- home:products -->", cards, 1)
+
+
 def inject_home_seo(
     html_doc: str,
     *,
@@ -1374,7 +1418,9 @@ def inject_home_seo(
     affiliate: dict[str, Any] | None = None,
     categories: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Inject crawlable product + affiliate + category cards into index.html."""
+    """Inject crawlable, current product data into the homepage template."""
+    if '<body data-home-design="atelier">' in html_doc:
+        return _inject_home_edit(html_doc, products)
     aff = affiliate or load_affiliate_catalog()
     paid = aff.get("paidLinkLabel") or "paid link"
     prod_html = "\n".join(_product_card_html(p) for p in products)
