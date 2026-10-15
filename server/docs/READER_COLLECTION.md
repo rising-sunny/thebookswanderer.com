@@ -8,12 +8,12 @@ Deploy the scripts and assets with the normal Deploy workflow before running:
 
 ```sh
 gh workflow run run-script.yml -f script=publish_reader_collection.py -f args=--validate
-# Inspect successful supplier validation and all four manufacturer mockups.
+# Inspect successful supplier validation and both manufacturer mockups.
 gh workflow run run-script.yml -f script=publish_reader_collection.py -f args=--apply
 ```
 
 Without arguments, the publisher only prints the proposed products. Validation
-installs the print files, downloads four manufacturer mockups, checks the tote's
+installs the print files, downloads two manufacturer mockups, checks the tote's
 original artwork/available variant and live costs, and requires both Lulu PDF
 validations to reach NORMALIZED. Apply checks that evidence and file hashes
 again, then atomically upserts the two slugs. Repeating apply does not duplicate

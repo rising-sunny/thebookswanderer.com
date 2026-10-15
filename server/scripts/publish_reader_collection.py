@@ -104,8 +104,7 @@ async def tote_info(tote, download=False):
     if cost + ship > 16.50:
         raise ValueError('Tote production and shipping exceed the release cost limit')
     if download:
-        wanted = {'front': 'main_en.jpg', 'person-front': 'worn_en.jpg',
-                  'context-front': 'detail_en.jpg', 'lifestyle-front': 'lifestyle_en.jpg'}
+        wanted = {'front': 'main_en.jpg', 'person-front': 'worn_en.jpg'}
         folder = ROOT.parent / 'assets/products/reading-society-tote'
         folder.mkdir(parents=True, exist_ok=True)
         found = set()
