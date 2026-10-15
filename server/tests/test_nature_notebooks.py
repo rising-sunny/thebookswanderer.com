@@ -67,13 +67,13 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(self.db.query(ProductVariant).count(), 2)
 
     def test_supplier_product_cannot_be_duplicated_under_another_slug(self):
-        self.db.add(Product(slug='another-notebook',supplier='printify',printify_product_id=self.notebook['printify_id']))
+        self.db.add(Product(slug='another-notebook',title='Other notebook',supplier='printify',printify_product_id=self.notebook['printify_id']))
         self.db.commit()
         with self.assertRaisesRegex(ValueError,'another listing'):
             release.apply_product(self.db,self.notebook,notebook=self.info)
 
     def test_existing_listing_cannot_change_its_supplier_product(self):
-        self.db.add(Product(slug=self.notebook['slug'],supplier='printify',printify_product_id='different-supplier-product'))
+        self.db.add(Product(slug=self.notebook['slug'],title='Existing notebook',supplier='printify',printify_product_id='different-supplier-product'))
         self.db.commit()
         with self.assertRaisesRegex(ValueError,'another Printify product'):
             release.apply_product(self.db,self.notebook,notebook=self.info)
