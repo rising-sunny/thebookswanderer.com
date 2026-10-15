@@ -41,8 +41,11 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Stage approved notebook-art preparation script
-        run: scp -o BatchMode=yes server/scripts/prepare_notebook_art.py "$VPS_HOST:$REMOTE/server/scripts/prepare_notebook_art.py"
+      - name: Stage candidate notebook files for supplier validation
+        run: |
+          scp -o BatchMode=yes server/scripts/publish_nature_notebooks.py server/scripts/nature_notebooks_products.json "$VPS_HOST:$REMOTE/server/scripts/"
+          scp -o BatchMode=yes -r assets/products/commonplace-book/. "$VPS_HOST:$REMOTE/assets/products/commonplace-book/"
+          ssh -o BatchMode=yes "$VPS_HOST" "chown -R www-data:www-data $REMOTE/assets/products/commonplace-book && chmod 644 $REMOTE/server/scripts/publish_nature_notebooks.py $REMOTE/server/scripts/nature_notebooks_products.json"
 
       - name: Run
         env:

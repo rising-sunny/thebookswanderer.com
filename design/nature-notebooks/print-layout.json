@@ -1,0 +1,16 @@
+{
+  "lulu_cover": {
+    "width": "888.000",
+    "height": "613.000",
+    "unit": "pt"
+  },
+  "lulu_package": "0583X0827BWSTDPB060UW444MXX",
+  "pages": 160,
+  "printify_blueprint_id": 485,
+  "printify_provider_id": 28,
+  "printify_variant_id": 65223,
+  "printify_full_wrap_pixels": [
+    4065,
+    2850
+  ]
+}
