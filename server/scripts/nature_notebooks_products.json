@@ -1,0 +1,47 @@
+{
+  "release": "museum-nature-notebooks-v1",
+  "products": [
+    {
+      "slug": "commonplace-book",
+      "supplier": "lulu",
+      "lulu_package": "0583X0827BWSTDPB060UW444MXX",
+      "pages": 160,
+      "title": "The Commonplace Book — Owl Edition",
+      "variant_name": "English paperback · Owl cover",
+      "price_usd": 24.99,
+      "cost_usd": 5.99,
+      "category": "book-accessories",
+      "image_url": "/assets/products/commonplace-book/main_en.jpg",
+      "gallery": [
+        "/assets/products/commonplace-book/open_en.jpg",
+        "/assets/products/commonplace-book/notes_en.jpg",
+        "/assets/products/commonplace-book/covers_en.jpg"
+      ],
+      "description": "Keep the words. Follow the thread. A commonplace book is a personal collection of passages, observations and ideas, with room for your own response and the connections that appear over time.\n\nSixty facing-page entry pairs give each collection a source page and a response page. Record an author, title and page reference; save the passage or observation; then explore what caught your attention, what it connects to, and a question to return to. Four topic-index pages help you find the threads again.\n\nAlso includes a short guide to commonplacing, a page to map your interests, sixteen extra ruled-note pages, twelve dot-grid pages, and three closing thread maps. Undated, with no prescribed reading list.\n\nThe cover reproduces Great Cinereous Owl (1837), engraved by Robert Havell after John James Audubon. Public-domain artwork from the National Gallery of Art, Washington, Gift of Mrs. Walter B. James. The historical paper tone and marks of the museum reproduction are preserved. Editorial text and page design by The Books Wanderer.\n\nPhysical A5 paperback (148 × 210 mm), 160 black-and-white interior pages on uncoated paper, with a full-colour matte cover. All printed text is in English. Printed to order by Lulu; estimated delivery 10–20 days. Standard US shipping is included. Also available to the other destinations enabled for our printed books.",
+      "details_html": "<h3>Look inside</h3><p><a href=\"/assets/products/commonplace-book/sample_en.pdf\" target=\"_blank\" rel=\"noopener\">Read the eight-page sample (PDF, English)</a>, including the index, a complete entry pair, ruled notes and dot-grid notes.</p><h3>A collection of your own</h3><p>60 facing-page entry pairs · 4 index pages · 16 extra ruled pages · 12 dot-grid pages · 160 pages total.</p><h3>The cover artwork</h3><p><a href=\"https://www.nga.gov/artworks/32492-great-cinereous-owl\" target=\"_blank\" rel=\"noopener\">Great Cinereous Owl, 1837</a>. Robert Havell after John James Audubon; National Gallery of Art, Washington. Public-domain reproduction.</p>",
+      "sha256": {
+        "commonplace-book-interior.pdf": "edcb4879a73b4469834806c0fe40015f0385d5ef59a704e4fcb7d898b7267d44",
+        "commonplace-book-cover.pdf": "8b203c746e93a32a6573d23da60c2c3650868cc1b137abdab15336310e8e4b8d"
+      }
+    },
+    {
+      "slug": "reading-society-notebook",
+      "supplier": "printify",
+      "title": "The Reading Society Notebook — Lake Suwa",
+      "variant_name": "Lake Suwa · 150 lined pages",
+      "price_usd": 27.99,
+      "category": "book-accessories",
+      "image_url": "/assets/products/reading-society-notebook/main_en.jpg",
+      "gallery": [
+        "/assets/products/reading-society-notebook/back_en.jpg",
+        "/assets/products/reading-society-notebook/open_en.jpg",
+        "/assets/products/reading-society-notebook/inside_en.jpg"
+      ],
+      "description": "Notes between chapters. A compact hardcover notebook for reading notes, ideas, lists and the thoughts you want to keep. Inside are 150 lined pages ready for your own words.\n\nThe cover features Lake Suwa in Shinano Province (ca. 1830–32), a woodblock print by Katsushika Hokusai from Thirty-six Views of Mount Fuji. The full composition is framed on the front rather than cropped into a narrow slice. Public-domain artwork from The Metropolitan Museum of Art, Henry L. Phillips Collection; Open Access / CC0. Cover layout by The Books Wanderer.\n\nMatte hardcover with a full-colour printed front, spine and back. Compact format, approximately 5.7 × 8.1 inches (14.5 × 20.5 cm); 150 lined pages (75 sheets). English cover text; standard ruled interior, without guided prompts. A small manufacturer barcode is visible on the back cover.\n\nPrinted to order in the United States by District Photo through Printify. US delivery only, with standard shipping included. Estimated delivery: 5–10 days.",
+      "details_html": "<h3>For notes between chapters</h3><p>Matte hardcover · 150 lined pages · Printed wraparound cover · Compact format.</p><h3>The cover artwork</h3><p><a href=\"https://www.metmuseum.org/art/collection/search/56240\" target=\"_blank\" rel=\"noopener\">Lake Suwa in Shinano Province</a>, ca. 1830–32, Katsushika Hokusai. The Metropolitan Museum of Art, Henry L. Phillips Collection. Public Domain / CC0.</p><p>Pair it with <a href=\"/products/commonplace-book\">The Commonplace Book</a> to collect passages and explore their connections.</p>",
+      "printify_id": "6ad13f569f29f0270501dff6",
+      "artwork_upload_id": "6ad13f55b2c81385ff81ce1a",
+      "cost_usd": 10.59
+    }
+  ]
+}
