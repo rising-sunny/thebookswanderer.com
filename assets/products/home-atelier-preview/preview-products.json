@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "reading-society-notebook",
+    "title": "The Reading Society Notebook \u2014 Lake Suwa",
+    "price_usd": 27.99,
+    "image_url": "/assets/products/reading-society-notebook/main_en.jpg"
+  },
+  {
+    "slug": "commonplace-book",
+    "title": "The Commonplace Book \u2014 Owl Edition",
+    "price_usd": 24.99,
+    "image_url": "/assets/products/commonplace-book/main_en.jpg"
+  },
+  {
+    "slug": "reading-society-tote",
+    "title": "The Reading Society \u2014 Literary Canvas Tote",
+    "price_usd": 27.99,
+    "image_url": "/assets/products/reading-society-tote/main_en.jpg"
+  },
+  {
+    "slug": "book-club-companion",
+    "title": "The Book Club Companion \u2014 An Undated Journal for Twelve Gatherings",
+    "price_usd": 24.99,
+    "image_url": "/assets/products/book-club-companion/main_en.jpg"
+  },
+  {
+    "slug": "usb-clip-reading-light",
+    "title": "USB Rechargeable Clip-On Reading Light \u2014 Black",
+    "price_usd": 16.99,
+    "image_url": "/assets/products/usb-clip-reading-light/main.jpg"
+  },
+  {
+    "slug": "japanese-a5-book-cover",
+    "title": "Sakura Fabric A5 Book Cover \u2014 Navy & Gold",
+    "price_usd": 19.99,
+    "image_url": "/assets/products/japanese-a5-book-cover/main.jpg"
+  }
+]
