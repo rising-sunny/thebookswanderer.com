@@ -1,15 +1,16 @@
-# Sakura A5 fabric cover: sample-review draft
+# Sakura A5 fabric cover
 
 Selected CJ product: `155149A4-8ADA-445F-8F26-44C4596CD754`.
 Selected variant: `3085EA0A-CC79-4D54-B326-91687DCCA0C7`.
 Selected SKU: `CJJJJTJT36003-Navy Blue-A5` (cover only; no notebook).
 Retail: USD 19.99, standard US shipping included. Origin: CN.
 
-This is an **inactive draft** pending inspection of a physical sample, as
-recommended in the selection discussion. Do not infer the usable dimensions
-or maximum spine thickness from CJ's variantStandard fields: they repeat the
-same dimensions across A5 and A6 variants. Do not promise compatibility with
-the Book Club Companion or Reading Passport before testing it.
+The owner requested publication without a sample on 2026-10-15. The listing
+uses the supplier's A5 designation and explains that fit depends on notebook
+cover dimensions and spine thickness. CJ repeats the same variantStandard
+fields across A5 and A6 variants, so these fields are not used as measured
+usable dimensions or maximum spine thickness. No specific journal compatibility
+or future sample inspection is promised.
 
 The original supplier photographs were inspected and retained without edits:
 
@@ -23,25 +24,25 @@ The red variant, a mixed-size photograph and a duplicate hero are omitted.
 No supplier claim of handmade production, fibre composition or Japanese
 manufacture has been carried into the listing.
 
-Deploy normally with GitHub Actions. Then prepare the draft:
+Deploy normally with GitHub Actions, then publish this selected product:
 
 ```sh
-gh workflow run run-script.yml -f script=prepare_a5_cover.py -f args=--draft
+gh workflow run run-script.yml -f script=prepare_a5_cover.py -f args=--publish
 ```
 
-The routine rechecks CJ's exact variant/SKU, stock, cost and US freight before
-idempotently storing the inactive listing. It refuses supplier/slug collisions,
-duplicate supplier listings and changes to an already-active listing. It does
-not activate the product, order a sample, initiate payment, or send a launch.
-Only the selected A5 cover is mapped for fulfillment; other supplier variants
-are not imported. The supplier-validation report is in private server data.
+The routine rechecks CJ's exact variant/SKU, stock, cost and US freight, then
+atomically applies the current listing copy and activates this one product.
+Repeating publication preserves product and variant IDs. Supplier/slug collisions
+and duplicate supplier listings are rejected. Only the selected A5 cover is
+mapped for fulfillment; other supplier variants are not imported. No sample,
+customer order, payment, or social launch is initiated by this routine.
 
-Preview URLs (noindex, no tracking, sales disabled):
-`/assets/products/japanese-a5-book-cover/preview.html` and `preview-en.html`.
-The active catalog, sitemap, shopping feed and social jobs skip the draft.
+`--draft` remains available for inactive preparation and refuses to hide an
+already-active product. Without arguments the script only prints a dry run.
+The supplier-validation report is stored in private server data and records
+whether sales were activated. The old preview URLs are noindex redirects to
+the real product pages in Spanish and English.
 
-Before activation, inspect one sample for usable size, spine clearance, fabric
-finish, colour, flap stitching and care requirements. Replace the pending-fit
-copy in the JSON and Spanish overlay with measured facts. Confirm the desired
-launch destinations and recheck stock/freight. The existing set_product_active
-routine can activate the approved product after the final copy is applied.
+Validation: exact SKU/variant, idempotent publication from the existing draft,
+active-listing protection, supplier mismatch, current cost/freight bounds,
+English/Spanish copy, product page, cart, checkout, feed and sitemap.
