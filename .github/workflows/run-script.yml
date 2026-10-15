@@ -41,6 +41,9 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
+      - name: Stage approved notebook-art preparation script
+        run: scp -o BatchMode=yes server/scripts/prepare_notebook_art.py "$VPS_HOST:$REMOTE/server/scripts/prepare_notebook_art.py"
+
       - name: Run
         env:
           SCRIPT: ${{ inputs.script }}

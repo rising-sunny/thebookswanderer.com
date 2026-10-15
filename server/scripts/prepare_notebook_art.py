@@ -27,7 +27,8 @@ def install_image(client, source, slug, metadata):
     if len(data) > 48 * 1024 * 1024:
         raise ValueError('Museum image exceeds import limit')
     with Image.open(io.BytesIO(data)) as image:
-        if image.format != 'JPEG' or min(image.size) < 1800:
+        print(json.dumps({'museum_host':parsed.hostname,'format':image.format,'pixels':list(image.size)}),flush=True)
+        if image.format != 'JPEG' or min(image.size) < 1000 or max(image.size) < 1500:
             raise ValueError('Original museum image is not suitable for printing')
         metadata['pixels'] = list(image.size)
         image.verify()
