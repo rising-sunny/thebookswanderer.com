@@ -85,6 +85,8 @@ async def import_assets(details, variant):
                 raise ValueError('Unexpected supplier image host')
             response = await client.get(source)
             if response.status_code in (404, 410):
+                if i == 0:
+                    raise ValueError('The selected variant photograph is unavailable')
                 print('Supplier photograph unavailable:', i, response.status_code, flush=True)
                 continue
             response.raise_for_status()
@@ -93,7 +95,10 @@ async def import_assets(details, variant):
                 raise ValueError('Supplier image too large')
             with Image.open(io.BytesIO(raw)) as check:
                 if min(check.size) < 400 or check.format not in ('JPEG', 'PNG', 'WEBP'):
-                    raise ValueError('Unexpected supplier photograph format or dimensions')
+                    if i == 0:
+                        raise ValueError('Unexpected selected variant photograph format or dimensions')
+                    print('Omitted unsuitable additional supplier photograph:', i, flush=True)
+                    continue
                 extension = {'JPEG': 'jpg', 'PNG': 'png', 'WEBP': 'webp'}[check.format]
                 check.verify()
             filename = f'supplier-{i:02d}.{extension}'
