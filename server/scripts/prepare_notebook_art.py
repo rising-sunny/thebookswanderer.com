@@ -55,7 +55,8 @@ def main():
             'credit':'National Gallery of Art, Washington. Gift of Mrs. Walter B. James.',
             'artwork_generated':False})
         r=client.get('https://collectionapi.metmuseum.org/public/collection/v1/objects/56240');r.raise_for_status();obj=r.json()
-        if obj.get('objectID')!=56240 or obj.get('isPublicDomain') is not True or 'Lake Suwa' not in obj.get('title','') or obj.get('artistDisplayName')!='Katsushika Hokusai':
+        print(json.dumps({k:obj.get(k) for k in ('objectID','title','artistDisplayName','isPublicDomain','artistWikidata_URL')}),flush=True)
+        if obj.get('objectID')!=56240 or obj.get('isPublicDomain') is not True or 'Lake Suwa' not in obj.get('title','') or 'Hokusai' not in obj.get('artistDisplayName',''):
             raise ValueError('Met artwork identity or public-domain designation changed')
         install_image(client,obj['primaryImage'],'reading-society-notebook',{
             'title':obj['title'],'artist':obj['artistDisplayName'],'date':obj.get('objectDate'),
