@@ -554,6 +554,10 @@ def home_page_ssr(request: Request, db: Session = Depends(get_db)):
             '<link rel="canonical" href="https://thebookswanderer.com/">',
             '<link rel="canonical" href="https://thebookswanderer.com/es/">',
         )
+        html_out = html_out.replace(
+            'href="/guides/gifts-for-book-lovers/"',
+            'href="/guides/regalos-pequenos-para-lectores/"',
+        ).replace('href="/reading-challenge-2027/"', 'href="/reto-de-lectura-2027/"')
     return HTMLResponse(i18n.localize(html_out, lang, "/"))
 
 
