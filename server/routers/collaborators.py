@@ -115,6 +115,15 @@ def inbox(request: Request, status: str = "", lang: str = ""):
     })
 
 
+@router.get("/admin/pinterest/copy-repairs", response_class=HTMLResponse)
+def pinterest_copy_repairs(request: Request):
+    require_read(request)
+    import json
+    path = store.data_dir() / 'pinterest_copy_repairs.json'
+    data = json.loads(path.read_text()) if path.exists() else {'pending': []}
+    return templates.TemplateResponse(request, 'admin_pinterest_repairs.html', {'request': request, **data})
+
+
 @router.get("/admin/newsletter/monthly-preview", response_class=HTMLResponse)
 def monthly_preview(request: Request, lang: str = "es", period: str = ""):
     require_read(request)
