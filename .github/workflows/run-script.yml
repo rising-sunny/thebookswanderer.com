@@ -41,13 +41,27 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Run
-        env:
-          SCRIPT: ${{ inputs.script }}
-          ARGS: ${{ inputs.args }}
+      - name: Inspect installed schedules (read only)
         run: |
-          read -ra argv <<< "$ARGS"
-          cmd=$(printf '%q' "scripts/$SCRIPT")
-          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
+          ssh -o BatchMode=yes "$VPS_HOST" 'python3 -' <<'PYCODE'
+          import json,re,subprocess
+          from pathlib import Path
+          def show(source,lines):
+              for line in lines:
+                  line=line.strip()
+                  if not line or line.startswith('#') or not re.search(r'tbw|thebookswanderer|pinterest|daily_social|welcome_series',line,re.I):continue
+                  scripts=re.findall(r'(?:[A-Za-z0-9_-]+\.py|[A-Za-z0-9_-]+\.sh)',line)
+                  schedule=' '.join(line.split()[:5])
+                  print(json.dumps({'schedule_source':source,'schedule':schedule,'scripts':scripts}))
+          for user in ['root','www-data']:
+              result=subprocess.run(['crontab','-u',user,'-l'],capture_output=True,text=True)
+              show('crontab:'+user,result.stdout.splitlines())
+          for folder in [Path('/etc/cron.d')]:
+              for path in sorted(folder.iterdir()):
+                  if path.is_file():show(str(path),path.read_text(errors='replace').splitlines())
+          print(json.dumps({'cron_service':subprocess.run(['systemctl','is-active','cron'],capture_output=True,text=True).stdout.strip()}))
+          PYCODE
+
+      - name: Audit automation state and remote APIs (read only)
+        run: |
+          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python -' < server/scripts/audit_automations.py
