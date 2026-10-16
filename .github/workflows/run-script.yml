@@ -64,4 +64,4 @@ jobs:
 
       - name: Audit automation state and remote APIs (read only)
         run: |
-          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python -' < server/scripts/audit_automations.py
+          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python -' < server/scripts/audit_automation_details.py
