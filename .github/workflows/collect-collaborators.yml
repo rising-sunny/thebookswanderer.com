@@ -1,8 +1,6 @@
 name: Discover and invite readers
 
 on:
-  schedule:
-    - cron: '15 12 * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,15 +25,7 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
-      - name: Discover literary sites from public community links
+      - name: Discover and invite readers (same locked VPS job as cron)
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/discover_literary_sources.py"
-      - name: Collect published professional contacts
-        run: |
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/collect_collaborators.py --limit 20"
-      - name: Send approved shop invitation to new professional contacts
-        run: |
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/send_store_invitations.py --campaign store-invitation --auto --send"
+            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/run_reader_outreach.py --send"

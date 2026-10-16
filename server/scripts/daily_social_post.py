@@ -158,7 +158,7 @@ def shipping_line(p: dict) -> str:
     if p.get("supplier") == "digital":
         return "Instant download"
     if p.get("supplier") == "lulu":
-        return "Printed to order · free shipping to US, UK, CA, AU & EU"
+        return "Printed to order · see delivery countries"
     return "Printed to order · ships within the US" if us_only(p) else "Free shipping worldwide"
 
 

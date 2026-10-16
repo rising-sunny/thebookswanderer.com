@@ -115,6 +115,19 @@ def inbox(request: Request, status: str = "", lang: str = ""):
     })
 
 
+@router.get("/admin/newsletter/monthly-preview", response_class=HTMLResponse)
+def monthly_preview(request: Request, lang: str = "es", period: str = ""):
+    require_read(request)
+    filters("", lang)
+    from services import monthly_newsletter as monthly
+    chosen = period or max(monthly.START_PERIOD, datetime.now().strftime('%Y-%m'))
+    try:
+        content = monthly.draft(lang or 'es', chosen)
+    except ValueError:
+        raise HTTPException(400, "Invalid monthly period")
+    return HTMLResponse(content['html'])
+
+
 @router.get("/admin/collaborators/email-preview", response_class=HTMLResponse)
 def email_preview(request: Request, candidate_id: int = 0, lang: str = "", format: str = "view"):
     if not browser_admin(request) and not api_admin(request):

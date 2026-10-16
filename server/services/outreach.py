@@ -45,6 +45,8 @@ def valid_unsubscribe(email: str, token: str) -> bool:
 
 
 def global_contact_state(email: str) -> str:
+    if email.strip().lower() in store.sample_addresses():
+        return "test_address"
     from database import SessionLocal
     from models import EmailOptOut, NewsletterSubscriber
     with SessionLocal() as db:
@@ -126,6 +128,8 @@ def prepare(campaign_id: str, rows: list[dict]) -> int:
         raise ValueError("Invalid campaign name")
     prepared = []
     for row in rows:
+        if row["email"].strip().lower() in store.sample_addresses():
+            continue
         state = "opted_out" if locally_suppressed(row["email"]) else global_contact_state(row["email"])
         content = draft(row["lang"], unsubscribe_url(row["email"], row["lang"]))
         prepared.append((row, state, content))
@@ -195,6 +199,7 @@ def auto_candidates(limit: int = 10) -> list[int]:
         rows = [dict(r) for r in db.execute("SELECT c.id,c.email,c.source_id,c.purpose,s.url,s.lang FROM candidates c JOIN sources s ON s.id=c.source_id WHERE s.active=1 AND c.status IN ('pending','approved') AND c.evidence!='' AND c.last_seen_at>=? ORDER BY c.id", (cutoff,))]
         contacted_emails = {r[0] for r in db.execute("SELECT email FROM outreach_deliveries")}
         contacted_sites = {r[0] for r in db.execute("SELECT site_key FROM outreach_deliveries")}
+    contacted_emails.update(store.sample_addresses())
     chosen = {}
     # Prefer the site's professional-domain mailbox over an alternate free one.
     rows.sort(key=lambda r: (r["email"].split("@")[1] != site_host(r["url"]), r["id"]))

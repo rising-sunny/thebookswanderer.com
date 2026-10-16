@@ -435,6 +435,20 @@ async def create_video_pin(
     return await api_request("POST", "/pins", json=body)
 
 
+def shipping_copy(detail: dict[str, Any]) -> str:
+    """Describe supported destinations without promising worldwide delivery."""
+    supplier = detail.get("supplier") or "cj"
+    if supplier == "digital":
+        return "Instant PDF download; no physical shipping."
+    if supplier == "printify":
+        return "Printed to order. US delivery only." + (" Standard US shipping included." if free_shipping() else "")
+    if supplier == "lulu":
+        from services import lulu
+        countries = ", ".join(sorted(lulu.ship_countries()))
+        return f"Printed to order. Shipping included to: {countries}."
+    return ("Standard US shipping included. " if free_shipping() else "") + "Check the product page for delivery availability."
+
+
 def product_pin_payload(detail: dict[str, Any]) -> dict[str, Any]:
     """Build pin fields from a product detail/public dict."""
     slug = (detail.get("slug") or "").strip()
@@ -445,11 +459,9 @@ def product_pin_payload(detail: dict[str, Any]) -> dict[str, Any]:
     price = detail.get("price_usd")
     if price is None:
         price_bit = ""
-    elif free_shipping():
-        # Shipping is inside the price, so say so — it is the whole selling point.
-        price_bit = f" From ${float(price):.2f} USD with free worldwide shipping."
     else:
         price_bit = f" From ${float(price):.2f} USD."
+    price_bit += " " + shipping_copy(detail)
     cta = " Shop at The Books Wanderer — literary boutique for readers."
     link = f"{public_base()}/products/{slug}?utm_source=pinterest&utm_medium=organic&utm_campaign=pin"
     img = (detail.get("image_url") or "").strip()

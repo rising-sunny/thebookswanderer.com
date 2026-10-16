@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import argparse
 import re
 import sys
 import time
@@ -58,7 +59,7 @@ def candidate_links(html: str, url: str) -> list[str]:
         except ResearchError:
             continue
         host = site_host(linked)
-        if host == site_host(url) or any(host == p or host.endswith("." + p) for p in PLATFORMS):
+        if host == site_host(url) or any(host == p or (host.endswith("." + p) and p not in ("wordpress.com", "blogger.com")) for p in PLATFORMS):
             continue
         if not any(word in (host + " " + label).lower() for word in LITERARY):
             continue
@@ -67,67 +68,100 @@ def candidate_links(html: str, url: str) -> list[str]:
     return found[:30]
 
 
+def community_pages(html: str, url: str) -> list[str]:
+    """Follow a few public blogrolls, not just links visible on the homepage."""
+    page = parse_page(html)
+    if page.noindex or page.nofollow:
+        return []
+    found = []
+    for href, label in page.links:
+        try:
+            link = normalize_url(urljoin(url, href))
+        except ResearchError:
+            continue
+        if site_host(link) != site_host(url) or link == url:
+            continue
+        if any(word in (label + ' ' + link).lower() for word in ('blogroll', 'bloggers', 'enlaces', 'friends', 'amigos', '/blogs', '/links')) and link not in found:
+            found.append(link)
+    return found[:2]
+
+
 def run() -> dict:
     store.init_store()
-    totals = {"parents": 0, "checked": 0, "added": 0, "unavailable": 0}
+    totals = {"parents": 0, "checked": 0, "added": 0, "unavailable": 0, "community_pages": 0}
     with (store.data_dir() / "discovery.lock").open("a") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return {"status": "already_running"}
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat(timespec="seconds")
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=23)).isoformat(timespec="seconds")
+        hubs = json.loads(Path(__file__).with_name('literary_discovery_hubs.json').read_text())
         with store.connect() as db:
-            existing = {site_host(r["url"]) for r in db.execute("SELECT url FROM sources")}
-            parents = [dict(r) for r in db.execute("SELECT * FROM sources WHERE active=1 AND (discovery_checked_at IS NULL OR discovery_checked_at<?) ORDER BY discovery_checked_at IS NOT NULL,discovery_checked_at,id LIMIT 6", (cutoff,))]
+            db.executemany('INSERT OR IGNORE INTO discovery_hubs(url) VALUES(?)', [(root_url(url),) for url in hubs])
+            existing = {site_host(r['url']) for r in db.execute('SELECT url FROM sources')}
+            parents = [dict(r) for r in db.execute("SELECT id,url FROM sources WHERE active=1 AND (discovery_checked_at IS NULL OR discovery_checked_at<?) ORDER BY discovery_checked_at IS NOT NULL,discovery_checked_at,id LIMIT 4", (cutoff,))]
+            boot = [dict(r) for r in db.execute("SELECT url FROM discovery_hubs WHERE checked_at IS NULL OR checked_at<? ORDER BY checked_at IS NOT NULL,checked_at,url LIMIT 6", (cutoff,))]
         if len(existing) >= 250:
             return {"status": "source_limit", **totals}
         deadline = time.monotonic() + 10 * 60
         attempted = set(existing)
-        for parent in parents:
-            if time.monotonic() >= deadline or totals["checked"] >= 12 or totals["added"] >= 8:
+        def register(url, html):
+            profile = literary_profile(html)
+            if not profile or site_host(url) in existing or len(existing) >= 250:
+                return
+            with store.connect() as db:
+                cursor = db.execute("INSERT OR IGNORE INTO sources(name,url,lang,category,reason,origin) VALUES(?,?,?,?,?,'auto')", (site_host(url), root_url(url), profile['lang'], profile['category'], profile['reason']))
+                if cursor.rowcount:
+                    totals['added'] += 1
+                    existing.add(site_host(url))
+        for parent in boot + parents:
+            if time.monotonic() >= deadline or totals['checked'] >= 20 or totals['added'] >= 12:
                 break
-            url = root_url(parent["url"])
-            fetcher = Fetcher(url, max_seconds=40)
+            url = root_url(parent['url'])
+            fetcher = Fetcher(url, max_seconds=45)
+            links = []
+            status = 'verified'
             try:
                 final, html = fetcher.page(url)
-                links = candidate_links(html, final)
+                # Bootstrap entries become sources only after their content is verified.
+                register(final, html)
+                links += candidate_links(html, final)
+                for subpage in community_pages(html, final):
+                    try:
+                        subfinal, subhtml = fetcher.page(subpage)
+                        totals['community_pages'] += 1
+                        links += candidate_links(subhtml, subfinal)
+                    except (ResearchError, httpx.HTTPError, OSError):
+                        totals['unavailable'] += 1
             except (ResearchError, httpx.HTTPError, OSError):
-                links = []
-                totals["unavailable"] += 1
+                totals['unavailable'] += 1
+                status = 'unavailable'
             finally:
                 fetcher.close()
-            totals["parents"] += 1
+            totals['parents'] += 1
             with store.connect() as db:
-                db.execute("UPDATE sources SET discovery_checked_at=? WHERE id=?", (store.now(), parent["id"]))
-            for link in links:
+                if 'id' in parent:
+                    db.execute('UPDATE sources SET discovery_checked_at=? WHERE id=?', (store.now(),parent['id']))
+                else:
+                    db.execute('UPDATE discovery_hubs SET checked_at=?,last_status=? WHERE url=?', (store.now(),status,parent['url']))
+            for link in dict.fromkeys(links):
                 host = site_host(link)
-                if host in attempted:
+                if host in attempted or host in existing:
                     continue
-                if time.monotonic() >= deadline or totals["checked"] >= 12 or totals["added"] >= 8 or len(existing) >= 250:
+                if time.monotonic() >= deadline or totals['checked'] >= 20 or totals['added'] >= 12 or len(existing) >= 250:
                     break
                 attempted.add(host)
-                totals["checked"] += 1
-                child = Fetcher(link, max_seconds=30)
+                totals['checked'] += 1
+                child = Fetcher(link, max_seconds=25)
                 try:
                     final, html = child.page(link)
-                    profile = literary_profile(html)
-                    if not profile:
-                        continue
-                    url = root_url(final)
-                    # The selected host and its www variant are the same source.
-                    if site_host(url) in existing:
-                        continue
-                    with store.connect() as db:
-                        cursor = db.execute("INSERT OR IGNORE INTO sources(name,url,lang,category,reason,origin) VALUES(?,?,?,?,?,'auto')", (site_host(url), url, profile["lang"], profile["category"], profile["reason"]))
-                        if cursor.rowcount:
-                            totals["added"] += 1
-                            existing.add(site_host(url))
+                    register(final, html)
                 except (ResearchError, httpx.HTTPError, OSError):
-                    totals["unavailable"] += 1
+                    totals['unavailable'] += 1
                 finally:
                     child.close()
-        return {"status": "completed", **totals}
+        return {'status': 'completed', **totals}
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     print(json.dumps(run(), ensure_ascii=False))
