@@ -27,6 +27,35 @@ class Fixture(unittest.TestCase):
    db.add(Product(slug='one-book',title='Book <one>',supplier='lulu',price_usd=22,active=True,image_url='/assets/logo.webp'));db.commit()
 
 class PinterestTests(Fixture):
+ def test_restricted_pin_edit_stops_patching_and_prepares_private_copy_plan(self):
+  from fastapi import HTTPException
+  with self.sessions() as db:
+   product=db.query(Product).first()
+   db.add_all([PinterestPin(product_slug=product.slug,pin_id='one',status='active'),PinterestPin(product_slug=product.slug,pin_id='two',status='active')]);db.commit()
+  calls=[]
+  async def api(method,path,**kwargs):
+   calls.append((method,path,kwargs))
+   if method=='GET':return {'title':'Original variant title','description':'From $22 USD with free worldwide shipping.'}
+   raise HTTPException(401,json.dumps({'code':3,'message':'Your application does not have access to this restricted feature: pin_edit'}))
+  with patch.object(repair,'init_db'),patch.object(repair,'SessionLocal',self.sessions),patch.object(repair.pin,'api_request',side_effect=api),patch.object(repair.asyncio,'sleep',new=AsyncMock()):
+   result=asyncio.run(repair.run(apply=True))
+  self.assertEqual(len([c for c in calls if c[0]=='PATCH']),1)
+  self.assertEqual(result['editing_blocked']['feature'],'pin_edit');self.assertEqual(result['updated'],0);self.assertEqual(result['pending_descriptions'],2)
+  plan=json.loads((Path(self.folder.name)/'pinterest_copy_repairs.json').read_text())
+  self.assertEqual(plan['pending'][0]['title'],'Original variant title');self.assertNotIn('worldwide',plan['pending'][0]['description'])
+  self.assertIn('USD. Printed',plan['pending'][0]['description'])
+
+ def test_copy_plan_requires_admin_and_stays_private(self):
+  from fastapi import FastAPI
+  from fastapi.testclient import TestClient
+  from routers.collaborators import router
+  (Path(self.folder.name)/'pinterest_copy_repairs.json').write_text(json.dumps({'pending':[{'pin_id':'123','title':'A book','description':'US delivery only'}],'editing_blocked':{'feature':'pin_edit'}}))
+  app=FastAPI();app.include_router(router)
+  with TestClient(app) as client:
+   self.assertEqual(client.get('/admin/pinterest/copy-repairs').status_code,401)
+   response=client.get('/admin/pinterest/copy-repairs',headers={'X-Admin-Key':'test-key'})
+   self.assertEqual(response.status_code,200);self.assertIn('no-store',response.headers['cache-control']);self.assertIn('noindex',response.headers['x-robots-tag']);self.assertIn('US delivery only',response.text)
+
  def test_shipping_matches_supplier_and_configured_destinations(self):
   for supplier in ('lulu','printify','digital','cj'):
    payload=pin.product_pin_payload({'slug':'book','title':'Book','supplier':supplier,'price_usd':20})

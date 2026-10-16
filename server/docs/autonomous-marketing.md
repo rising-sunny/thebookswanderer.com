@@ -53,3 +53,11 @@ No monthly broadcast is sent during installation or preview.
 `marketing_status.py` reports aggregate counts, installed schedules, duplicate
 checks, exclusions and current shipping copy without printing email addresses.
 The regression suite uses temporary databases and mocked SMTP/provider calls.
+
+### Pinterest application restriction
+
+If Pinterest rejects PATCH with HTTP 401 / code 3 / `pin_edit`, the repair
+command stops attempting edits, finishes its backfill work, saves a private
+copy plan, and exits 2 to report the partial result. It does not delete or
+recreate existing pins. Administrators can copy the exact replacement text at
+`/admin/pinterest/copy-repairs`; enabling `pin_edit` requires Pinterest app access.
