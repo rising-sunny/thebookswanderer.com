@@ -71,7 +71,7 @@ jobs:
             services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
             services/printify.py services/digital.py services/lulu.py \
             services/collaborators.py services/collaborators_store.py \
-            services/invitation.py services/outreach.py \
+            services/invitation.py services/outreach.py services/monthly_newsletter.py \
             "$VPS_HOST:$REMOTE/server/services/"
           scp -o BatchMode=yes routers/__init__.py routers/pinterest.py routers/collaborators.py routers/outreach.py "$VPS_HOST:$REMOTE/server/routers/"
           scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"

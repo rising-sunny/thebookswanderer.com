@@ -70,6 +70,17 @@ def init_store() -> None:
             found INTEGER NOT NULL DEFAULT 0, added INTEGER NOT NULL DEFAULT 0,
             errors INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS discovery_hubs (
+            url TEXT PRIMARY KEY, checked_at TEXT, last_status TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS monthly_deliveries (
+            id INTEGER PRIMARY KEY, period TEXT NOT NULL, email TEXT NOT NULL,
+            lang TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued',
+            created_at TEXT NOT NULL, attempted_at TEXT, sent_at TEXT,
+            subject TEXT NOT NULL, html TEXT NOT NULL, text TEXT NOT NULL,
+            message_id TEXT NOT NULL UNIQUE, detail TEXT NOT NULL DEFAULT '',
+            UNIQUE(period,email)
+        );
         CREATE TABLE IF NOT EXISTS outreach_campaigns (
             id TEXT PRIMARY KEY, created_at TEXT NOT NULL, last_run_at TEXT
         );
@@ -142,3 +153,11 @@ def snapshot(status: str = "", lang: str = "", limit: int | None = 500) -> dict:
             "campaigns": [dict(r) for r in db.execute("SELECT c.id,c.created_at,c.last_run_at,d.status,count(d.id) AS total FROM outreach_campaigns c LEFT JOIN outreach_deliveries d ON d.campaign_id=c.id GROUP BY c.id,d.status ORDER BY c.created_at DESC")],
             "deliveries": [dict(r) for r in db.execute("SELECT d.id,d.campaign_id,d.candidate_id,d.email,d.lang,d.status,d.created_at,d.attempted_at,d.sent_at,d.detail,s.name FROM outreach_deliveries d JOIN sources s ON s.id=d.source_id ORDER BY d.id DESC LIMIT 100")],
         }
+
+
+def sample_addresses() -> set[str]:
+    """Requested samples stay excluded from all autonomous marketing."""
+    with connect() as db:
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE name='outreach_samples'").fetchone():
+            return set()
+        return {row[0].strip().lower() for row in db.execute('SELECT email FROM outreach_samples')}

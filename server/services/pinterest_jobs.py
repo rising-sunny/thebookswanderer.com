@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from models import PinterestPin, Product
 from services import categories as cat_service
@@ -90,6 +91,10 @@ def _record(
     status: str = "active",
     error: str = "",
 ) -> PinterestPin:
+    if pin_id and status == "active":
+        existing = db.query(PinterestPin).filter_by(pin_id=pin_id, status="active").first()
+        if existing:
+            return existing
     row = PinterestPin(
         product_id=product.id or 0,
         product_slug=product.slug or "",
@@ -100,7 +105,15 @@ def _record(
         error=(error or "")[:2000],
     )
     db.add(row)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # A concurrent publisher may have recorded the same Pinterest ID.
+        existing = db.query(PinterestPin).filter_by(pin_id=pin_id, status="active").first() if pin_id else None
+        if existing:
+            return existing
+        raise
     db.refresh(row)
     return row
 

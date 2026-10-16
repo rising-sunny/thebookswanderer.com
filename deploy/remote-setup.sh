@@ -190,6 +190,20 @@ cat > /etc/cron.d/tbw-welcome-series <<CRON
 CRON
 chmod 644 /etc/cron.d/tbw-welcome-series
 
+# Daily research no longer depends on GitHub's best-effort scheduled queue.
+touch /var/log/tbw-reader-outreach.log /var/log/tbw-monthly.log
+chown www-data:www-data /var/log/tbw-reader-outreach.log /var/log/tbw-monthly.log
+cat > /etc/cron.d/tbw-reader-outreach <<CRON
+15 12 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/run_reader_outreach.py --send >> /var/log/tbw-reader-outreach.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-reader-outreach
+
+# First issue: November 2026. The ledger allows safe catch-up on days 2 and 3.
+cat > /etc/cron.d/tbw-monthly-newsletter <<CRON
+35 12 1-3 * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/send_monthly_newsletter.py --send >> /var/log/tbw-monthly.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-monthly-newsletter
+
 # IndexNow (server/scripts/indexnow_submit.py): new / changed sitemap URLs to Bing & co, daily.
 touch /var/log/tbw-indexnow.log
 chown www-data:www-data /var/log/tbw-indexnow.log

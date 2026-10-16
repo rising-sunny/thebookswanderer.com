@@ -54,6 +54,14 @@ def init_db() -> None:
     if not DATABASE_URL.startswith("sqlite"):
         return
     insp = inspect(engine)
+    if "pinterest_pins" in insp.get_table_names():
+        with engine.begin() as conn:
+            # Keep the audit history while counting each live Pinterest ID once.
+            conn.execute(text("""UPDATE pinterest_pins SET status='duplicate'
+                WHERE status='active' AND pin_id<>'' AND id NOT IN
+                (SELECT min(id) FROM pinterest_pins WHERE status='active' AND pin_id<>'' GROUP BY pin_id)"""))
+            conn.execute(text("""CREATE UNIQUE INDEX IF NOT EXISTS uq_active_pinterest_pin
+                ON pinterest_pins(pin_id) WHERE pin_id<>'' AND status='active'"""))
     if "products" not in insp.get_table_names():
         return
     cols = {c["name"] for c in insp.get_columns("products")}
