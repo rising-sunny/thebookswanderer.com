@@ -41,13 +41,29 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Run
-        env:
-          SCRIPT: ${{ inputs.script }}
-          ARGS: ${{ inputs.args }}
+      - name: Diagnose authorized Pinterest description update
         run: |
-          read -ra argv <<< "$ARGS"
-          cmd=$(printf '%q' "scripts/$SCRIPT")
-          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
+          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python -' <<'PYCODE'
+          import asyncio,json
+          from pathlib import Path
+          from dotenv import load_dotenv
+          load_dotenv(Path.cwd()/'.env')
+          from services import pinterest as pin
+          from database import SessionLocal
+          from models import Product
+          from scripts.repair_marketing_pins import corrected_description
+          async def main():
+              pid='1098948746610883647'
+              with SessionLocal() as db:
+                  product=db.query(Product).filter_by(slug='commonplace-book').one().to_public()
+              live=await pin.api_request('GET','/pins/'+pid)
+              wanted=corrected_description(live.get('description') or '',product)
+              try:
+                  await pin.api_request('PATCH','/pins/'+pid,json={'description':wanted})
+                  print(json.dumps({'updated':pid}))
+              except Exception as e:
+                  try: detail=json.loads(getattr(e,'detail','{}'))
+                  except (ValueError,TypeError):detail={}
+                  print(json.dumps({'status':getattr(e,'status_code',None),'error_type':type(e).__name__,'code':detail.get('code'),'message':str(detail.get('message',''))[:400]}))
+          asyncio.run(main())
+          PYCODE
