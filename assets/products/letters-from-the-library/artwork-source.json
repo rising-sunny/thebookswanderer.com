@@ -1,0 +1,34 @@
+{
+  "title": "Lake Suwa in Shinano Province (Shinshū Suwako), from the series Thirty-six Views of Mount Fuji (Fugaku sanjūrokkei)",
+  "artist": "Katsushika Hokusai",
+  "date": "ca. 1830–32",
+  "institution": "The Metropolitan Museum of Art",
+  "accession": "JP2965",
+  "source_page": "https://www.metmuseum.org/art/collection/search/56240",
+  "rights": "Public Domain; Met Open Access CC0",
+  "rights_policy": "https://www.metmuseum.org/hubs/open-access",
+  "credit": "Henry L. Phillips Collection, Bequest of Henry L. Phillips, 1939",
+  "artwork_generated": false,
+  "pixels": [
+    1948,
+    1347
+  ],
+  "image_source": "https://images.metmuseum.org/CRDImages/as/original/DP141058.jpg",
+  "sha256": "2ce34acac3294244eb6e883e659b53620c62b0e3642441454be5a41ddd4296ec",
+  "layout_by": "The Books Wanderer",
+  "source_artwork_unchanged": true,
+  "layout_uploads": {
+    "front": {
+      "id": "6ad32a783fab5fb277b25d06",
+      "sha256": "05689990ed7c6bdac44d4e6fdfc9f8f21cc1ff556ca61034eb00e767a7b4b322",
+      "width": 1538,
+      "height": 1125
+    },
+    "back": {
+      "id": "6ad32a792fa6f209e8b91e8c",
+      "sha256": "d6e1b4c06be1dcc6cc3342129d9c17d7027b8f6921b18999d38b28164212f87c",
+      "width": 1538,
+      "height": 1125
+    }
+  }
+}

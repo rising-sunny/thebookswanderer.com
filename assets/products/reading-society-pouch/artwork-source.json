@@ -1,0 +1,27 @@
+{
+  "title": "Great Cinereous Owl",
+  "artist": "Robert Havell after John James Audubon",
+  "date": "1837",
+  "institution": "National Gallery of Art",
+  "accession": "1945.8.351",
+  "source_page": "https://www.nga.gov/artworks/32492-great-cinereous-owl",
+  "rights": "Public domain; object page states media is free and in the public domain",
+  "credit": "National Gallery of Art, Washington. Gift of Mrs. Walter B. James.",
+  "artwork_generated": false,
+  "pixels": [
+    2681,
+    4096
+  ],
+  "image_source": "https://api.nga.gov/iiif/d8fee2a3-3cc9-48ff-99a8-1755c07b12e2/full/full/0/default.jpg?attachment_filename=great_cinereous_owl_1945.8.351.jpg",
+  "sha256": "b7f70c8a6e4032982c5b2d3fd2d88a904b88fa998188aa4698e3cb5ee1c4d5e5",
+  "layout_by": "The Books Wanderer",
+  "source_artwork_unchanged": true,
+  "layout_uploads": {
+    "front": {
+      "id": "6ad32a75b21e9c4ac60587dc",
+      "sha256": "e1b8d23c0fd89cf45b7adc0d8e8614395973f563e7f06cdd7eb50998b8aac1b7",
+      "width": 1875,
+      "height": 1425
+    }
+  }
+}
