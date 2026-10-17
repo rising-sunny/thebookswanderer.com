@@ -31,6 +31,7 @@ def get_db():
 def init_db() -> None:
     from models import (  # noqa: F401
         DownloadToken,
+        LuluSubmission,
         EmailOptOut,
         LiveEvent,
         NewsletterSubscriber,
