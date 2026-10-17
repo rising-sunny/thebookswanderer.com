@@ -38,26 +38,21 @@ jobs:
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
           """Read-only diagnostic. No checkout, worker execution, payments or notifications."""
-          import ast,collections,json,re,shlex,subprocess
+          import collections,json,re
           from pathlib import Path
-          out={};cron=subprocess.run(['crontab','-l'],capture_output=True,text=True).stdout
-          entries=[]
-          for line in cron.splitlines():
-           if '/unified/worker.py' in line and not line.lstrip().startswith('#'):
-            entries.append({'tokens':[t if t in ('*','*/15','/usr/bin/python3','check','--config','>>','>','2>&1') or (t.startswith('/') and re.fullmatch(r'[/a-zA-Z0-9_.-]+',t)) else '<other>' for t in shlex.split(line)],'literal_backslash_n':r'\n' in line})
-          out['unified_cron_entries']=entries
-          root=Path('/opt/etsy_lulu_fulfill/lulu_books/unified')
-          for name in ('worker.py','core.py'):
-           tree=ast.parse((root/name).read_text());out[name]={'functions':[n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]}
-           for n in ast.walk(tree):
-            if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in ('add_argument','FileHandler'):
-             strings=[x.value for x in n.args if isinstance(x,ast.Constant) and isinstance(x.value,str)];out[name].setdefault(n.func.attr,[]).append(strings)
-          for dirname in ('/var/lib/mathrelaxing-etsy-lulu','/root/lulu-unificado'):
-           p=Path(dirname);out[dirname]={'exists':p.exists(),'log_files':[str(x) for x in p.glob('*.log')] if p.is_dir() else []}
-          log=Path('/var/log/syslog')
-          if log.exists():
-           # Never print system log lines; retain only cycle counts and safe exception class names.
-           lines=log.read_text(errors='replace').splitlines()[-25000:];ours=[l for l in lines if '/unified/worker.py' in l]
-           out['syslog']={'unified_cron_commands':len(ours),'recent_timestamps':[l[:19] for l in ours[-5:]]}
+          p=Path('/var/lib/mathrelaxing-etsy-lulu/worker.log');out={'log_exists':p.is_file()}
+          if p.is_file():
+           text=p.read_text(errors='replace');out['bytes']=len(text.encode());out['traceback_present']='Traceback' in text;out['exception_types']=sorted(set(re.findall(r'\b([A-Z][A-Za-z]*(?:Error|Exception)):',text)));out['timestamps']=re.findall(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d)?',text)[-6:]
+           # Worker summaries contain counts/booleans, but receipt ids and payloads must stay private.
+           summary=[];allowed={'checked','created','skipped','held','pending','errors','submitted','processed','ok','dry_run','create_jobs_enabled','count','scanned','seen','eligible','duplicates','would_create','legacy_skipped','jobs_created'}
+           for line in text.splitlines():
+            try:d=json.loads(line)
+            except ValueError:continue
+            if isinstance(d,dict):
+             x={k:(len(v) if isinstance(v,(dict,list)) else v) for k,v in d.items() if k in allowed and isinstance(v,(bool,int,float,list,dict))};x['field_count']=len(d);summary.append(x)
+           out['structured_summaries']=summary[-6:]
+          state=Path('/var/lib/mathrelaxing-etsy-lulu/state.json')
+          if state.exists():
+           s=json.loads(state.read_text());out['preserved_history_counts']={k:len(v) for k,v in s.items() if k in ('receipts','legacy_blocked_receipts','legacy_jobs') and isinstance(v,(list,dict))}
           print(json.dumps(out,indent=2))
           PYCODE
