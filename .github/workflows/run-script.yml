@@ -14,7 +14,7 @@ on:
         default: ""
 
 concurrency:
-  group: run-script-vps
+  group: lulu-readonly-audit
   cancel-in-progress: false
 
 env:
@@ -28,26 +28,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate input
-        env:
-          SCRIPT: ${{ inputs.script }}
-        run: |
-          [[ "$SCRIPT" =~ ^[a-z0-9_]+\.py$ ]] || { echo "invalid script name"; exit 1; }
-          [ -f "server/scripts/$SCRIPT" ] || { echo "no such script in the repo"; exit 1; }
-
       - name: SSH key
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Run
-        env:
-          SCRIPT: ${{ inputs.script }}
-          ARGS: ${{ inputs.args }}
+      - name: Prepare protected Lulu deployment
         run: |
-          read -ra argv <<< "$ARGS"
-          cmd=$(printf '%q' "scripts/$SCRIPT")
-          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
+          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
+          """Authorized preparation: private backups and existing business phone only."""
+          import hashlib,json,os,re,shutil,sqlite3,stat,subprocess,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT))
+          from dotenv import dotenv_values,set_key
+          EXPECTED_HASHES = {'main.py': 'f0bcbd5e7858d6441e152401a6d5d869c0e666243a1398a169ce7728a7f9e79a', 'models.py': '7d43fb813be50014d5c26bb7185578c5cd16252a10dca6584d4af391d0e0ceb8', 'database.py': '11c3e4e2a620584d47345f599ed416634d4f35a363f4c583976472de7579ceda', 'services/lulu.py': 'd63f5b370e819976aaa1e11a2a35243b8b4275c5690814358b434e6e6be0ff6b', 'scripts/sync_order_tracking.py': '29398f56ec7bf7f6fb2a89f6fd3fe3a405f117f34327cb0354662277c4075203'}
+          for name,expected in EXPECTED_HASHES.items():
+           if hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=expected:
+            raise RuntimeError('Deployed source differs from audited main; preparation stopped')
+          cfg_path=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');cfg=json.loads(cfg_path.read_text())
+          if not cfg.get('settings',{}).get('manual_payment_confirmed'):raise RuntimeError('Recorded manual-payment configuration is missing')
+          phone=re.sub(r'[^0-9+]','',str(cfg.get('settings',{}).get('merchant_phone') or ''))
+          if not re.fullmatch(r'\+?[0-9]{7,15}',phone) or len(set(phone.lstrip('+')))<2:raise RuntimeError('Existing approved business phone is invalid; no values were emitted')
+          env_path=ROOT/'.env';env=dotenv_values(env_path);existing=re.sub(r'[^0-9+]','',str(env.get('LULU_MERCHANT_PHONE') or ''))
+          if existing and (not re.fullmatch(r'\+?[0-9]{7,15}',existing) or len(set(existing.lstrip('+')))<2):raise RuntimeError('Existing web fallback needs review; configuration unchanged')
+          os.umask(0o077);base=Path('/var/backups/thebookswanderer-lulu');base.mkdir(mode=0o700,parents=True,exist_ok=True);os.chmod(base,0o700)
+          folder=base/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ');folder.mkdir(mode=0o700)
+          shutil.copy2(env_path,folder/'server.env');os.chmod(folder/'server.env',0o600)
+          for name in EXPECTED_HASHES:
+           target=folder/'server'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/name,target)
+          unit=Path('/etc/systemd/system/thebookswanderer.service')
+          if unit.exists():shutil.copy2(unit,folder/'thebookswanderer.service')
+          cron=subprocess.run(['crontab','-l'],capture_output=True,text=True,check=True).stdout
+          (folder/'root-crontab.txt').write_text(cron)
+          url=env.get('DATABASE_URL') or f'sqlite:///{ROOT / "data/store.db"}'
+          if not url.startswith('sqlite:///'):raise RuntimeError('Unexpected database backend; no configuration changed')
+          dbpath=Path(url[len('sqlite:///'):]);dbpath=dbpath if dbpath.is_absolute() else ROOT/dbpath
+          with sqlite3.connect('file:'+str(dbpath)+'?mode=ro',uri=True) as source, sqlite3.connect(folder/'store.db') as target:
+           source.backup(target)
+           if target.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise RuntimeError('Database backup validation failed')
+           counts={t:target.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ('orders','order_items','products','product_variants')}
+          files={'config':cfg_path,'catalog':Path(cfg['catalog_path']),'worker':cfg_path.parent/'worker.py','core':cfg_path.parent/'core.py'}
+          meta={'backup_dir':str(folder),'database_path':str(dbpath),'counts':counts,'root_cron_sha256':hashlib.sha256(cron.encode()).hexdigest(),'etsy_static_sha256':{k:hashlib.sha256(p.read_bytes()).hexdigest() for k,p in files.items()},'source_hashes':EXPECTED_HASHES}
+          (folder/'manifest.json').write_text(json.dumps(meta,indent=2));(base/'latest.json').write_text(json.dumps(meta,indent=2))
+          changed=False
+          if not existing:
+           original=env_path.stat();set_key(env_path,'LULU_MERCHANT_PHONE',phone,quote_mode='always');os.chown(env_path,original.st_uid,original.st_gid);os.chmod(env_path,stat.S_IMODE(original.st_mode));changed=True
+          # Re-load through the configuration loader and confirm the other bindings survived.
+          after=dotenv_values(env_path)
+          if any(v!=after.get(k) for k,v in env.items() if k!='LULU_MERCHANT_PHONE'):raise RuntimeError('Unexpected configuration difference detected; use private backup before deployment')
+          print(json.dumps({'backup_ready':True,'backup_integrity':'ok','web_counts':counts,'business_phone_configured':bool(after.get('LULU_MERCHANT_PHONE')),'phone_reused_from_existing_configuration':changed,'etsy_configuration_changed':False,'cron_changed':False,'orders_created':0,'payments_made':0}))
+          PYCODE
