@@ -1,0 +1,101 @@
+{
+  "release": "reading-stationery-v1",
+  "products": [
+    {
+      "slug": "reading-society-pouch",
+      "title": "The Reading Society — Owl Annotation Pouch",
+      "variant_name": "Owl edition · Cotton canvas pouch",
+      "price_usd": 22.99,
+      "category": "book-accessories",
+      "description": "A little home for the things between the pages. Keep pens, annotation tabs, bookmarks and small reading tools together in this cream cotton canvas zipper pouch. Sold empty; stationery and other accessories are not included.\n\nThe front pairs The Reading Society typography with Great Cinereous Owl (1837), engraved by Robert Havell after John James Audubon. The historical museum reproduction is shown in full, including its paper tone and age marks. Public-domain artwork from the National Gallery of Art, Washington, Gift of Mrs. Walter B. James. Layout by The Books Wanderer.\n\n100% cotton canvas, approximately 8.3 × 7.8 inches (21.1 × 19.8 cm), with cream zipper and an attached carrying strap. One-sided print; the reverse is plain. This is an accessory pouch, not a padded book sleeve, and it is not sized for an A5 notebook. Printed wording is in English.\n\nPrinted to order in the United States by District Photo through Printify, using an imported blank. US delivery only. Standard US shipping is included; estimated delivery 5–10 days.",
+      "details_html": "<h3>Keep your annotation tools together</h3><p>One empty cotton canvas pouch · Cream zipper · Attached carrying strap · Printed front, plain reverse · Approximately 8.3 × 7.8 in.</p><p>The illustrations show the finished design through manufacturer mockups. Accessories are not included. Colours and placement may vary slightly in production.</p><h3>The historical illustration</h3><p><a href=\"https://www.nga.gov/artworks/32492-great-cinereous-owl\" target=\"_blank\" rel=\"noopener\">Great Cinereous Owl, 1837</a>, Robert Havell after John James Audubon. National Gallery of Art, Washington. Public-domain reproduction.</p><p>Pair it with <a href=\"/products/commonplace-book\">The Commonplace Book — Owl Edition</a> or <a href=\"/products/reading-society-tote\">The Reading Society Tote</a>.</p>",
+      "mockup_cameras": {
+        "front": "main_en.jpg",
+        "front-2": "detail_en.jpg",
+        "back": "back_en.jpg",
+        "context-1": "context_en.jpg"
+      },
+      "gallery_files": [
+        "detail_en.jpg",
+        "back_en.jpg",
+        "context_en.jpg",
+        "artwork-preview.jpg"
+      ],
+      "max_landed_usd": 13.5,
+      "supplier": "printify",
+      "printify_id": "6ad32a768dad753234086750",
+      "blueprint_id": 1179,
+      "provider_id": 28,
+      "variant_id": 91328,
+      "uploads": {
+        "front": {
+          "id": "6ad32a75b21e9c4ac60587dc",
+          "sha256": "e1b8d23c0fd89cf45b7adc0d8e8614395973f563e7f06cdd7eb50998b8aac1b7",
+          "width": 1875,
+          "height": 1425
+        }
+      },
+      "cost_usd": 6.95,
+      "shipping_usd": 5.69,
+      "image_url": "/assets/products/reading-society-pouch/main_en.jpg",
+      "gallery": [
+        "/assets/products/reading-society-pouch/detail_en.jpg",
+        "/assets/products/reading-society-pouch/back_en.jpg",
+        "/assets/products/reading-society-pouch/context_en.jpg",
+        "/assets/products/reading-society-pouch/artwork-preview.jpg"
+      ]
+    },
+    {
+      "slug": "letters-from-the-library",
+      "title": "Letters from the Library — Lake Suwa Cards & Envelopes (10)",
+      "variant_name": "Lake Suwa · 10 flat cards + 10 envelopes",
+      "price_usd": 29.99,
+      "category": "book-accessories",
+      "description": "A small landscape. A few handwritten lines. Send a thank-you, a book recommendation or a note to someone you miss with this set of ten matching correspondence cards and ten envelopes. All ten cards carry the same Lake Suwa design; this is not a mixed-artwork set.\n\nThe front reproduces Lake Suwa in Shinano Province (ca. 1830–32), by Katsushika Hokusai, from Thirty-six Views of Mount Fuji. The complete composition is framed on the card. Public-domain artwork from The Metropolitan Museum of Art, Henry L. Phillips Collection; Open Access / CC0. Layout by The Books Wanderer.\n\nFlat, horizontal cards measuring approximately 4.9 × 3.5 inches (12.4 × 8.9 cm), on uncoated white paper. Printed on both sides: an illustrated front and a lightly ruled reverse with the English words “A note from my corner of the world” and “Dear”, plus the artwork credit. These cards do not fold. Envelopes are included; postage stamps are not.\n\nPrinted to order in the United States by Taylor through Printify. US delivery only. Standard US shipping is included; estimated delivery 5–10 days.",
+      "details_html": "<h3>Ten notes waiting to be written</h3><p>10 matching flat cards + 10 envelopes · Uncoated white paper · 4.9 × 3.5 in, horizontal · Printed front and ruled reverse · English printed wording.</p><p>The gallery includes manufacturer mockups and close views of both printed sides. All ten cards use the same design. Postage is not included. Colours and trimming may vary slightly in production.</p><h3>The landscape</h3><p><a href=\"https://www.metmuseum.org/art/collection/search/56240\" target=\"_blank\" rel=\"noopener\">Lake Suwa in Shinano Province</a>, ca. 1830–32, Katsushika Hokusai. The Metropolitan Museum of Art, Henry L. Phillips Collection. Public Domain / CC0.</p><p>Continue the landscape with <a href=\"/products/reading-society-notebook\">The Reading Society Notebook — Lake Suwa</a>.</p>",
+      "mockup_cameras": {
+        "front": "main_en.jpg",
+        "back": "back_en.jpg",
+        "close-up": "detail_en.jpg",
+        "set": "set_en.jpg"
+      },
+      "gallery_files": [
+        "set_en.jpg",
+        "back_en.jpg",
+        "detail_en.jpg",
+        "artwork-preview.jpg",
+        "reverse-preview.jpg"
+      ],
+      "max_landed_usd": 20,
+      "supplier": "printify",
+      "printify_id": "6ad32a7a28a1a95859014f6c",
+      "blueprint_id": 1101,
+      "provider_id": 228,
+      "variant_id": 82165,
+      "uploads": {
+        "front": {
+          "id": "6ad32a783fab5fb277b25d06",
+          "sha256": "05689990ed7c6bdac44d4e6fdfc9f8f21cc1ff556ca61034eb00e767a7b4b322",
+          "width": 1538,
+          "height": 1125
+        },
+        "back": {
+          "id": "6ad32a792fa6f209e8b91e8c",
+          "sha256": "d6e1b4c06be1dcc6cc3342129d9c17d7027b8f6921b18999d38b28164212f87c",
+          "width": 1538,
+          "height": 1125
+        }
+      },
+      "cost_usd": 11.1,
+      "shipping_usd": 7.39,
+      "image_url": "/assets/products/letters-from-the-library/main_en.jpg",
+      "gallery": [
+        "/assets/products/letters-from-the-library/set_en.jpg",
+        "/assets/products/letters-from-the-library/back_en.jpg",
+        "/assets/products/letters-from-the-library/detail_en.jpg",
+        "/assets/products/letters-from-the-library/artwork-preview.jpg",
+        "/assets/products/letters-from-the-library/reverse-preview.jpg"
+      ]
+    }
+  ]
+}
