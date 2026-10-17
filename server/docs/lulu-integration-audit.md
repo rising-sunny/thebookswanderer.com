@@ -12,7 +12,7 @@ La revisión autorizada del documento de contexto se realizó con consultas de l
 - `main.py`, `models.py`, `database.py`, `services/lulu.py`, `lulu_check.py` y `sync_order_tracking.py` coinciden por SHA-256 con el repositorio revisado.
 - `scripts/sync_lulu_tracking.py` existe todavía en disco y no está en `main`, pero no tiene cron activo. No se borró ni se sobrescribió.
 - Un único cron de seguimiento web ejecuta `sync_order_tracking.py` a los minutos 17 de cada dos horas. El registro muestra ciclos hasta las 10:17 UTC del 17 de octubre, sin excepciones en las últimas 100 líneas examinadas.
-- Un único cron Etsy ejecuta el worker unificado cada 15 minutos. Los dos cron antiguos están comentados. Se observó una ejecución programada a las 11:30 UTC; posteriormente apareció su registro, sin contenido ni traceback. Esto confirma programación y arranque, pero no una venta nueva procesada ni por sí solo el código de salida del worker.
+- Un único cron Etsy ejecuta el worker unificado cada 15 minutos. Los dos cron antiguos están comentados. Se observó una ejecución programada a las 11:30 UTC; posteriormente apareció su registro, sin contenido ni traceback. No había procesos del worker activos en la lectura posterior. Su punto de entrada captura errores y los imprime al registro; el procesamiento normal puede terminar en silencio si no hay recibos elegibles. Se comprobó el arranque programado y ausencia de errores registrados, pero no una venta nueva ni un código de salida histórico explícito.
 - Web y Etsy usan las mismas credenciales de cliente Lulu y pueden leer el mismo trabajo histórico, en estado `SHIPPED`, cuyo ID externo pertenece a Etsy. No se publicaron credenciales, identificadores de comprador ni respuestas completas.
 - La configuración unificada de Etsy conserva `create_jobs_enabled=true`, `manual_payment_confirmed=true` y `etsy_tracking_approved=false`. El teléfono comercial autorizado está configurado allí. La web todavía no tiene `LULU_MERCHANT_PHONE`.
 - La base de datos web no tiene pedidos registrados; no hay ventas web para una verificación real de fabricación, tracking o recuperación. El estado Etsy conserva un receipt histórico bloqueado y un job histórico.
@@ -59,7 +59,7 @@ La tabla adicional `lulu_submissions` se crea con el mecanismo de esquema existe
 
 - **PayPal sin retorno del navegador:** el código desplegado captura/verifica el pago en `/api/checkout/return`; no se encontró un webhook de PayPal ni un reconciliador de pagos capturados. La presencia de `PAYPAL_WEBHOOK_ID` no demuestra que exista un consumidor. Este PR no añade ni activa ese flujo. Hace falta diseñarlo con verificación del evento/importe y exclusión mutua, sin cobrar o reenviar pedidos en pruebas.
 - **Primera venta nueva:** no se ha verificado un pedido nuevo de extremo a extremo. El job histórico enviado de Etsy no demuestra que una venta web ni el worker consolidado hayan completado el flujo nuevo.
-- **Voronoi:** conservar el bloqueo descrito en el contexto; no se habilitó ni se sustituyeron sus archivos por los digitales.
+- **Voronoi:** la lectura final confirma siete entradas de catálogo, seis habilitadas y una deshabilitada intencionalmente: Voronoi. No se habilitó ni se sustituyeron sus archivos por los digitales.
 
 ## Evidencia de las lecturas
 
@@ -69,3 +69,6 @@ Ejecuciones temporales en la rama de auditoría; no despliegan la aplicación:
 - [PDF, dimensiones, acceso firmado y cron](https://github.com/rising-sunny/thebookswanderer.com/actions/runs/39028911552)
 - [Programación y registro del worker](https://github.com/rising-sunny/thebookswanderer.com/actions/runs/39029040016)
 - [Estado agregado posterior al ciclo](https://github.com/rising-sunny/thebookswanderer.com/actions/runs/39029257448)
+
+- [Catálogo retenido y procesos del worker](https://github.com/rising-sunny/thebookswanderer.com/actions/runs/39029426682)
+- [Punto de entrada y comportamiento de registro, con literales ocultos](https://github.com/rising-sunny/thebookswanderer.com/actions/runs/39029559380)
