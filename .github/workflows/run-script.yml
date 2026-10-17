@@ -38,61 +38,26 @@ jobs:
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
           """Read-only diagnostic. No checkout, worker execution, payments or notifications."""
-          import asyncio,collections,hashlib,json,os,re,shlex,shutil,sqlite3,subprocess,sys
+          import ast,collections,json,re,shlex,subprocess
           from pathlib import Path
-          ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT))
-          from dotenv import load_dotenv
-          load_dotenv(ROOT/'.env',override=True)
-          from services import lulu,digital
-          cfg=json.loads(Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json').read_text());out={'etsy_settings':{k:cfg.get('settings',{}).get(k) for k in ('create_jobs_enabled','manual_payment_confirmed','etsy_tracking_approved')},'pdfinfo_available':bool(shutil.which('pdfinfo'))}
-          cron=subprocess.run(['crontab','-l'],capture_output=True,text=True).stdout
-          logs=[]
-          for ln in cron.splitlines():
-           if '/unified/worker.py' in ln and not ln.lstrip().startswith('#'):
-            parts=shlex.split(ln)
-            for i,p in enumerate(parts):
-             if p in ('>>','>') and i+1<len(parts):logs.append(parts[i+1])
-          for p in ('/var/lib/mathrelaxing-etsy-lulu/worker.log','/var/log/tbw-tracking.log'):
-           if p not in logs:logs.append(p)
-          out['logs']=[]
-          for p in logs:
-           f=Path(p);d={'path':p,'exists':f.is_file()}
-           if f.is_file():
-            lines=f.read_text(errors='replace').splitlines()[-100:];d['lines_examined']=len(lines);d['bytes']=f.stat().st_size;d['modified_utc']=__import__('datetime').datetime.fromtimestamp(f.stat().st_mtime,__import__('datetime').timezone.utc).isoformat();d['signals']={k:sum(k.lower() in ln.lower() for ln in lines) for k in ('traceback','error','KeyError','401','No new','pending','created','held','open order','dry')};d['timestamps']=re.findall(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d)?','\n'.join(lines))[-8:]
-            d['exception_types']=sorted(set(re.findall(r'\b([A-Z][A-Za-z]*(?:Error|Exception)):', '\n'.join(lines))))
-           out['logs'].append(d)
-          journal=subprocess.run(['journalctl','-u','cron','--since','2 hours ago','--no-pager','-o','cat'],capture_output=True,text=True,timeout=20).stdout
-          out['unified_cron_executions_last_2h']=sum('/unified/worker.py' in l for l in journal.splitlines());out['cron_active']=subprocess.run(['systemctl','is-active','cron'],capture_output=True,text=True).stdout.strip()
-          from database import engine
-          con=sqlite3.connect('file:'+str(Path(engine.url.database).resolve())+'?mode=ro',uri=True);con.row_factory=sqlite3.Row
-          pairs=[]
-          for r in con.execute("SELECT p.slug,p.lulu_package,v.id,v.digital_file,v.print_cover FROM products p JOIN product_variants v ON p.id=v.product_id WHERE p.supplier='lulu' AND p.active=1 AND v.active=1"):
-           d={'slug':r['slug'],'variant_id':r['id'],'package':r['lulu_package'],'files':{}};names={}
-           for kind,col in (('interior','digital_file'),('cover','print_cover')):
-            f=digital.file_path(r[col]);names[kind]=r[col];info={'exists':bool(f)}
-            if f and shutil.which('pdfinfo'):
-             txt=subprocess.run(['pdfinfo',str(f)],capture_output=True,text=True,timeout=20).stdout
-             for line in txt.splitlines():
-              if line.startswith('Pages:'):info['pages']=int(line.split(':',1)[1].strip())
-              if line.startswith('Page size:'):
-               n=re.findall(r'[\d.]+',line.split(':',1)[1]);info['page_points']=[float(x) for x in n[:2]]
-            d['files'][kind]=info
-           pairs.append((d,names))
-          con.close()
-          async def main():
-           out['print_files']=[]
-           import httpx
-           async with httpx.AsyncClient(timeout=60,follow_redirects=False) as c:
-            for d,names in pairs:
-             for kind,name in names.items():
-              url=lulu.file_url('https://thebookswanderer.com',name)
-              r=await c.get(url);d['files'][kind]['signed_http_status']=r.status_code;d['files'][kind]['signed_pdf_header']=r.content.startswith(b'%PDF-');d['files'][kind]['unsigned_status']=(await c.get('https://thebookswanderer.com/api/print-files/'+name)).status_code
-             pages=d['files']['interior'].get('pages')
-             if pages:
-              try:
-               dims=await lulu.request('POST','/cover-dimensions/',{'pod_package_id':d['package'],'interior_page_count':pages,'unit':'pt'});d['expected_cover_points']=[float(dims['width']),float(dims['height'])];actual=d['files']['cover'].get('page_points');d['cover_dimensions_match']=bool(actual) and all(abs(a-b)<1 for a,b in zip(actual,d['expected_cover_points']))
-              except Exception as e:d['cover_dimension_check_error']=type(e).__name__
-             out['print_files'].append(d)
-           print(json.dumps(out,indent=2))
-          asyncio.run(main())
+          out={};cron=subprocess.run(['crontab','-l'],capture_output=True,text=True).stdout
+          entries=[]
+          for line in cron.splitlines():
+           if '/unified/worker.py' in line and not line.lstrip().startswith('#'):
+            entries.append({'tokens':[t if t in ('*','*/15','/usr/bin/python3','check','--config','>>','>','2>&1') or (t.startswith('/') and re.fullmatch(r'[/a-zA-Z0-9_.-]+',t)) else '<other>' for t in shlex.split(line)],'literal_backslash_n':r'\n' in line})
+          out['unified_cron_entries']=entries
+          root=Path('/opt/etsy_lulu_fulfill/lulu_books/unified')
+          for name in ('worker.py','core.py'):
+           tree=ast.parse((root/name).read_text());out[name]={'functions':[n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]}
+           for n in ast.walk(tree):
+            if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in ('add_argument','FileHandler'):
+             strings=[x.value for x in n.args if isinstance(x,ast.Constant) and isinstance(x.value,str)];out[name].setdefault(n.func.attr,[]).append(strings)
+          for dirname in ('/var/lib/mathrelaxing-etsy-lulu','/root/lulu-unificado'):
+           p=Path(dirname);out[dirname]={'exists':p.exists(),'log_files':[str(x) for x in p.glob('*.log')] if p.is_dir() else []}
+          log=Path('/var/log/syslog')
+          if log.exists():
+           # Never print system log lines; retain only cycle counts and safe exception class names.
+           lines=log.read_text(errors='replace').splitlines()[-25000:];ours=[l for l in lines if '/unified/worker.py' in l]
+           out['syslog']={'unified_cron_commands':len(ours),'recent_timestamps':[l[:19] for l in ours[-5:]]}
+          print(json.dumps(out,indent=2))
           PYCODE
