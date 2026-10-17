@@ -38,21 +38,19 @@ jobs:
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
           """Read-only diagnostic. No checkout, worker execution, payments or notifications."""
-          import collections,json,re
+          import ast,json,re,subprocess
           from pathlib import Path
-          p=Path('/var/lib/mathrelaxing-etsy-lulu/worker.log');out={'log_exists':p.is_file()}
-          if p.is_file():
-           text=p.read_text(errors='replace');out['bytes']=len(text.encode());out['traceback_present']='Traceback' in text;out['exception_types']=sorted(set(re.findall(r'\b([A-Z][A-Za-z]*(?:Error|Exception)):',text)));out['timestamps']=re.findall(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d)?',text)[-6:]
-           # Worker summaries contain counts/booleans, but receipt ids and payloads must stay private.
-           summary=[];allowed={'checked','created','skipped','held','pending','errors','submitted','processed','ok','dry_run','create_jobs_enabled','count','scanned','seen','eligible','duplicates','would_create','legacy_skipped','jobs_created'}
-           for line in text.splitlines():
-            try:d=json.loads(line)
-            except ValueError:continue
-            if isinstance(d,dict):
-             x={k:(len(v) if isinstance(v,(dict,list)) else v) for k,v in d.items() if k in allowed and isinstance(v,(bool,int,float,list,dict))};x['field_count']=len(d);summary.append(x)
-           out['structured_summaries']=summary[-6:]
-          state=Path('/var/lib/mathrelaxing-etsy-lulu/state.json')
-          if state.exists():
-           s=json.loads(state.read_text());out['preserved_history_counts']={k:len(v) for k,v in s.items() if k in ('receipts','legacy_blocked_receipts','legacy_jobs') and isinstance(v,(list,dict))}
+          root=Path('/opt/etsy_lulu_fulfill/lulu_books/unified');cfg=json.loads((root/'config.json').read_text());cat=json.loads(Path(cfg['catalog_path']).read_text());books=cat.get('books',{});rows=list(books.values()) if isinstance(books,dict) else books
+          out={'catalog_rows':len(rows),'enabled_rows':sum(bool(x.get('enabled')) for x in rows),'disabled_rows':sum(not x.get('enabled') for x in rows)}
+          if isinstance(books,dict):v=books.get('4533709063',{})
+          else:v=next((x for x in rows if str(x.get('listing_id'))=='4533709063'),{})
+          out['voronoi']={'found':bool(v),'enabled':v.get('enabled'),'intentionally_disabled':v.get('intentionally_disabled')}
+          text=(root/'worker.py').read_text();tree=ast.parse(text);out['worker_print_call_count']=sum(isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='print' for n in ast.walk(tree))
+          ps=subprocess.run(['ps','-eo','args='],capture_output=True,text=True).stdout;out['active_unified_worker_processes']=sum('/unified/worker.py' in x for x in ps.splitlines())
+          log=Path('/var/lib/mathrelaxing-etsy-lulu/worker.log');txt=log.read_text(errors='replace') if log.exists() else '';out['worker_log']={'exists':log.exists(),'bytes':len(txt.encode()),'traceback': 'Traceback' in txt,'error_class_count':len(re.findall(r'\b\w+Error:',txt))}
+          # Identify what the worker does with a normal CLI result without exposing config.
+          for fn in tree.body:
+           if isinstance(fn,ast.FunctionDef) and fn.name=='main':
+            out['worker_main_call_names']=sorted({n.func.attr if isinstance(n.func,ast.Attribute) else n.func.id for n in ast.walk(fn) if isinstance(n,ast.Call) and isinstance(n.func,(ast.Name,ast.Attribute))})
           print(json.dumps(out,indent=2))
           PYCODE
