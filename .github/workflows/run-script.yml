@@ -34,49 +34,56 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Prepare protected Lulu deployment
+      - name: Verify deployed Lulu without creating orders
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Authorized preparation: private backups and existing business phone only."""
-          import hashlib,json,os,re,shutil,sqlite3,stat,subprocess,sys
-          from datetime import datetime,timezone
+          """Post-deploy checks: no job creation, captures, payments or notifications."""
+          import asyncio,collections,hashlib,json,os,re,sqlite3,subprocess,sys
           from pathlib import Path
           ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT))
-          from dotenv import dotenv_values,set_key
-          EXPECTED_HASHES = {'main.py': 'f0bcbd5e7858d6441e152401a6d5d869c0e666243a1398a169ce7728a7f9e79a', 'models.py': '7d43fb813be50014d5c26bb7185578c5cd16252a10dca6584d4af391d0e0ceb8', 'database.py': '11c3e4e2a620584d47345f599ed416634d4f35a363f4c583976472de7579ceda', 'services/lulu.py': 'd63f5b370e819976aaa1e11a2a35243b8b4275c5690814358b434e6e6be0ff6b', 'scripts/sync_order_tracking.py': '29398f56ec7bf7f6fb2a89f6fd3fe3a405f117f34327cb0354662277c4075203'}
-          for name,expected in EXPECTED_HASHES.items():
-           if hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=expected:
-            raise RuntimeError('Deployed source differs from audited main; preparation stopped')
-          cfg_path=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');cfg=json.loads(cfg_path.read_text())
-          if not cfg.get('settings',{}).get('manual_payment_confirmed'):raise RuntimeError('Recorded manual-payment configuration is missing')
-          phone=re.sub(r'[^0-9+]','',str(cfg.get('settings',{}).get('merchant_phone') or ''))
-          if not re.fullmatch(r'\+?[0-9]{7,15}',phone) or len(set(phone.lstrip('+')))<2:raise RuntimeError('Existing approved business phone is invalid; no values were emitted')
-          env_path=ROOT/'.env';env=dotenv_values(env_path);existing=re.sub(r'[^0-9+]','',str(env.get('LULU_MERCHANT_PHONE') or ''))
-          if existing and (not re.fullmatch(r'\+?[0-9]{7,15}',existing) or len(set(existing.lstrip('+')))<2):raise RuntimeError('Existing web fallback needs review; configuration unchanged')
-          os.umask(0o077);base=Path('/var/backups/thebookswanderer-lulu');base.mkdir(mode=0o700,parents=True,exist_ok=True);os.chmod(base,0o700)
-          folder=base/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ');folder.mkdir(mode=0o700)
-          shutil.copy2(env_path,folder/'server.env');os.chmod(folder/'server.env',0o600)
-          for name in EXPECTED_HASHES:
-           target=folder/'server'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/name,target)
-          unit=Path('/etc/systemd/system/thebookswanderer.service')
-          if unit.exists():shutil.copy2(unit,folder/'thebookswanderer.service')
-          cron=subprocess.run(['crontab','-l'],capture_output=True,text=True,check=True).stdout
-          (folder/'root-crontab.txt').write_text(cron)
-          url=env.get('DATABASE_URL') or f'sqlite:///{ROOT / "data/store.db"}'
-          if not url.startswith('sqlite:///'):raise RuntimeError('Unexpected database backend; no configuration changed')
-          dbpath=Path(url[len('sqlite:///'):]);dbpath=dbpath if dbpath.is_absolute() else ROOT/dbpath
-          with sqlite3.connect('file:'+str(dbpath)+'?mode=ro',uri=True) as source, sqlite3.connect(folder/'store.db') as target:
-           source.backup(target)
-           if target.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise RuntimeError('Database backup validation failed')
-           counts={t:target.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ('orders','order_items','products','product_variants')}
-          files={'config':cfg_path,'catalog':Path(cfg['catalog_path']),'worker':cfg_path.parent/'worker.py','core':cfg_path.parent/'core.py'}
-          meta={'backup_dir':str(folder),'database_path':str(dbpath),'counts':counts,'root_cron_sha256':hashlib.sha256(cron.encode()).hexdigest(),'etsy_static_sha256':{k:hashlib.sha256(p.read_bytes()).hexdigest() for k,p in files.items()},'source_hashes':EXPECTED_HASHES}
-          (folder/'manifest.json').write_text(json.dumps(meta,indent=2));(base/'latest.json').write_text(json.dumps(meta,indent=2))
-          changed=False
-          if not existing:
-           original=env_path.stat();set_key(env_path,'LULU_MERCHANT_PHONE',phone,quote_mode='always');os.chown(env_path,original.st_uid,original.st_gid);os.chmod(env_path,stat.S_IMODE(original.st_mode));changed=True
-          # Re-load through the configuration loader and confirm the other bindings survived.
-          after=dotenv_values(env_path)
-          if any(v!=after.get(k) for k,v in env.items() if k!='LULU_MERCHANT_PHONE'):raise RuntimeError('Unexpected configuration difference detected; use private backup before deployment')
-          print(json.dumps({'backup_ready':True,'backup_integrity':'ok','web_counts':counts,'business_phone_configured':bool(after.get('LULU_MERCHANT_PHONE')),'phone_reused_from_existing_configuration':changed,'etsy_configuration_changed':False,'cron_changed':False,'orders_created':0,'payments_made':0}))
+          from dotenv import load_dotenv
+          load_dotenv(ROOT/'.env',override=True)
+          from services import lulu,digital,lulu_submission
+          EXPECTED_HASHES={'main.py': 'eee2b6dd130027cc3d3a108a9c9464a344f49e62e5913fdab331ded3bab44480', 'models.py': '27a8e052ea4c4955ac4bb4c3efd3beecd25b368636ec0acbcdf439b2be8f0961', 'database.py': 'dd573931531f297d5492a49767ea7dd64a439dc045463a3c9b5ff5cfe44a8c07', 'services/lulu.py': '9da4201acd090561e602f3729a5161dc694c757e50f03356c35a4d8a434dfb62', 'services/lulu_submission.py': 'd5a847aa9d2019298d04fded8462f50b1c1dd98c643cc0a6e32b8326b52493a5', 'scripts/sync_order_tracking.py': '876fa21ed51c1c9972f2a4238676848e4d318ade1882eecdd660c5c2d41eb9d0', 'scripts/reconcile_lulu_submissions.py': '216941afaa2ff48d96aec6ad2c99f3021322c3f359478f60445461f5e549db7c'}
+          out={'source_matches':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()==sha for name,sha in EXPECTED_HASHES.items()}}
+          assert all(out['source_matches'].values()),'Deployed source does not match merged release'
+          base=Path('/var/backups/thebookswanderer-lulu');meta=json.loads((base/'latest.json').read_text());folder=Path(meta['backup_dir']);out['backup_exists']=(folder/'store.db').is_file() and (folder/'server.env').is_file()
+          with sqlite3.connect('file:'+str(folder/'store.db')+'?mode=ro',uri=True) as db:out['backup_integrity']=db.execute('PRAGMA quick_check').fetchone()[0]
+          with sqlite3.connect('file:'+meta['database_path']+'?mode=ro',uri=True) as db:
+           db.row_factory=sqlite3.Row
+           counts={t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in meta['counts']};out['web_counts']=counts;out['existing_counts_preserved']=all(counts[k]>=v for k,v in meta['counts'].items())
+           cols=[dict(x) for x in db.execute('PRAGMA table_info(lulu_submissions)')];out['submission_table_exists']=bool(cols);out['submission_order_key_unique']=any(x['name']=='order_id' and x['pk']==1 for x in cols);out['submission_rows']=db.execute('SELECT count(*) FROM lulu_submissions').fetchone()[0]
+           mappings=db.execute("SELECT p.slug,p.lulu_package,v.digital_file,v.print_cover FROM products p JOIN product_variants v ON v.product_id=p.id WHERE p.active=1 AND p.supplier='lulu' AND v.active=1").fetchall()
+           out['lulu_products']=len({x['slug'] for x in mappings});out['lulu_variants']=len(mappings);out['all_print_files_present']=all(x['lulu_package'] and digital.file_path(x['digital_file']) and digital.file_path(x['print_cover']) for x in mappings)
+           first_print=mappings[0]['digital_file'] if mappings else None
+          assert out['submission_table_exists'] and out['submission_order_key_unique'] and out['all_print_files_present'] and out['existing_counts_preserved']
+          cp=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');cfg=json.loads(cp.read_text());files={'config':cp,'catalog':Path(cfg['catalog_path']),'worker':cp.parent/'worker.py','core':cp.parent/'core.py'}
+          out['etsy_files_unchanged']={k:hashlib.sha256(p.read_bytes()).hexdigest()==meta['etsy_static_sha256'][k] for k,p in files.items()}
+          cron=subprocess.run(['crontab','-l'],capture_output=True,text=True,check=True).stdout;out['root_cron_unchanged']=hashlib.sha256(cron.encode()).hexdigest()==meta['root_cron_sha256'];out['manual_payment_record_preserved']=cfg.get('settings',{}).get('manual_payment_confirmed') is True;out['etsy_tracking_still_unapproved']=cfg.get('settings',{}).get('etsy_tracking_approved') is False
+          assert all(out['etsy_files_unchanged'].values()) and out['root_cron_unchanged'] and out['manual_payment_record_preserved'] and out['etsy_tracking_still_unapproved']
+          # Exercise only pure validation functions in memory, without submitting an address.
+          normalized=lambda value:re.sub(r'[^0-9+]','',str(value or ''))
+          phone=normalized(os.getenv('LULU_MERCHANT_PHONE'));out['phone_matches_authorized_business_contact']=bool(phone) and phone==normalized(cfg['settings'].get('merchant_phone'))
+          a=lulu.address('Configuration check','1 Verification Street','','Verification','NY','US','10001','');out['omitted_phone_uses_configured_fallback']=a['phone_number']==phone
+          try:lulu.address('Configuration check','1 Verification Street','','Verification','NY','US','10001','invalid')
+          except lulu.LuluError:out['invalid_phone_rejected']=True
+          else:out['invalid_phone_rejected']=False
+          assert out['phone_matches_authorized_business_contact'] and out['omitted_phone_uses_configured_fallback'] and out['invalid_phone_rejected']
+          out['service_active']=subprocess.run(['systemctl','is-active','thebookswanderer.service'],capture_output=True,text=True).stdout.strip()=='active'
+          # Run the deployed report with the application's normal user and configuration.
+          r=subprocess.run(['runuser','-u','www-data','--','.venv/bin/python','scripts/reconcile_lulu_submissions.py'],cwd=ROOT,capture_output=True,text=True,timeout=120)
+          if r.returncode:raise RuntimeError('Read-only reconciliation report failed; no response bodies emitted')
+          out['reconciliation']=json.loads(r.stdout);assert out['reconciliation']['applied']==0
+          async def main():
+           import httpx
+           d=await lulu.request('GET','/print-jobs/?page_size=100')
+           out['lulu_read_access']=True;out['visible_lulu_jobs']=d.get('count');out['lulu_status_counts']=dict(collections.Counter((x.get('status') or {}).get('name','unknown') for x in d.get('results',[])))
+           async with httpx.AsyncClient(timeout=45,follow_redirects=False) as c:
+            r=await c.get('https://thebookswanderer.com/api/health');out['web_healthy']=r.status_code==200 and r.json().get('ok') is True
+            if first_print:
+             r=await c.get(lulu.file_url('https://thebookswanderer.com',first_print));out['signed_pdf_access_ok']=r.status_code==200 and r.content.startswith(b'%PDF-')
+             r=await c.get('https://thebookswanderer.com/api/print-files/'+first_print);out['unsigned_pdf_still_protected']=r.status_code==404
+           assert out['web_healthy'] and out['service_active'] and out['signed_pdf_access_ok'] and out['unsigned_pdf_still_protected']
+           print(json.dumps(out,indent=2))
+          asyncio.run(main())
           PYCODE
