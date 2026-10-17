@@ -83,6 +83,25 @@ def legs_for(order: Order, items: list[OrderItem], products: dict[int, Product])
     return legs
 
 
+def all_legs_submitted(order, items, products) -> bool:
+    """A shipped leg cannot hide another supplier that never accepted its lines."""
+    suppliers = {getattr(products.get(i.product_id), 'supplier', '') or 'cj' for i in items}
+    if 'lulu' in suppliers and not order.lulu_job_id:
+        return False
+    if 'printify' in suppliers and not order.printify_order_id:
+        return False
+    if 'cj' in suppliers:
+        if not order.cj_order_id:
+            return False
+        parts = [p.split(':', 1) for p in order.cj_order_id.split(',') if p]
+        if all(len(p) == 2 for p in parts):
+            origins = {(products[i.product_id].from_country or 'CN').upper() for i in items
+                       if (getattr(products.get(i.product_id), 'supplier', '') or 'cj') == 'cj'}
+            if not origins.issubset({origin for origin, ref in parts if ref}):
+                return False
+    return True
+
+
 async def check_cj(leg: Leg) -> None:
     d = await cj.get_order(leg.ref)
     leg.raw = str(d.get("orderStatus") or "").upper()
@@ -130,7 +149,7 @@ async def check_lulu(leg: Leg) -> None:
     if leg.raw == "SHIPPED":
         leg.status = "SHIPPED"
     elif leg.raw == "UNPAID":
-        leg.status, leg.help = "PROBLEM", f"Add or fix the card at lulu.com (Account > Payment). {st.get('messages') or ''}"
+        leg.status, leg.help = "WAITING", "Review the job and pay it manually in the Lulu Print Job portal. Keep automatic and batch payments disabled."
     elif leg.raw in ("REJECTED", "CANCELED", "ERROR"):
         leg.status, leg.help = "PROBLEM", f"Check the job at developers.lulu.com, then re-order or refund. {st.get('messages') or ''}"
     else:
@@ -208,7 +227,7 @@ async def main() -> int:
                 await alert(order, leg)
                 print("    alert sent to the shop inbox")
         # Downloads need no shipping; the order is done once every leg shipped.
-        if not dry and all(leg.status == "SHIPPED" for leg in legs):
+        if not dry and all_legs_submitted(order, items, products) and all(leg.status == "SHIPPED" for leg in legs):
             order.status = "shipped"
             db.commit()
             print(f"  #{order.id}: all legs shipped")

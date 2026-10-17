@@ -32,6 +32,7 @@ from services import email as email_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
 from services import printify as printify_service  # noqa: E402
 from services import lulu as lulu_service  # noqa: E402
+from services import lulu_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from ssr import (  # noqa: E402
     affiliate_by_slug,
@@ -1370,6 +1371,16 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     ):
         raise HTTPException(422, "Please complete the shipping address.")
 
+    if any(p.supplier == lulu_service.SUPPLIER for p, _, _ in cart):
+        try:
+            lulu_service.address(
+                body.customer_name, body.shipping_address, body.shipping_address2 or "",
+                body.shipping_city, body.shipping_province, body.shipping_country_code,
+                body.shipping_zip or "", body.phone or "",
+            )
+        except lulu_service.LuluError:
+            raise HTTPException(422, "Please provide a valid name, shipping address and phone number for your printed book.") from None
+
     quote = await shipping_quote(
         ShippingQuoteIn(
             country_code=body.shipping_country_code,
@@ -1760,9 +1771,7 @@ async def _submit_to_lulu(order: Order, db: Session, items: list[OrderItem], pro
         order.shipping_city, order.shipping_province, order.shipping_country_code,
         order.shipping_zip or "", order.phone or "",
     )
-    result = await lulu_service.create_print_job(f"tbw-{order.id}", lines, address)
-    order.lulu_job_id = str(result.get("id") or "")
-    db.commit()
+    await lulu_submission.submit(db, order, lines, address)
 
 
 async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed: bool = False) -> None:

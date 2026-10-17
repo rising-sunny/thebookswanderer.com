@@ -3,7 +3,8 @@ Lulu Print API client (print-on-demand books and booklets).
 
 Paid orders become Lulu print jobs; Lulu fetches the interior and cover
 PDFs from /api/print-files/<name>?sig=…, a signed link to the private
-DIGITAL_DIR, and charges the card on file in the Lulu account.
+DIGITAL_DIR. Creation does not explicitly pay the job. Manual payment requires
+Auto Pay and batch payments to remain disabled in the connected Lulu account.
 
 Env:
   LULU_CLIENT_KEY / LULU_CLIENT_SECRET   API keys (developers.lulu.com > API Keys)
@@ -13,6 +14,7 @@ Env:
                                          countries with a sane MAIL rate)
   LULU_SHIPPING_LEVEL                    MAIL (default), PRIORITY_MAIL, GROUND…
   LULU_CONTACT_EMAIL                     who Lulu writes to about a job
+  LULU_MERCHANT_PHONE                    real business fallback if buyer omits phone
 Docs: https://api.lulu.com/docs/
 """
 from __future__ import annotations
@@ -109,16 +111,22 @@ def _split_street(line1: str, line2: str, limit: int = 30) -> tuple[str, str]:
 
 def address(name: str, line1: str, line2: str, city: str, province: str, country: str,
             postcode: str, phone: str) -> dict[str, str]:
+    name = (name or "").strip()
+    if not name:
+        raise LuluError("Lulu recipient name is required")
+    phone = re.sub(r"[^0-9+]", "", (phone or "").strip() or _env("LULU_MERCHANT_PHONE"))
+    if not re.fullmatch(r"\+?[0-9]{7,15}", phone) or len(set(phone.lstrip('+'))) < 2:
+        raise LuluError("A valid recipient or configured business phone is required for Lulu")
     street1, street2 = _split_street(line1, line2)
     if len(street2) > 30:
-        raise LuluError(f"address too long for Lulu's 30-character street lines: {line1!r} / {line2!r}")
+        raise LuluError("Address exceeds Lulu's 30-character street lines")
     out = {
-        "name": (name or "").strip()[:60] or "Customer",
+        "name": name[:60],
         "street1": street1,
         "city": (city or "").strip(),
         "country_code": (country or "").upper(),
         "postcode": (postcode or "").strip(),
-        "phone_number": re.sub(r"[^0-9+]", "", phone or "") or "0000000000",
+        "phone_number": phone,
     }
     if street2:
         out["street2"] = street2

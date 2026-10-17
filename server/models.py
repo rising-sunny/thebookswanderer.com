@@ -200,6 +200,19 @@ class Order(Base):
     )
 
 
+class LuluSubmission(Base):
+    """Durable once-only claim; uncertain POSTs are reconciled, never resent."""
+
+    __tablename__ = "lulu_submissions"
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), primary_key=True)
+    state: Mapped[str] = mapped_column(String(24), default="checking")
+    job_id: Mapped[str] = mapped_column(String(80), default="")
+    manifest_hash: Mapped[str] = mapped_column(String(64), default="")
+    error_kind: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 class OrderItem(Base):
     __tablename__ = "order_items"
 
