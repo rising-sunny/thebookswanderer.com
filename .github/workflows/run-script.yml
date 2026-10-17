@@ -14,7 +14,7 @@ on:
         default: ""
 
 concurrency:
-  group: run-script-vps
+  group: lulu-readonly-audit
   cancel-in-progress: false
 
 env:
@@ -28,26 +28,111 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate input
-        env:
-          SCRIPT: ${{ inputs.script }}
-        run: |
-          [[ "$SCRIPT" =~ ^[a-z0-9_]+\.py$ ]] || { echo "invalid script name"; exit 1; }
-          [ -f "server/scripts/$SCRIPT" ] || { echo "no such script in the repo"; exit 1; }
-
       - name: SSH key
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Run
-        env:
-          SCRIPT: ${{ inputs.script }}
-          ARGS: ${{ inputs.args }}
+      - name: Read-only Lulu audit
         run: |
-          read -ra argv <<< "$ARGS"
-          cmd=$(printf '%q' "scripts/$SCRIPT")
-          if (( ${#argv[@]} )); then cmd+=$(printf ' %q' "${argv[@]}"); fi
-          ssh -o BatchMode=yes "$VPS_HOST" \
-            "cd $REMOTE/server && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python $cmd"
+          ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
+          """Read-only diagnostic. No checkout, worker execution, payments or notifications."""
+          import asyncio,ast,collections,hashlib,json,os,sqlite3,subprocess,sys
+          from pathlib import Path
+          ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT))
+          from dotenv import dotenv_values,load_dotenv
+          load_dotenv(ROOT/'.env',override=True)
+          from services import lulu,digital
+          out={}
+          def run(*args):return subprocess.run(args,capture_output=True,text=True,timeout=15).stdout.strip()
+          def safe_file(p):
+           p=Path(p);return {'exists':p.is_file(),'sha256':hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None}
+          files=['main.py','models.py','database.py','services/lulu.py','scripts/lulu_check.py','scripts/sync_lulu_tracking.py','scripts/sync_order_tracking.py']
+          out['web_files']={f:safe_file(ROOT/f) for f in files}
+          out['service']={k:run('systemctl','show','thebookswanderer.service','--property='+k,'--value') for k in ('ActiveState','SubState','User','WorkingDirectory','EnvironmentFiles','ExecStart')}
+          out['python']={'exists':Path(sys.executable).is_file(),'executable':sys.executable}
+          out['web_configuration']={k:bool(os.getenv(k,'')) for k in ('LULU_CLIENT_KEY','LULU_CLIENT_SECRET','LULU_CONTACT_EMAIL','SECRET_KEY','PAYPAL_CLIENT_ID','PAYPAL_SECRET','PAYPAL_WEBHOOK_ID','LULU_MERCHANT_PHONE')}
+          out['lulu_environment']='sandbox' if os.getenv('LULU_ENV')=='sandbox' else 'production'
+          # Emit only known scheduled script names, schedule and whether commented.
+          crons=[('root',run('crontab','-l'))]
+          for f in Path('/etc/cron.d').iterdir():
+           if f.is_file():crons.append((str(f),f.read_text()))
+          known=('sync_lulu_tracking.py','sync_order_tracking.py','lulu_check.py','run_check.sh','fulfillment.py','worker.py','recover_lulu_orders.py')
+          out['cron']=[]
+          for source,content in crons:
+           for line in content.splitlines():
+            names=[k for k in known if k in line]
+            if names:out['cron'].append({'source':source,'commented':line.lstrip().startswith('#'),'schedule':' '.join(line.lstrip('# ').split()[:5]),'scripts':names,'unified': '/unified/' in line})
+          # Query DB using SQLite read-only URI, never import application startup/migrations.
+          from database import engine
+          url=engine.url
+          out['database']={'driver':url.drivername,'sqlite_path':str(url.database) if url.drivername.startswith('sqlite') else None}
+          if url.drivername.startswith('sqlite'):
+           db=sqlite3.connect('file:'+str(Path(url.database).resolve())+'?mode=ro',uri=True);db.row_factory=sqlite3.Row
+           out['order_status_counts']=[dict(r) for r in db.execute('SELECT status,count(*) as n FROM orders GROUP BY status')]
+           out['lulu_order_counts']={'with_job':db.execute("SELECT count(*) FROM orders WHERE coalesce(lulu_job_id,'')<>''").fetchone()[0],'paid_with_lulu_lines_no_job':db.execute("SELECT count(DISTINCT o.id) FROM orders o JOIN order_items i ON i.order_id=o.id JOIN products p ON p.id=i.product_id WHERE p.supplier='lulu' AND o.status IN ('paid','cj_submitted','shipped') AND coalesce(o.lulu_job_id,'')=''").fetchone()[0]}
+           out['lulu_products']=[]
+           for p in db.execute("SELECT id,slug,lulu_package FROM products WHERE supplier='lulu' AND active=1"):
+            row={'slug':p['slug'],'package':p['lulu_package'],'variants':[]}
+            for v in db.execute('SELECT id,name,digital_file,print_cover FROM product_variants WHERE product_id=? AND active=1',(p['id'],)):
+             d={'variant_id':v['id'],'files':{}}
+             for kind,column in [('interior','digital_file'),('cover','print_cover')]:
+              file=digital.file_path(v[column]);info={'exists':bool(file)}
+              if file:
+               info.update(bytes=file.stat().st_size,sha256=hashlib.sha256(file.read_bytes()).hexdigest());
+               try:
+                import fitz
+                pdf=fitz.open(file);info.update(pages=len(pdf),page_points=[round(pdf[0].rect.width,2),round(pdf[0].rect.height,2)])
+               except ImportError:info['pdf_library_available']=False
+              d['files'][kind]=info
+             row['variants'].append(d)
+            out['lulu_products'].append(row)
+           db.close()
+          # Etsy: configuration selectors and aggregate state only. Never run/import its worker.
+          config_path=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');out['etsy']={'config_exists':config_path.is_file()}
+          web_creds={k:os.getenv(k,'') for k in ('LULU_CLIENT_KEY','LULU_CLIENT_SECRET')};etsy_env={}
+          if config_path.is_file():
+           cfg=json.loads(config_path.read_text());settings=cfg.get('settings',{})
+           out['etsy'].update(selected_credentials_root=cfg.get('selected_credentials_root'),config_keys=sorted(cfg),settings_keys=sorted(settings),merchant_phone_configured=bool(settings.get('merchant_phone')),tracking_approved=settings.get('etsy_tracking_approved',cfg.get('etsy_tracking_approved')))
+           for f in cfg.get('credentials_env_files',[]):
+            if Path(f).is_file():etsy_env.update({k:v for k,v in dotenv_values(f).items() if v is not None})
+           # Resolve normal configured sources only; fall back to selected root's known app dotenv.
+           selected=cfg.get('selected_credentials_root')
+           if selected:
+            for f in (Path(selected)/'.env',Path(selected)/'lulu_books/.env'):
+             if f.is_file():etsy_env.update({k:v for k,v in dotenv_values(f).items() if v is not None})
+           catalog=Path(cfg.get('catalog_path') or config_path.parent/'catalog.json')
+           if catalog.is_file():
+            cat=json.loads(catalog.read_text());out['etsy']['catalog_structure']={'type':type(cat).__name__,'keys':list(cat)[:12] if isinstance(cat,dict) else None}
+           state=Path('/var/lib/mathrelaxing-etsy-lulu/state.json')
+           if state.is_file():
+            st=json.loads(state.read_text());out['etsy']['state_keys']=sorted(st) if isinstance(st,dict) else [];out['etsy']['state_modified_utc']=__import__('datetime').datetime.fromtimestamp(state.stat().st_mtime,__import__('datetime').timezone.utc).isoformat()
+            out['etsy']['state_sizes']={k:len(v) for k,v in st.items() if isinstance(v,(dict,list))}
+           log=Path('/var/lib/mathrelaxing-etsy-lulu/worker.log')
+           if log.is_file():
+            lines=log.read_text(errors='replace').splitlines()[-60:];out['etsy']['recent_log_signals']={k:sum(k.lower() in ln.lower() for ln in lines) for k in ('error','traceback','401','check','created','pending','skipped','held')};out['etsy']['log_modified_utc']=__import__('datetime').datetime.fromtimestamp(log.stat().st_mtime,__import__('datetime').timezone.utc).isoformat();out['etsy']['log_size']=log.stat().st_size
+          out['same_lulu_client_configuration']=bool(etsy_env.get('LULU_CLIENT_KEY')) and all(etsy_env.get(k)==v for k,v in web_creds.items())
+          async def jobs_for(name,env=None):
+           old={k:os.environ.get(k) for k in ('LULU_CLIENT_KEY','LULU_CLIENT_SECRET','LULU_ENV')}
+           try:
+            if env:
+             for k in old:
+              if k in env:os.environ[k]=env[k]
+            lulu._TOKEN.clear();d=await lulu.request('GET','/print-jobs/?page_size=100')
+            jobs=d.get('results',[]) if isinstance(d,dict) else d
+            out[name]={'read_success':True,'count':d.get('count') if isinstance(d,dict) else len(jobs),'returned':len(jobs),'statuses':dict(collections.Counter((j.get('status') or {}).get('name','unknown') for j in jobs)),'external_prefix_counts':dict(collections.Counter('tbw' if str(j.get('external_id','')).startswith('tbw-') else 'etsy' if str(j.get('external_id','')).startswith('etsy-') else 'other' for j in jobs))}
+            return {str(j['id']) for j in jobs}
+           except Exception as e:out[name]={'read_success':False,'error_type':type(e).__name__,'error_summary':str(e) if isinstance(e,lulu.LuluError) else 'Request failed without displaying response'};return set()
+           finally:
+            lulu._TOKEN.clear()
+            for k,v in old.items():
+             if v is None:os.environ.pop(k,None)
+             else:os.environ[k]=v
+          async def main():
+           a=await jobs_for('web_lulu_access')
+           if etsy_env.get('LULU_CLIENT_KEY'):
+            b=await jobs_for('etsy_lulu_access',etsy_env);out['shared_visible_jobs']=len(a&b)
+           print(json.dumps(out,indent=2,default=str))
+          asyncio.run(main())
+          PYCODE
