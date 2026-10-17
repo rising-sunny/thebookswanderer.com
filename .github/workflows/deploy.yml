@@ -66,7 +66,7 @@ jobs:
             ssr.py urls.py live.py i18n.py "$VPS_HOST:$REMOTE/server/"
           scp -o BatchMode=yes -r i18n "$VPS_HOST:$REMOTE/server/"
           scp -o BatchMode=yes \
-            services/__init__.py services/cj.py services/paypal.py services/pricing.py \
+            services/__init__.py services/cj.py services/paypal.py services/paypal_recovery.py services/pricing.py \
             services/categories.py services/email.py services/meta_capi.py services/health.py \
             services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
             services/printify.py services/digital.py services/lulu.py services/lulu_submission.py \

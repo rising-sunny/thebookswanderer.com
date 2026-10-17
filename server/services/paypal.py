@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import os
+import hashlib
 
 import httpx
 
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_SECRET = os.getenv("PAYPAL_SECRET", "")
+PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID", "")
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "live")
 
 BASE_URL = (
@@ -115,10 +117,11 @@ async def capture_order(paypal_order_id: str) -> dict:
                 "Content-Type": "application/json",
                 # Full body, so the caller can check custom_id and amount.
                 "Prefer": "return=representation",
+                "PayPal-Request-Id": "tbw-cap-" + hashlib.sha256(paypal_order_id.encode()).hexdigest()[:28],
             },
         )
         if resp.status_code >= 400:
-            raise PayPalError(f"capture failed: {resp.status_code} {resp.text}")
+            raise PayPalError(f"PayPal capture failed (HTTP {resp.status_code})")
         return resp.json()
 
 
@@ -131,3 +134,32 @@ async def get_order(paypal_order_id: str) -> dict:
         )
         resp.raise_for_status()
         return resp.json()
+
+
+async def verify_webhook(headers, event: dict) -> bool:
+    """Ask PayPal to verify its signed event against this store's webhook ID.
+
+    Never download the supplied certificate URL or trust event fields first.
+    Verification errors propagate so PayPal can retry a temporary outage.
+    """
+    fields = {
+        "auth_algo": "paypal-auth-algo",
+        "cert_url": "paypal-cert-url",
+        "transmission_id": "paypal-transmission-id",
+        "transmission_sig": "paypal-transmission-sig",
+        "transmission_time": "paypal-transmission-time",
+    }
+    if not PAYPAL_WEBHOOK_ID:
+        raise PayPalError("PayPal webhook is not configured")
+    if any(not headers.get(h) for h in fields.values()):
+        return False
+    token = await _get_access_token()
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{BASE_URL}/v1/notifications/verify-webhook-signature",
+            headers={"Authorization": f"Bearer {token}"},
+            json={**{key: headers[header] for key, header in fields.items()},
+                  "webhook_id": PAYPAL_WEBHOOK_ID, "webhook_event": event},
+        )
+        resp.raise_for_status()
+        return resp.json().get("verification_status") == "SUCCESS"

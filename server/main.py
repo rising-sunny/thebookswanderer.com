@@ -5,6 +5,7 @@ Static site + FastAPI (CJ Dropshipping + PayPal), same VPS pattern as mathrelaxi
 from __future__ import annotations
 
 import logging
+import json
 import os
 import re
 import sqlite3
@@ -30,6 +31,7 @@ from services import categories as cat_service  # noqa: E402
 from services import cj as cj_service  # noqa: E402
 from services import email as email_service  # noqa: E402
 from services import paypal as paypal_service  # noqa: E402
+from services import paypal_recovery  # noqa: E402
 from services import printify as printify_service  # noqa: E402
 from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
@@ -1465,31 +1467,6 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     }
 
 
-def _capture_problem(capture: dict, order: Order) -> str:
-    """Why a PayPal capture must not mark this order paid, or "" if it may."""
-    pu = (capture.get("purchase_units") or [{}])[0]
-    captures = (pu.get("payments") or {}).get("captures") or []
-    done = [c for c in captures if (c.get("status") or "").upper() == "COMPLETED"]
-    if not done:
-        return f"PayPal status={capture.get('status')}"
-
-    custom_ids = {c.get("custom_id") for c in done} | {pu.get("custom_id")}
-    if f"tbw:{order.id}" not in custom_ids and pu.get("reference_id") != str(order.id):
-        return f"PayPal capture belongs to another order: {pu.get('reference_id')}"
-
-    amount = done[0].get("amount") or {}
-    try:
-        value = float(amount.get("value") or 0)
-    except (TypeError, ValueError):
-        value = 0.0
-    if amount.get("currency_code") != "USD" or abs(value - float(order.grand_total)) > 0.01:
-        return (
-            f"PayPal captured {amount.get('value')} {amount.get('currency_code')}, "
-            f"order total is {order.grand_total:.2f} USD"
-        )
-    return ""
-
-
 def _checkout_redirect(status: str, order_id: int, lang: str = "en") -> RedirectResponse:
     # k lets the page show this order's download links, and nobody else's.
     return RedirectResponse(
@@ -1520,32 +1497,84 @@ async def checkout_return(
         log.warning("checkout return token mismatch for order %s", order.id)
         return _checkout_redirect("payment_error", order.id, lang)
 
-    if order.status in ("paid", "cj_submitted", "fulfilled", "delivered"):
-        return _checkout_redirect("already_paid", order.id, lang)
-
     try:
-        capture = await paypal_service.capture_order(paypal_id)
-    except paypal_service.PayPalError as exc:
-        # A second hit on the return URL (reload, double redirect) fails with
-        # ORDER_ALREADY_CAPTURED. Ask PayPal what actually happened.
-        capture = None
-        try:
-            existing = await paypal_service.get_order(paypal_id)
-            if (existing.get("status") or "").upper() == "COMPLETED":
-                capture = existing
-        except Exception:  # noqa: BLE001
-            pass
-        if capture is None:
-            order.notes = f"capture failed: {exc}"[:500]
-            db.commit()
-            return _checkout_redirect("payment_error", order.id, lang)
+        status = await _complete_paypal_order(order, db, request=request)
+    except Exception as exc:  # provider outages can be retried by PayPal/worker
+        db.rollback()
+        log.warning("PayPal return order %s: %s", order_id, type(exc).__name__)
+        status = "payment_error"
+    return _checkout_redirect(status, order.id, lang)
 
-    problem = _capture_problem(capture, order)
-    if problem:
-        order.notes = problem[:500]
-        db.commit()
-        log.warning("order %s not marked paid: %s", order.id, problem)
-        return _checkout_redirect("payment_incomplete", order.id, lang)
+
+@app.post("/api/webhooks/paypal")
+async def paypal_webhook(request: Request, db: Session = Depends(get_db)):
+    # PayPal events may include buyer information. Neither bodies nor headers
+    # belong in logs. Bound the body before JSON parsing or signature work.
+    if not paypal_service.PAYPAL_WEBHOOK_ID:
+        raise HTTPException(503, "Payment notifications unavailable")
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > 256 * 1024:
+            raise HTTPException(413, "Notification too large")
+    try:
+        event = json.loads(body)
+        if not isinstance(event, dict):
+            raise ValueError()
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(400, "Invalid notification") from None
+    try:
+        verified = await paypal_service.verify_webhook(request.headers, event)
+    except Exception as exc:
+        log.warning("PayPal signature service unavailable: %s", type(exc).__name__)
+        raise HTTPException(503, "Payment verification unavailable") from None
+    if not verified:
+        raise HTTPException(403, "Invalid payment notification signature")
+
+    resource = event.get("resource") or {}
+    if not isinstance(resource, dict):
+        raise HTTPException(400, "Invalid notification resource")
+    kind = event.get("event_type")
+    if kind == "CHECKOUT.ORDER.APPROVED":
+        paypal_id = resource.get("id")
+    elif kind == "PAYMENT.CAPTURE.COMPLETED":
+        paypal_id = ((resource.get("supplementary_data") or {}).get("related_ids") or {}).get("order_id")
+    else:
+        return {"status": "ignored"}
+    if not isinstance(paypal_id, str) or not re.fullmatch(r"[A-Za-z0-9]{5,80}", paypal_id):
+        return {"status": "ignored"}
+    # The merchant app is shared with another store. Only an ID already
+    # created and saved by this shop may trigger capture or fulfilment.
+    orders = db.query(Order).filter(Order.paypal_order_id == paypal_id).limit(2).all()
+    if len(orders) != 1:
+        return {"status": "ignored"}
+    try:
+        result = await _complete_paypal_order(orders[0], db)
+    except Exception as exc:
+        db.rollback()
+        log.warning("PayPal webhook order %s: %s", orders[0].id, type(exc).__name__)
+        raise HTTPException(503, "Payment processing unavailable; retry notification") from None
+    return {"status": result}
+
+
+async def _complete_paypal_order(order: Order, db: Session, *, request: Request | None = None) -> str:
+    """The one payment/fulfilment path for returns, signed events and recovery.
+
+    Claim paid atomically before any email or supplier POST. Paid orders are
+    never auto-resubmitted: an ambiguous supplier result needs reconciliation.
+    """
+    db.refresh(order)
+    if order.status in paypal_recovery.PAID_STATES:
+        return "already_paid"
+    if order.status != "awaiting_payment":
+        return "ignored"
+    try:
+        await paypal_recovery.confirmed_capture(order)
+    except paypal_recovery.NotApproved:
+        return "payment_incomplete"
+    except paypal_recovery.InvalidPayment as exc:
+        log.error("PayPal order %s held: %s", order.id, str(exc))
+        return "payment_incomplete"
 
     # Claim the order atomically so two concurrent returns cannot both send
     # the confirmation email and submit it to CJ twice.
@@ -1557,7 +1586,7 @@ async def checkout_return(
     db.commit()
     db.refresh(order)
     if not claimed:
-        return _checkout_redirect("already_paid", order.id, lang)
+        return "already_paid"
 
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     try:
@@ -1598,10 +1627,10 @@ async def checkout_return(
             order,
             items,
             slugs,
-            fbp=request.cookies.get("_fbp"),
-            fbc=request.cookies.get("_fbc"),
-            client_ip=geo_service.extract_client_ip(request),
-            user_agent=request.headers.get("user-agent"),
+            fbp=request.cookies.get("_fbp") if request else None,
+            fbc=request.cookies.get("_fbc") if request else None,
+            client_ip=geo_service.extract_client_ip(request) if request else None,
+            user_agent=request.headers.get("user-agent") if request else None,
         )
     except Exception:  # noqa: BLE001
         # A paid order must never fail because of analytics.
@@ -1622,12 +1651,14 @@ async def checkout_return(
     try:
         await _fulfil(order, db)
     except Exception as exc:  # noqa: BLE001
-        order.notes = f"paid but supplier submit failed: {exc} {getattr(exc, 'payload', '') or ''}"[:800]
+        db.rollback()
+        db.refresh(order)
+        order.notes = ((order.notes or "") + f"\nPaid; supplier submission needs reconciliation ({type(exc).__name__}). Do not blindly resubmit.")[-2000:]
         order.status = "paid"  # keep paid; manual retry later
         db.commit()
-        return _checkout_redirect("paid_cj_pending", order.id, lang)
+        return "paid_cj_pending"
 
-    return _checkout_redirect("success", order.id, lang)
+    return "success"
 
 
 async def _fulfil(order: Order, db: Session) -> None:

@@ -15,6 +15,7 @@ can run this every couple of hours without repeating an email.
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -184,6 +185,10 @@ async def alert(order: Order, leg: Leg) -> None:
 async def main() -> int:
     dry = "--dry-run" in sys.argv
     db = SessionLocal()
+    from services.paypal_recovery import recover_pending
+    from main import _complete_paypal_order
+    report = await recover_pending(db, _complete_paypal_order, dry_run=dry)
+    print("PayPal recovery: " + json.dumps(report, sort_keys=True))
     since = datetime.utcnow() - MAX_AGE
     orders = (db.query(Order).filter(Order.status.in_(OPEN), Order.created_at >= since)
               .order_by(Order.id).all())
