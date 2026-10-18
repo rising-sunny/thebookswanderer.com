@@ -34,28 +34,30 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Check remaining supplier dimensions photograph
+      - name: Back up store before bedside book rest publication
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Import the selected CJ product's original media for its authorized listing."""
-          import asyncio,json,sys,re
+          """Private consistent backup before the authorized single-product publication."""
+          import hashlib,json,os,sqlite3,subprocess
+          from datetime import datetime,timezone
           from pathlib import Path
           from dotenv import load_dotenv
-          ROOT=Path.cwd();load_dotenv(ROOT/'.env');sys.path.insert(0,str(ROOT/'scripts'))
-          from services import cj
-          import publish_usb_reading_light as media
-          PID='2605290228151629500';VID='2605290228161620200';SKU='CJYD291394201AZ'
-          async def main():
-           details=await cj.get_product_details(pid=PID)
-           selected=next((v for v in details.get('variants',[]) if v.get('vid')==VID and v.get('variantSku')==SKU and v.get('variantKey')=='Wood Color'),None)
-           if not selected or details.get('pid')!=PID:raise RuntimeError('Selected book rest changed; no media imported')
-           media.ASSETS=ROOT.parent/'assets/products/bedside-book-rest/supplier-extra'
-           details['productImageSet']=[]
-           urls=re.findall(r'src="(https://[^"]+)"',details.get('description') or '')
-           details['description']='<img src="'+urls[-1]+'"/>'
-           imported=await media.import_assets(details,selected)
-           manifest={'pid':PID,'vid':VID,'sku':SKU,'images':imported}
-           (ROOT/'data/bedside-book-rest-extra-assets.json').write_text(json.dumps(manifest,indent=2))
-           print(json.dumps({'original_images':[{**i,'url':'https://thebookswanderer.com/assets/products/bedside-book-rest/supplier-extra/'+i['filename']} for i in imported],'product_activated':False,'orders_created':0}))
-          asyncio.run(main())
+          ROOT=Path.cwd();load_dotenv(ROOT/'.env')
+          os.umask(0o077);base=Path('/var/backups/thebookswanderer-products');base.mkdir(parents=True,exist_ok=True,mode=0o700);os.chmod(base,0o700)
+          folder=base/('bedside-book-rest-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'));folder.mkdir(mode=0o700)
+          url=os.getenv('DATABASE_URL') or 'sqlite:///'+str(ROOT/'data/store.db')
+          if not url.startswith('sqlite:///'):raise RuntimeError('Unexpected database backend; no writes made')
+          dbpath=Path(url[10:]);dbpath=dbpath if dbpath.is_absolute() else ROOT/dbpath
+          with sqlite3.connect('file:'+str(dbpath)+'?mode=ro',uri=True) as source,sqlite3.connect(folder/'store.db') as target:
+           source.backup(target);assert target.execute('PRAGMA quick_check').fetchone()[0]=='ok'
+           target.row_factory=sqlite3.Row
+           counts={t:target.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ('products','product_variants','orders','order_items','lulu_submissions')}
+           def digest(sql):return hashlib.sha256(json.dumps([dict(r) for r in target.execute(sql)],sort_keys=True).encode()).hexdigest()
+           p_hash=digest("SELECT * FROM products WHERE slug!='bedside-book-rest' ORDER BY id")
+           v_hash=digest("SELECT v.* FROM product_variants v JOIN products p ON p.id=v.product_id WHERE p.slug!='bedside-book-rest' ORDER BY v.id")
+          cron=subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout
+          files=['main.py','models.py','database.py','services/paypal.py','services/paypal_recovery.py','services/lulu_submission.py','scripts/sync_order_tracking.py']
+          meta={'backup_dir':str(folder),'database_path':str(dbpath),'counts':counts,'other_products_sha256':p_hash,'other_variants_sha256':v_hash,'root_cron_sha256':hashlib.sha256(cron).hexdigest(),'server_env_sha256':hashlib.sha256((ROOT/'.env').read_bytes()).hexdigest(),'unchanged_source_sha256':{n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in files}}
+          (folder/'manifest.json').write_text(json.dumps(meta,indent=2));(base/'bedside-book-rest-latest.json').write_text(json.dumps(meta,indent=2))
+          print(json.dumps({'private_backup_ready':True,'database_integrity_ok':True,'counts':counts,'configuration_changed':False,'orders_created':0}))
           PYCODE
