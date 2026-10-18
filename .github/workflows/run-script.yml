@@ -34,30 +34,40 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Back up store before bedside book rest publication
+      - name: Verify book rest publication and remove unused staging photos
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Private consistent backup before the authorized single-product publication."""
-          import hashlib,json,os,sqlite3,subprocess
-          from datetime import datetime,timezone
+          """Verify the single new listing and remove only this release's unused staging photos."""
+          import hashlib,json,re,shutil,sqlite3,subprocess
           from pathlib import Path
-          from dotenv import load_dotenv
-          ROOT=Path.cwd();load_dotenv(ROOT/'.env')
-          os.umask(0o077);base=Path('/var/backups/thebookswanderer-products');base.mkdir(parents=True,exist_ok=True,mode=0o700);os.chmod(base,0o700)
-          folder=base/('bedside-book-rest-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'));folder.mkdir(mode=0o700)
-          url=os.getenv('DATABASE_URL') or 'sqlite:///'+str(ROOT/'data/store.db')
-          if not url.startswith('sqlite:///'):raise RuntimeError('Unexpected database backend; no writes made')
-          dbpath=Path(url[10:]);dbpath=dbpath if dbpath.is_absolute() else ROOT/dbpath
-          with sqlite3.connect('file:'+str(dbpath)+'?mode=ro',uri=True) as source,sqlite3.connect(folder/'store.db') as target:
-           source.backup(target);assert target.execute('PRAGMA quick_check').fetchone()[0]=='ok'
-           target.row_factory=sqlite3.Row
-           counts={t:target.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ('products','product_variants','orders','order_items','lulu_submissions')}
-           def digest(sql):return hashlib.sha256(json.dumps([dict(r) for r in target.execute(sql)],sort_keys=True).encode()).hexdigest()
-           p_hash=digest("SELECT * FROM products WHERE slug!='bedside-book-rest' ORDER BY id")
-           v_hash=digest("SELECT v.* FROM product_variants v JOIN products p ON p.id=v.product_id WHERE p.slug!='bedside-book-rest' ORDER BY v.id")
-          cron=subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout
-          files=['main.py','models.py','database.py','services/paypal.py','services/paypal_recovery.py','services/lulu_submission.py','scripts/sync_order_tracking.py']
-          meta={'backup_dir':str(folder),'database_path':str(dbpath),'counts':counts,'other_products_sha256':p_hash,'other_variants_sha256':v_hash,'root_cron_sha256':hashlib.sha256(cron).hexdigest(),'server_env_sha256':hashlib.sha256((ROOT/'.env').read_bytes()).hexdigest(),'unchanged_source_sha256':{n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in files}}
-          (folder/'manifest.json').write_text(json.dumps(meta,indent=2));(base/'bedside-book-rest-latest.json').write_text(json.dumps(meta,indent=2))
-          print(json.dumps({'private_backup_ready':True,'database_integrity_ok':True,'counts':counts,'configuration_changed':False,'orders_created':0}))
+          ROOT=Path.cwd();base=Path('/var/backups/thebookswanderer-products');meta=json.loads((base/'bedside-book-rest-latest.json').read_text());out={}
+          spec=json.loads((ROOT/'scripts/bedside_book_rest_product.json').read_text())
+          with sqlite3.connect('file:'+meta['database_path']+'?mode=ro',uri=True) as db:
+           db.row_factory=sqlite3.Row
+           def digest(sql):return hashlib.sha256(json.dumps([dict(r) for r in db.execute(sql)],sort_keys=True).encode()).hexdigest()
+           out['other_products_unchanged']=digest("SELECT * FROM products WHERE slug!='bedside-book-rest' ORDER BY id")==meta['other_products_sha256']
+           out['other_variants_unchanged']=digest("SELECT v.* FROM product_variants v JOIN products p ON p.id=v.product_id WHERE p.slug!='bedside-book-rest' ORDER BY v.id")==meta['other_variants_sha256']
+           p=db.execute("SELECT * FROM products WHERE slug='bedside-book-rest'").fetchone();assert p is not None
+           variants=db.execute('SELECT * FROM product_variants WHERE product_id=? AND active=1',(p['id'],)).fetchall()
+           out['published_mapping_ok']=(p['active']==1 and p['supplier']=='cj' and p['cj_pid']==spec['pid'] and p['cj_vid']==spec['vid'] and p['cj_sku']==spec['sku'] and p['price_usd']==24.99 and p['from_country']=='CN' and len(variants)==1 and variants[0]['cj_vid']==spec['vid'] and variants[0]['cj_sku']==spec['sku'] and variants[0]['price_usd']==24.99)
+           out['product_id']=p['id'];out['variant_id']=variants[0]['id'];out['active_products']=db.execute('SELECT count(*) FROM products WHERE active=1').fetchone()[0]
+           out['orders_count']=db.execute('SELECT count(*) FROM orders').fetchone()[0];out['order_items_count']=db.execute('SELECT count(*) FROM order_items').fetchone()[0]
+           paths=[p['image_url'],*json.loads(p['gallery_json'])]
+           out['only_reviewed_images_used']=paths==[spec['image_url'],*spec['gallery']] and len(paths)==2
+           out['copy_has_no_chinese_writing']=not bool(re.search(r'[\u4e00-\u9fff]',p['title']+p['description']+p['details_html']))
+           out['publication_report']=json.loads((ROOT/'data/bedside-book-rest-validation.json').read_text())
+          out['critical_application_source_preserved']=all(hashlib.sha256((ROOT/n).read_bytes()).hexdigest()==sha for n,sha in meta['unchanged_source_sha256'].items())
+          out['server_configuration_unchanged']=hashlib.sha256((ROOT/'.env').read_bytes()).hexdigest()==meta['server_env_sha256']
+          out['root_cron_unchanged']=hashlib.sha256(subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout).hexdigest()==meta['root_cron_sha256']
+          for k in ('other_products_unchanged','other_variants_unchanged','published_mapping_ok','only_reviewed_images_used','copy_has_no_chinese_writing','critical_application_source_preserved','server_configuration_unchanged','root_cron_unchanged'):
+           assert out[k],k+' failed'
+          # These two staging directories were created by this release alone. The final
+          # manufacturer images now live at main.jpg and detail.jpg and are preserved.
+          product_assets=ROOT.parent/'assets/products/bedside-book-rest'
+          for name in ('supplier-originals','supplier-extra'):
+           target=product_assets/name
+           if target.is_symlink():raise RuntimeError('Unexpected staging symlink; cleanup stopped')
+           if target.is_dir():shutil.rmtree(target)
+          out['unused_staging_photos_removed']=all(not (product_assets/n).exists() for n in ('supplier-originals','supplier-extra'))
+          print(json.dumps(out,sort_keys=True))
           PYCODE
