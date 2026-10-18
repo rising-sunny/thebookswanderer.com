@@ -34,40 +34,48 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Verify book rest publication and remove unused staging photos
+      - name: Check new product autonomous social eligibility read only
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Verify the single new listing and remove only this release's unused staging photos."""
-          import hashlib,json,re,shutil,sqlite3,subprocess
+          """Read-only eligibility and scheduler check. No rendering or social/email sends."""
+          import json,os,shutil,subprocess,sys
           from pathlib import Path
-          ROOT=Path.cwd();base=Path('/var/backups/thebookswanderer-products');meta=json.loads((base/'bedside-book-rest-latest.json').read_text());out={}
-          spec=json.loads((ROOT/'scripts/bedside_book_rest_product.json').read_text())
-          with sqlite3.connect('file:'+meta['database_path']+'?mode=ro',uri=True) as db:
-           db.row_factory=sqlite3.Row
-           def digest(sql):return hashlib.sha256(json.dumps([dict(r) for r in db.execute(sql)],sort_keys=True).encode()).hexdigest()
-           out['other_products_unchanged']=digest("SELECT * FROM products WHERE slug!='bedside-book-rest' ORDER BY id")==meta['other_products_sha256']
-           out['other_variants_unchanged']=digest("SELECT v.* FROM product_variants v JOIN products p ON p.id=v.product_id WHERE p.slug!='bedside-book-rest' ORDER BY v.id")==meta['other_variants_sha256']
-           p=db.execute("SELECT * FROM products WHERE slug='bedside-book-rest'").fetchone();assert p is not None
-           variants=db.execute('SELECT * FROM product_variants WHERE product_id=? AND active=1',(p['id'],)).fetchall()
-           out['published_mapping_ok']=(p['active']==1 and p['supplier']=='cj' and p['cj_pid']==spec['pid'] and p['cj_vid']==spec['vid'] and p['cj_sku']==spec['sku'] and p['price_usd']==24.99 and p['from_country']=='CN' and len(variants)==1 and variants[0]['cj_vid']==spec['vid'] and variants[0]['cj_sku']==spec['sku'] and variants[0]['price_usd']==24.99)
-           out['product_id']=p['id'];out['variant_id']=variants[0]['id'];out['active_products']=db.execute('SELECT count(*) FROM products WHERE active=1').fetchone()[0]
-           out['orders_count']=db.execute('SELECT count(*) FROM orders').fetchone()[0];out['order_items_count']=db.execute('SELECT count(*) FROM order_items').fetchone()[0]
-           paths=[p['image_url'],*json.loads(p['gallery_json'])]
-           out['only_reviewed_images_used']=paths==[spec['image_url'],*spec['gallery']] and len(paths)==2
-           out['copy_has_no_chinese_writing']=not bool(re.search(r'[\u4e00-\u9fff]',p['title']+p['description']+p['details_html']))
-           out['publication_report']=json.loads((ROOT/'data/bedside-book-rest-validation.json').read_text())
-          out['critical_application_source_preserved']=all(hashlib.sha256((ROOT/n).read_bytes()).hexdigest()==sha for n,sha in meta['unchanged_source_sha256'].items())
-          out['server_configuration_unchanged']=hashlib.sha256((ROOT/'.env').read_bytes()).hexdigest()==meta['server_env_sha256']
-          out['root_cron_unchanged']=hashlib.sha256(subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout).hexdigest()==meta['root_cron_sha256']
-          for k in ('other_products_unchanged','other_variants_unchanged','published_mapping_ok','only_reviewed_images_used','copy_has_no_chinese_writing','critical_application_source_preserved','server_configuration_unchanged','root_cron_unchanged'):
-           assert out[k],k+' failed'
-          # These two staging directories were created by this release alone. The final
-          # manufacturer images now live at main.jpg and detail.jpg and are preserved.
-          product_assets=ROOT.parent/'assets/products/bedside-book-rest'
-          for name in ('supplier-originals','supplier-extra'):
-           target=product_assets/name
-           if target.is_symlink():raise RuntimeError('Unexpected staging symlink; cleanup stopped')
-           if target.is_dir():shutil.rmtree(target)
-          out['unused_staging_photos_removed']=all(not (product_assets/n).exists() for n in ('supplier-originals','supplier-extra'))
+          from datetime import datetime
+          from dotenv import load_dotenv
+          ROOT=Path.cwd();load_dotenv(ROOT/'.env');sys.path.insert(0,str(ROOT/'scripts'))
+          import daily_social_post as social
+          from database import SessionLocal
+          from models import Product
+          from services import pinterest as pin,pinterest_jobs as jobs
+          import httpx
+          SLUG='bedside-book-rest'
+          with httpx.Client(timeout=30) as c:
+           state=social.load_state();chosen=social.pick_product(c,state,None)
+           p=c.get(social.BASE+'/api/products/by-slug/'+SLUG);p.raise_for_status();product=p.json()
+          media=list(dict.fromkeys([product['image_url'],*product.get('lifestyle_images',[]),*[v.get('image_url') for v in product.get('variants',[])]]))
+          out={'product_active':True,'product_id':product['id'],'social_enabled':(os.getenv('SOCIAL_POST_ENABLED','1') or '').strip()!='0','facebook_credentials_configured':bool(os.getenv('FB_PAGE_ID') and os.getenv('FB_PAGE_TOKEN')),'ffmpeg_available':bool(shutil.which('ffmpeg')),'next_selected_product':chosen['slug'],'new_product_is_next_candidate':chosen['slug']==SLUG,'social_photos':media,'new_product_history':[{'date':e.get('date'),'facebook_posted':bool(e.get('facebook')),'instagram_posted':bool(e.get('instagram')),'pinterest_attempted':bool(e.get('pinterest')),'ok':bool(e.get('ok'))} for e in state if e.get('slug')==SLUG]}
+          with SessionLocal() as db:
+           candidates=jobs.select_drip_candidates(db,limit=1000)
+           out['pinterest_eligible']=any(p.slug==SLUG for p in candidates)
+           out['pinterest_auto_enabled']=jobs.auto_pin_enabled();out['pinterest_configured']=pin.is_configured()
+           health=pin.token_health();out['pinterest_token_connected']=health.get('connected');out['pinterest_reauth_required']=health.get('reauth_required')
+           out['pinterest_board_configured']=bool(jobs.board_id_for_category(product.get('category_slug')))
+           out['last_pin_for_product']=jobs.last_successful_pin_at(db,SLUG).isoformat() if jobs.last_successful_pin_at(db,SLUG) else None
+          cron_text=[]
+          r=subprocess.run(['crontab','-l'],capture_output=True,text=True)
+          if r.returncode==0:cron_text.append(('root',r.stdout))
+          for file in Path('/etc/cron.d').iterdir():
+           if file.is_file():cron_text.append((file.name,file.read_text(errors='replace')))
+          entries=[]
+          for source,content in cron_text:
+           for line in content.splitlines():
+            line=line.strip()
+            if not line or line.startswith('#'):continue
+            for script in ('daily_social_post.py','pinterest_auto_pin.py'):
+             if script in line:entries.append({'source':source,'schedule':' '.join(line.split()[:5]),'script':script})
+          out['cron_entries']=entries
+          out['cron_service_active']=subprocess.run(['systemctl','is-active','cron'],capture_output=True,text=True).stdout.strip()=='active'
+          now=datetime.now(social.NY);out['checked_at_new_york']=now.isoformat(timespec='seconds');out['today_already_posted']=any(e.get('date')==now.date().isoformat() and e.get('ok') for e in state)
+          out['new_posts_sent_by_audit']=0
           print(json.dumps(out,sort_keys=True))
           PYCODE
