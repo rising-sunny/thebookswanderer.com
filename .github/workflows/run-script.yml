@@ -34,69 +34,25 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Verify PayPal activation without live orders
+      - name: Import original media for bedside book rest
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only final verification. Never capture, fulfil, or notify a buyer."""
-          import asyncio,hashlib,json,os,sqlite3,subprocess
+          """Import the selected CJ product's original media for its authorized listing."""
+          import asyncio,json,sys
           from pathlib import Path
-          from dotenv import load_dotenv,dotenv_values
-          load_dotenv(Path.cwd()/'.env')
-          from services import paypal,paypal_recovery
-          from database import SessionLocal
-          import httpx
-          ROOT=Path.cwd()
-          EXPECTED_HASHES={'main.py': '076c1d50f6bbfd01ab273a10c549e15c91cd841f603636c764911578b2c7aa94', 'services/paypal.py': 'a5b68388bd074a3c89f622b35f05f99ae1c94ed9d4223982fe65b9a9749e21c8', 'services/paypal_recovery.py': 'cd7b23f326264525d885bcf81ff6784cbd55c574e25caeb92d65e399b4f830fa', 'scripts/sync_order_tracking.py': '99dc0db417f0163c97c0b0ff57af44ce4fc5930401a3f88aa781a285b759890a', 'services/lulu_submission.py': 'd5a847aa9d2019298d04fded8462f50b1c1dd98c643cc0a6e32b8326b52493a5'}
-          meta=json.loads(Path('/var/backups/thebookswanderer-paypal/latest.json').read_text())
-          backup=Path(meta['backup_dir']);out={'source_matches':all(hashlib.sha256((ROOT/n).read_bytes()).hexdigest()==v for n,v in EXPECTED_HASHES.items())}
-          assert out['source_matches'],'Deployed source differs from tested release'
-          env=dotenv_values(ROOT/'.env');old=dotenv_values(backup/'server.env')
-          out['other_env_bindings_preserved']=all(env.get(k)==v for k,v in old.items() if k!='PAYPAL_WEBHOOK_ID')
-          out['backup_private']=(backup.stat().st_mode&0o077)==0 and ((backup/'server.env').stat().st_mode&0o077)==0
-          with sqlite3.connect('file:'+str(backup/'store.db')+'?mode=ro',uri=True) as db:out['backup_integrity_ok']=db.execute('PRAGMA quick_check').fetchone()[0]=='ok'
-          with sqlite3.connect('file:'+meta['database_path']+'?mode=ro',uri=True) as db:
-           out['web_counts']={t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in meta['counts']}
-           out['lulu_guard_rows']=db.execute('SELECT count(*) FROM lulu_submissions').fetchone()[0]
-          cfg_path=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');cfg=json.loads(cfg_path.read_text())
-          files={'config':cfg_path,'catalog':Path(cfg['catalog_path']),'worker':cfg_path.parent/'worker.py','core':cfg_path.parent/'core.py'}
-          out['etsy_files_unchanged']=all(hashlib.sha256(p.read_bytes()).hexdigest()==meta['etsy_static_sha256'][k] for k,p in files.items())
-          out['lulu_payment_stays_manual']=cfg.get('settings',{}).get('manual_payment_confirmed') is True
-          cron=subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout
-          out['root_cron_unchanged']=hashlib.sha256(cron).hexdigest()==meta['root_cron_sha256']
-          tracking=Path('/etc/cron.d/tbw-order-tracking').read_text()
-          out['existing_tracking_cron_present']='17 */2 * * * www-data' in tracking and 'scripts/sync_order_tracking.py' in tracking
-          out['service_active']=subprocess.run(['systemctl','is-active','thebookswanderer.service'],capture_output=True,text=True).stdout.strip()=='active'
-          reports=[]
-          log=Path('/var/log/tbw-tracking.log')
-          if log.exists():
-           for line in log.read_text(errors='replace').splitlines():
-            if line.startswith('PayPal recovery: '):
-             try:
-              d=json.loads(line.split(': ',1)[1]);reports.append({k:d.get(k) for k in ('candidates','recovered','pending','errors','dry_run')})
-             except ValueError:pass
-          out['tracking_recovery_runs_seen']=len(reports);out['last_tracking_recovery_report']=reports[-1] if reports else None
-          URL='https://thebookswanderer.com/api/webhooks/paypal'
-          async def verify():
-           token=await paypal._get_access_token()
-           async with httpx.AsyncClient(timeout=20) as c:
-            r=await c.get(paypal.BASE_URL+'/v1/notifications/webhooks',headers={'Authorization':'Bearer '+token});r.raise_for_status()
-            hooks=r.json().get('webhooks',[]);own=[h for h in hooks if h.get('url')==URL]
-            out['own_webhook_unique']=len(own)==1
-            assert out['own_webhook_unique'],'Own webhook is missing or duplicated'
-            out['app_webhook_id_matches']=own[0]['id']==paypal.PAYPAL_WEBHOOK_ID
-            out['required_events_verified']={'CHECKOUT.ORDER.APPROVED','PAYMENT.CAPTURE.COMPLETED'}.issubset({e['name'] for e in own[0].get('event_types',[])})
-            previous=json.loads((backup/'paypal-webhooks-before.json').read_text())
-            before=sorted((h['id'],h['url'],h['events']) for h in previous if h['url']!=URL)
-            after=sorted((h['id'],h['url'],sorted(e['name'] for e in h.get('event_types',[]))) for h in hooks if h['url']!=URL)
-            out['other_webhooks_unchanged']=before==after
-            out['mathrelaxing_subscription_preserved']=any(h['url']=='https://mathrelaxing.store/api/webhooks/paypal' and h['id']==old.get('PAYPAL_WEBHOOK_ID') for h in hooks)
-            r=await c.get('https://thebookswanderer.com/api/health');out['public_health_ok']=r.status_code==200 and r.json().get('ok') is True
-            r=await c.post(URL,json={'event_type':'TBW.UNSIGNED.CHECK','resource':{}});out['unsigned_notification_rejected']=r.status_code==403
-           async def forbidden(*args,**kwargs):raise AssertionError('Read-only verification must not process orders')
-           with SessionLocal() as db:out['payment_recovery_dry_run']=await paypal_recovery.recover_pending(db,forbidden,dry_run=True)
-           for k in ('source_matches','other_env_bindings_preserved','backup_private','backup_integrity_ok','etsy_files_unchanged','lulu_payment_stays_manual','root_cron_unchanged','existing_tracking_cron_present','service_active','own_webhook_unique','app_webhook_id_matches','required_events_verified','other_webhooks_unchanged','mathrelaxing_subscription_preserved','public_health_ok','unsigned_notification_rejected'):
-            assert out[k],k+' failed'
-           out['test_orders_created']=0;out['test_payments_made']=0;out['test_customer_emails_sent']=0
-           print(json.dumps(out,sort_keys=True))
-          asyncio.run(verify())
+          from dotenv import load_dotenv
+          ROOT=Path.cwd();load_dotenv(ROOT/'.env');sys.path.insert(0,str(ROOT/'scripts'))
+          from services import cj
+          import publish_usb_reading_light as media
+          PID='2605290228151629500';VID='2605290228161620200';SKU='CJYD291394201AZ'
+          async def main():
+           details=await cj.get_product_details(pid=PID)
+           selected=next((v for v in details.get('variants',[]) if v.get('vid')==VID and v.get('variantSku')==SKU and v.get('variantKey')=='Wood Color'),None)
+           if not selected or details.get('pid')!=PID:raise RuntimeError('Selected book rest changed; no media imported')
+           media.ASSETS=ROOT.parent/'assets/products/bedside-book-rest/supplier-originals'
+           imported=await media.import_assets(details,selected)
+           manifest={'pid':PID,'vid':VID,'sku':SKU,'images':imported}
+           (ROOT/'data/bedside-book-rest-assets.json').write_text(json.dumps(manifest,indent=2))
+           print(json.dumps({'original_images':[{**i,'url':'https://thebookswanderer.com/assets/products/bedside-book-rest/supplier-originals/'+i['filename']} for i in imported],'product_activated':False,'orders_created':0}))
+          asyncio.run(main())
           PYCODE
