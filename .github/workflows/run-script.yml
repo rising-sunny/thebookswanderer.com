@@ -34,22 +34,70 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Inspect PayPal configuration before activation
+      - name: Activate dedicated Books Wanderer PayPal webhook
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          import asyncio,json,os
+          """Register only this store's subscription; preserve every other app webhook."""
+          import asyncio,hashlib,json,os,sqlite3,stat,subprocess,sys,time
           from pathlib import Path
-          from dotenv import load_dotenv
-          load_dotenv(Path.cwd()/'.env')
+          from dotenv import dotenv_values,load_dotenv,set_key
+          ROOT=Path.cwd();load_dotenv(ROOT/'.env')
           from services import paypal
           import httpx
-          async def main():
-           token=await paypal._get_access_token()
+          EXPECTED_HASHES = {'main.py': '076c1d50f6bbfd01ab273a10c549e15c91cd841f603636c764911578b2c7aa94', 'services/paypal.py': 'a5b68388bd074a3c89f622b35f05f99ae1c94ed9d4223982fe65b9a9749e21c8', 'services/paypal_recovery.py': 'cd7b23f326264525d885bcf81ff6784cbd55c574e25caeb92d65e399b4f830fa', 'scripts/sync_order_tracking.py': '99dc0db417f0163c97c0b0ff57af44ce4fc5930401a3f88aa781a285b759890a', 'services/lulu_submission.py': 'd5a847aa9d2019298d04fded8462f50b1c1dd98c643cc0a6e32b8326b52493a5'}
+          for name,expected in EXPECTED_HASHES.items():
+           if hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=expected:raise RuntimeError('Deployed source mismatch; activation stopped')
+          meta=json.loads(Path('/var/backups/thebookswanderer-paypal/latest.json').read_text())
+          backup=Path(meta['backup_dir']);env_path=ROOT/'.env';before=dotenv_values(env_path)
+          if env_path.read_bytes()!=(backup/'server.env').read_bytes():raise RuntimeError('Configuration changed since private backup; activation stopped')
+          cron=subprocess.run(['crontab','-l'],capture_output=True,check=True).stdout
+          if hashlib.sha256(cron).hexdigest()!=meta['root_cron_sha256']:raise RuntimeError('Root cron changed; inspect before activation')
+          cfg_path=Path('/opt/etsy_lulu_fulfill/lulu_books/unified/config.json');cfg=json.loads(cfg_path.read_text())
+          files={'config':cfg_path,'catalog':Path(cfg['catalog_path']),'worker':cfg_path.parent/'worker.py','core':cfg_path.parent/'core.py'}
+          if any(hashlib.sha256(p.read_bytes()).hexdigest()!=meta['etsy_static_sha256'][k] for k,p in files.items()):raise RuntimeError('Etsy configuration changed; inspect before activation')
+          URL='https://thebookswanderer.com/api/webhooks/paypal';EVENTS={'CHECKOUT.ORDER.APPROVED','PAYMENT.CAPTURE.COMPLETED'}
+          def other_hooks(hooks):
+           return sorted([(h['id'],h['url'],sorted(e['name'] for e in h.get('event_types',[]))) for h in hooks if h['url']!=URL])
+          async def configure():
+           token=await paypal._get_access_token();headers={'Authorization':'Bearer '+token}
            async with httpx.AsyncClient(timeout=20) as c:
-            r=await c.get(paypal.BASE_URL+'/v1/notifications/webhooks',headers={'Authorization':'Bearer '+token})
-            r.raise_for_status()
-            configured=os.getenv('PAYPAL_WEBHOOK_ID','')
-            hooks=[{'url':h.get('url'),'matches_configured_id':h.get('id')==configured,'events':[e['name'] for e in h.get('event_types',[])]} for h in r.json().get('webhooks',[])]
-           print(json.dumps({'mode':paypal.PAYPAL_MODE,'credentials_work':True,'webhook_id_configured':bool(configured),'hooks':hooks}))
-          asyncio.run(main())
+            async def hooks():
+             r=await c.get(paypal.BASE_URL+'/v1/notifications/webhooks',headers=headers);r.raise_for_status();return r.json().get('webhooks',[])
+            initial=await hooks();own=[h for h in initial if h.get('url')==URL];others=other_hooks(initial)
+            (backup/'paypal-webhooks-before.json').write_text(json.dumps([{'id':h['id'],'url':h['url'],'events':sorted(e['name'] for e in h.get('event_types',[]))} for h in initial]))
+            if len(own)>1:raise RuntimeError('Duplicate store subscriptions require review')
+            if not own:
+             r=await c.post(paypal.BASE_URL+'/v1/notifications/webhooks',headers=headers,json={'url':URL,'event_types':[{'name':n} for n in sorted(EVENTS)]})
+             if r.status_code>=400:raise RuntimeError('Webhook registration failed (HTTP '+str(r.status_code)+')')
+            else:
+             names={e['name'] for e in own[0].get('event_types',[])}
+             if '*' not in names and not EVENTS.issubset(names):
+              r=await c.patch(paypal.BASE_URL+'/v1/notifications/webhooks/'+own[0]['id'],headers=headers,json=[{'op':'replace','path':'/event_types','value':[{'name':n} for n in sorted(names|EVENTS)]}])
+              if r.status_code>=400:raise RuntimeError('Webhook event configuration failed (HTTP '+str(r.status_code)+')')
+            final=await hooks();own=[h for h in final if h.get('url')==URL]
+            if len(own)!=1 or other_hooks(final)!=others:raise RuntimeError('Subscription verification failed')
+            names={e['name'] for e in own[0].get('event_types',[])}
+            if '*' not in names and not EVENTS.issubset(names):raise RuntimeError('Required payment events are missing')
+            return own[0]['id'],len(others)
+          webhook_id,others=asyncio.run(configure())
+          original=env_path.stat();set_key(env_path,'PAYPAL_WEBHOOK_ID',webhook_id,quote_mode='always');os.chown(env_path,original.st_uid,original.st_gid);os.chmod(env_path,stat.S_IMODE(original.st_mode))
+          after=dotenv_values(env_path)
+          if any(v!=after.get(k) for k,v in before.items() if k!='PAYPAL_WEBHOOK_ID') or after.get('PAYPAL_WEBHOOK_ID')!=webhook_id:raise RuntimeError('Private environment verification failed')
+          subprocess.run(['systemctl','restart','thebookswanderer.service'],check=True)
+          health=False
+          with httpx.Client(timeout=10) as c:
+           for _ in range(10):
+            try:
+             r=c.get('http://127.0.0.1:8010/api/health');health=r.status_code==200
+             if health:break
+            except httpx.TransportError:pass
+            time.sleep(1)
+           if not health:raise RuntimeError('Service did not become healthy')
+           r=c.post(URL,json={'event_type':'TBW.UNSIGNED.CHECK','resource':{}})
+           if r.status_code!=403:raise RuntimeError('Unsigned notification was not rejected')
+          with sqlite3.connect('file:'+meta['database_path']+'?mode=ro',uri=True) as db:
+           counts={t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in meta['counts']}
+          # Legitimate activity since yesterday's backup may increase these counts.
+          if any(counts[t]<n for t,n in meta['counts'].items()):raise RuntimeError('Unexpected store row removal; inspect live activity')
+          print(json.dumps({'service_healthy':health,'own_webhook_configured':True,'required_events_verified':True,'other_webhooks_unchanged':True,'other_webhooks_count':others,'other_env_bindings_unchanged':True,'unsigned_webhook_http':r.status_code,'web_counts':counts,'etsy_configuration_unchanged':True,'root_cron_unchanged':True,'orders_created':0,'payments_made':0,'test_customer_emails_sent':0}))
           PYCODE
