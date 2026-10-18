@@ -34,11 +34,11 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Import original media for bedside book rest
+      - name: Check remaining supplier dimensions photograph
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
           """Import the selected CJ product's original media for its authorized listing."""
-          import asyncio,json,sys
+          import asyncio,json,sys,re
           from pathlib import Path
           from dotenv import load_dotenv
           ROOT=Path.cwd();load_dotenv(ROOT/'.env');sys.path.insert(0,str(ROOT/'scripts'))
@@ -49,10 +49,13 @@ jobs:
            details=await cj.get_product_details(pid=PID)
            selected=next((v for v in details.get('variants',[]) if v.get('vid')==VID and v.get('variantSku')==SKU and v.get('variantKey')=='Wood Color'),None)
            if not selected or details.get('pid')!=PID:raise RuntimeError('Selected book rest changed; no media imported')
-           media.ASSETS=ROOT.parent/'assets/products/bedside-book-rest/supplier-originals'
+           media.ASSETS=ROOT.parent/'assets/products/bedside-book-rest/supplier-extra'
+           details['productImageSet']=[]
+           urls=re.findall(r'src="(https://[^"]+)"',details.get('description') or '')
+           details['description']='<img src="'+urls[-1]+'"/>'
            imported=await media.import_assets(details,selected)
            manifest={'pid':PID,'vid':VID,'sku':SKU,'images':imported}
-           (ROOT/'data/bedside-book-rest-assets.json').write_text(json.dumps(manifest,indent=2))
-           print(json.dumps({'original_images':[{**i,'url':'https://thebookswanderer.com/assets/products/bedside-book-rest/supplier-originals/'+i['filename']} for i in imported],'product_activated':False,'orders_created':0}))
+           (ROOT/'data/bedside-book-rest-extra-assets.json').write_text(json.dumps(manifest,indent=2))
+           print(json.dumps({'original_images':[{**i,'url':'https://thebookswanderer.com/assets/products/bedside-book-rest/supplier-extra/'+i['filename']} for i in imported],'product_activated':False,'orders_created':0}))
           asyncio.run(main())
           PYCODE
