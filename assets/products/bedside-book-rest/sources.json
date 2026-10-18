@@ -1,0 +1,20 @@
+{
+  "supplier": "CJdropshipping",
+  "pid": "2605290228151629500",
+  "vid": "2605290228161620200",
+  "photographs": "Original supplier photographs copied without image editing. Only clean product views without Chinese writing are used. Wood grain and tone may vary.",
+  "images": [
+    {
+      "file": "main.jpg",
+      "source": "https://oss-cf.cjdropshipping.com/product/2026/05/29/02/d6a888f5-5f24-4220-b226-57207aafbce8_water.jpeg",
+      "sha256": "535ddc8e3ce2f9c752dffda5507f63f7486e95a856abbf7a4c0567c968004bdb",
+      "supplier_variant": "2605290228161620200"
+    },
+    {
+      "file": "detail.jpg",
+      "source": "https://oss-cf.cjdropshipping.com/product/2026/05/29/02/853a46b9-f286-40ce-884e-23090dc271ba_water.jpeg",
+      "sha256": "dcab952019c6c29895336c4a40274de73f52bbaab48ebf2cceb9f30e94728250",
+      "supplier_variant": "2605290228161620200"
+    }
+  ]
+}
