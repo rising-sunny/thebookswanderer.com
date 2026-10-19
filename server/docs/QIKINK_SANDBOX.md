@@ -135,3 +135,59 @@ authentication HTTP 200; plain creation HTTP 200, ID 24616032;
 lookup /api/order/list HTTP 404 and /api/order HTTP 500. Physical printed fulfillment,
 shipping quotes, tracking, payments, and production readiness remain unverified.
 The DTG client is covered by offline tests; remote printed creation is not yet confirmed.
+
+## Offline catalog mapping and pricing worksheet
+
+`config/qikink_sandbox_catalog.json` is a draft template, not a store import. It
+records the operator-confirmed printed Sandbox order 24620736 / tbw_print001,
+SKU MVnHs-Wh-S and design tbw_print001_d. Store product/variant IDs, countries,
+actual supplier costs and FX remain unset. The logo mockup remains a placeholder.
+This acceptance is not evidence of live inventory, supplier cost or shipping
+coverage. The template never creates/updates products, variants, orders or prices.
+
+```bash
+.venv/bin/python scripts/qikink_sandbox.py catalog
+# Requested countries only; these flags do NOT assert shipping support:
+.venv/bin/python scripts/qikink_sandbox.py catalog --country US --country CL
+```
+
+The report needs no Qikink credentials or HTTP calls. If product/variant IDs are
+provided, it opens store.db using SQLite mode=ro, verifies that the variant
+belongs to that product, and flags active records as unsuitable for this staging
+step. A missing DB is reported, never created. This does not reassign an existing
+CJ, Printify or Lulu product to Qikink. Public sales are always disabled in this
+worksheet, even if every input is supplied.
+
+Do not put private supplier quotes in the committed template. Copy it to a local
+file before adding commercial evidence, and keep that file outside Git:
+
+```bash
+cp -n config/qikink_sandbox_catalog.json data/qikink_catalog.local.json
+.venv/bin/python scripts/qikink_sandbox.py catalog --file data/qikink_catalog.local.json
+```
+
+DraftVariant.cost_quotes accepts only explicit itemized INR quotes for one unit,
+matching the exact SKU, full design (code, dimensions, placement and image URLs),
+country, postal code and shipping method. Supply product,
+printing, packaging, tax, shipping and other costs (an explicit confirmed zero is
+allowed), delivery range, source, confirmed_on and valid_until. Missing, expired,
+future-dated, wrong-country and wrong-SKU costs are not used. The selling value
+"1" used in Sandbox tests is NEVER read as a supplier quote.
+
+The FX record requires INR_USD, a positive usd_per_inr, source and validity dates.
+The CLI does not fetch or verify rates remotely. A dated operator-provided quote
+and FX source produce a planning estimate only:
+
+    cost_USD = sum(all six INR costs) * usd_per_inr
+    minimum_retail = (cost_USD + PAYPAL_FIXED + OPS_FIXED)
+                     / (1 - PAYPAL_PCT - MARGIN_PCT)
+
+The worksheet uses the existing pricing configuration, respects MIN_PRICE and
+rounds upward to x.99. It includes shipping in the proposed retail price; it is
+not an additional checkout shipping charge. It does not apply CJ cost-band rules.
+Invalid/nonfinite fee assumptions produce no price. Report dates use
+America/Santiago. A quote for one postal code and one unit is not a promise of
+country-wide coverage, a multi-item basket rate or a tax/compliance assessment.
+Checkout wiring, currency conversion settlement, live credentials, actual SKU
+availability, other destinations, commercial artwork/mockups and full shipping
+rules remain separate requirements before public sales.
