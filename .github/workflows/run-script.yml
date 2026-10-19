@@ -34,57 +34,29 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Verify existing Meta user token permissions using read-only requests
+      - name: Read ad account status and delivery diagnostics without changing billing
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only Meta permission/account check; no secret values in output."""
+          """Read-only explanation of the unexpected ad-account status; no payments."""
           import json,re
-          from pathlib import Path
           from dotenv import dotenv_values
           import httpx
-          
-          PATH='/root/vps_x_bot/.env'
-          config=dotenv_values(PATH)
-          token=(config.get('FACEBOOK_USER_ACCESS_TOKEN') or '').strip()
-          version=(config.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
-          base='https://graph.facebook.com/'
-          if re.fullmatch(r'v[0-9]+\.[0-9]+',version):base+=version+'/'
-          out={'meta_ads_credential_check':True,'path':PATH,'variable':'FACEBOOK_USER_ACCESS_TOKEN',
-               'configured':bool(token),'credential_values_disclosed':False,'write_requests_made':0}
-          
-          def safeget(client,endpoint,params=None):
-              try:
-                  r=client.get(base+endpoint,params=params)
-                  try:j=r.json()
-                  except ValueError:return None,{'http_status':r.status_code,'json_response':False}
-                  if r.status_code>=400 or j.get('error'):
-                      e=j.get('error') or {}
-                      return None,{'http_status':r.status_code,'type':str(e.get('type') or ''),
-                                   'code':e.get('code'),'subcode':e.get('error_subcode')}
-                  return j,None
-              except httpx.HTTPError as e:
-                  return None,{'transport_error_type':type(e).__name__}
-          
-          if token:
-              with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=25,follow_redirects=False) as c:
-                  perms,error=safeget(c,'me/permissions')
-                  out['permission_query_error']=error
-                  if perms is not None:
-                      valid=[{'permission':str(p.get('permission','')),'status':str(p.get('status',''))}
-                             for p in perms.get('data',[]) if isinstance(p,dict)]
-                      out['permissions']=valid
-                      granted={p['permission'] for p in valid if p['status']=='granted'}
-                      out['ads_management_granted']='ads_management' in granted
-                      out['ads_read_granted']='ads_read' in granted
-                  if error and error.get('code')==190:
-                      out['token_rejected_by_meta']=True
-                      out['selected_account_check_skipped']='Token rejected; no further requests made.'
-                  else:
-                      account,error=safeget(c,'act_2206299143461363',{'fields':'id,name,account_status,currency,timezone_name'})
-                      out['selected_account_query_error']=error
-                      out['selected_account_accessible']=bool(account and account.get('id')=='act_2206299143461363')
-                      if out['selected_account_accessible']:
-                          out['account']={k:account.get(k) for k in ('id','name','account_status','currency','timezone_name')}
-          
+          cfg=dotenv_values('/root/vps_x_bot/.env')
+          version=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
+          prefix=version+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',version) else ''
+          out={'meta_account_status_check':True,'credential_values_disclosed':False,'write_requests_made':0}
+          try:
+              with httpx.Client(timeout=25,headers={'Authorization':'Bearer '+cfg['FACEBOOK_USER_ACCESS_TOKEN']}) as c:
+                  r=c.get('https://graph.facebook.com/'+prefix+'act_2206299143461363',params={'fields':'account_status,disable_reason,failed_delivery_checks,balance,currency'})
+                  j=r.json()
+                  if r.is_success and not j.get('error'):
+                      out['account_status']=j.get('account_status');out['disable_reason']=j.get('disable_reason')
+                      out['currency']=j.get('currency')
+                      try:out['positive_outstanding_balance']=int(j.get('balance') or '0')>0
+                      except (ValueError,TypeError):out['positive_outstanding_balance']=None
+                      checks=j.get('failed_delivery_checks') or []
+                      out['failed_delivery_checks']=[{k:x[k] for k in ('check_name','summary','description','error_code') if k in x} for x in checks if isinstance(x,dict)]
+                  else:out['error']={'http_status':r.status_code,'code':j.get('error',{}).get('code')}
+          except Exception as e:out['error_type']=type(e).__name__
           print(json.dumps(out,sort_keys=True))
           PYCODE
