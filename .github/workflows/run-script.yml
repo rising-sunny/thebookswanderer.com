@@ -34,87 +34,40 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Confirm pixel asset access audience estimates and supplier quote economics
+      - name: Clarify pixel ownership and existing campaign budget metadata without writes
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Extra read-only asset checks and non-order supplier shipping quotes."""
-          import asyncio,concurrent.futures,json,re,sys,time
+          """Read-only clarification of pixel linkage and concurrent ad budgets."""
+          import concurrent.futures,json,re
           from pathlib import Path
-          from datetime import datetime,timedelta,timezone
-          from dotenv import dotenv_values,load_dotenv
           import httpx
-          
-          ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT));load_dotenv(ROOT/'.env')
-          cfg=dotenv_values('/root/vps_x_bot/.env');env=dotenv_values(ROOT/'.env')
-          version=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
-          BASE='https://graph.facebook.com/'+(version+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',version) else '')
-          ACCOUNT='act_2206299143461363';PIXEL=str(env['META_PIXEL_ID'])
-          out={'meta_analysis_supplement':True,'ad_changes':0,'orders_created':0,'payments_made':0,'credential_values_disclosed':False}
-          def get(c,path,params=None):
-              try:
-                  r=c.get(BASE+path,params=params or {});j=r.json()
-                  if not r.is_success or j.get('error'):
-                      e=j.get('error') or {};return {'error':{'status':r.status_code,'code':e.get('code'),'subcode':e.get('error_subcode')}}
-                  return j
-              except Exception as e:return {'error':{'type':type(e).__name__}}
-          
-          with httpx.Client(headers={'Authorization':'Bearer '+cfg['FACEBOOK_USER_ACCESS_TOKEN']},timeout=35) as c:
-              out['pixel_owner']=get(c,PIXEL,{'fields':'id,name,owner_ad_account{id,name},owner_business{id,name},is_created_by_business'})
-              shared=get(c,PIXEL+'/shared_accounts',{'fields':'id,name','limit':100})
-              out['pixel_shared_accounts']={'error':shared['error']} if 'error' in shared else {'data':shared.get('data',[]),'has_more':bool(shared.get('paging',{}).get('next'))}
-              other=get(c,'120249344610600244',{'fields':'id,name,account_id,status,effective_status,objective'})
-              out['other_campaign_seen_in_store']=other
-              combined={'geo_locations':{'countries':['US']},'age_min':18,'age_max':65,'flexible_spec':[{'interests':[
-                  {'id':'6002991736368','name':'Reading (communication)'},
-                  {'id':'6003398438403','name':'Book discussion club (clubs)'},
-                  {'id':'6003102605840','name':'Stationery (office supplies)'}]}]}
-              broad={'geo_locations':{'countries':['US']},'age_min':18,'age_max':65}
-              for name,target in [('interest_us',combined),('broad_us',broad)]:
-                  value=get(c,ACCOUNT+'/reachestimate',{'targeting_spec':json.dumps(target),'fields':'users_lower_bound,users_upper_bound,estimate_ready'})
-                  out[name]={'error':value['error']} if 'error' in value else {'data':value.get('data',value)}
-              # Page through counts only: no event payloads or customer data.
-              after=None;totals={};pages=0;complete=False;errors=[]
-              while pages<10:
-                  params={'aggregation':'event','start_time':int((datetime.now(timezone.utc)-timedelta(days=7)).timestamp()),'end_time':int(time.time()),'limit':100}
-                  if after:params['after']=after
-                  j=get(c,PIXEL+'/stats',params);pages+=1
-                  if 'error' in j:errors.append(j['error']);break
-                  for bucket in j.get('data',[]):
-                      for event in bucket.get('data',[]):
-                          if isinstance(event.get('count'),(int,float)):
-                              k=str(event.get('value'));totals[k]=totals.get(k,0)+event['count']
-                  paging=j.get('paging') or {}
-                  if not paging.get('next'):complete=True;break
-                  nxt=(paging.get('cursors') or {}).get('after')
-                  if not nxt or nxt==after:break
-                  after=nxt
-              out['pixel_events_7d']={'counts':totals,'pages':pages,'complete':complete,'errors':errors}
-          
-          async def quotes():
-              from database import SessionLocal
-              from models import Product
-              from services import printify,lulu,pricing
-              result={}
-              with SessionLocal() as db:
-                  tote=db.query(Product).filter(Product.slug=='reading-society-tote').one()
-                  book=db.query(Product).filter(Product.slug=='commonplace-book').one()
-                  tote_id=tote.printify_product_id;vid=tote.active_variants()[0].printify_variant_id
-                  tote_price=tote.price_usd;book_price=book.price_usd;package=book.lulu_package
-              try:
-                  p=await printify._request('GET',f'/shops/{printify.shop_id()}/products/{tote_id}.json')
-                  v=next(v for v in p['variants'] if v['id']==vid)
-                  ship=await printify.shipping_cost([{'product_id':tote_id,'variant_id':vid,'quantity':1}],'US')
-                  landed=v['cost']/100+ship
-                  result['tote']={'supplier':'printify','production_usd':v['cost']/100,'standard_shipping_usd':ship,'landed_usd_excluding_tax':round(landed,2),'variant_available':v.get('is_available'),'contribution_estimate':pricing.breakdown(landed,tote_price).as_dict()}
-              except Exception as e:result['tote']={'quote_error_type':type(e).__name__}
-              try:
-                  address={'name':'Rate estimate','street1':'101 Independence Ave SE','city':'Washington','state_code':'DC','postcode':'20540','country_code':'US','phone_number':'+12025550100'}
-                  q=await lulu.cost(package,160,1,address)
-                  landed=float(q['total_cost_incl_tax'])
-                  result['book']={'supplier':'lulu','quote_destination':'Washington DC 20540','landed_usd_including_supplier_tax':landed,'contribution_estimate':pricing.breakdown(landed,book_price).as_dict()}
-              except Exception as e:result['book']={'quote_error_type':type(e).__name__}
-              return result
-          
-          out['supplier_quotes']=asyncio.run(quotes())
+          from dotenv import dotenv_values
+          env=dotenv_values('/var/www/thebookswanderer.com/server/.env');cfg=dotenv_values('/root/vps_x_bot/.env')
+          token=cfg['FACEBOOK_USER_ACCESS_TOKEN'];v=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
+          BASE='https://graph.facebook.com/'+(v+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',v) else '')
+          pixel=env['META_PIXEL_ID']
+          qs={
+           'pixel_owner_account':(pixel,{'fields':'id,name,owner_ad_account{id,name}'}),
+           'other_account':('act_1696378237957660',{'fields':'id,name,currency,account_status'}),
+           'other_account_pixels':('act_1696378237957660/adspixels',{'fields':'id,name','limit':100}),
+           'other_campaign_budget':('120249344610600244',{'fields':'id,name,status,daily_budget,lifetime_budget'}),
+           'other_campaign_adsets':('120249344610600244/adsets',{'fields':'id,name,status,daily_budget,lifetime_budget,optimization_goal,promoted_object','limit':100}),
+           'pixel_stats_source':(pixel+'/stats',{'aggregation':'source','limit':5}),
+          }
+          def get(c,path,params):
+           try:
+            r=c.get(BASE+path,params=params);j=r.json()
+            if not r.is_success or j.get('error'):
+             e=j.get('error') or {};msg=str(e.get('message') or '').replace(token,'[redacted]')
+             msg=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',msg)
+             return {'error':{'code':e.get('code'),'subcode':e.get('error_subcode'),'message':msg[:240]}}
+            if 'paging' in j:return {'data':j.get('data',[]),'has_more':bool(j['paging'].get('next'))}
+            return j
+           except Exception as e:return {'error_type':type(e).__name__}
+          out={'meta_asset_details':True,'ad_changes':0,'credential_values_disclosed':False}
+          with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=30) as c:
+           with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            fs={pool.submit(get,c,*q):k for k,q in qs.items()}
+            for f in concurrent.futures.as_completed(fs):out[fs[f]]=f.result()
           print(json.dumps(out,sort_keys=True))
           PYCODE
