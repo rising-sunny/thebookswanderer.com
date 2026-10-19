@@ -34,40 +34,82 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Clarify pixel ownership and existing campaign budget metadata without writes
+      - name: Pause superseded TBW campaigns and prepare production conversion tracking
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only clarification of pixel linkage and concurrent ad budgets."""
-          import concurrent.futures,json,re
+          """Authorized preparation: pause only the two TBW campaigns; disable CAPI test mode.
+          
+          No activation, new purchases, payments, or unrelated campaign changes.
+          """
+          import hashlib,json,os,re,shutil,stat,subprocess,time
           from pathlib import Path
+          from datetime import datetime,timezone
+          from dotenv import dotenv_values,set_key
           import httpx
-          from dotenv import dotenv_values
-          env=dotenv_values('/var/www/thebookswanderer.com/server/.env');cfg=dotenv_values('/root/vps_x_bot/.env')
-          token=cfg['FACEBOOK_USER_ACCESS_TOKEN'];v=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
+          
+          ROOT=Path('/var/www/thebookswanderer.com/server')
+          cfg=dotenv_values('/root/vps_x_bot/.env');token=cfg['FACEBOOK_USER_ACCESS_TOKEN']
+          v=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
           BASE='https://graph.facebook.com/'+(v+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',v) else '')
-          pixel=env['META_PIXEL_ID']
-          qs={
-           'pixel_owner_account':(pixel,{'fields':'id,name,owner_ad_account{id,name}'}),
-           'other_account':('act_1696378237957660',{'fields':'id,name,currency,account_status'}),
-           'other_account_pixels':('act_1696378237957660/adspixels',{'fields':'id,name','limit':100}),
-           'other_campaign_budget':('120249344610600244',{'fields':'id,name,status,daily_budget,lifetime_budget'}),
-           'other_campaign_adsets':('120249344610600244/adsets',{'fields':'id,name,status,daily_budget,lifetime_budget,optimization_goal,promoted_object','limit':100}),
-           'pixel_stats_source':(pixel+'/stats',{'aggregation':'source','limit':5}),
-          }
-          def get(c,path,params):
-           try:
-            r=c.get(BASE+path,params=params);j=r.json()
-            if not r.is_success or j.get('error'):
-             e=j.get('error') or {};msg=str(e.get('message') or '').replace(token,'[redacted]')
-             msg=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',msg)
-             return {'error':{'code':e.get('code'),'subcode':e.get('error_subcode'),'message':msg[:240]}}
-            if 'paging' in j:return {'data':j.get('data',[]),'has_more':bool(j['paging'].get('next'))}
-            return j
-           except Exception as e:return {'error_type':type(e).__name__}
-          out={'meta_asset_details':True,'ad_changes':0,'credential_values_disclosed':False}
-          with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=30) as c:
-           with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            fs={pool.submit(get,c,*q):k for k,q in qs.items()}
-            for f in concurrent.futures.as_completed(fs):out[fs[f]]=f.result()
+          allowed=[('120248615067130765','2206299143461363'),('120249344610600244','1696378237957660')]
+          out={'meta_ads_preparation':True,'credential_values_disclosed':False,'new_ads_created':0,'payments_made':0,'orders_created':0,'unrelated_campaigns_changed':False}
+          os.umask(0o077)
+          backup=Path('/var/backups/thebookswanderer-meta-ads')/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+          backup.mkdir(parents=True,mode=0o700);os.chmod(backup,0o700)
+          
+          def req(c,method,path,data=None,params=None):
+              try:
+                  r=c.request(method,BASE+path,data=data,params=params);j=r.json()
+                  if not r.is_success or j.get('error'):
+                      e=j.get('error') or {};msg=str(e.get('message','')).replace(token,'[redacted]')
+                      msg=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',msg)
+                      return {'error':{'status':r.status_code,'code':e.get('code'),'subcode':e.get('error_subcode'),'message':msg[:300]}}
+                  return j
+              except Exception as e:return {'error':{'type':type(e).__name__}}
+          
+          with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=35) as c:
+              before=[]
+              for campaign,account in allowed:
+                  j=req(c,'GET',campaign,params={'fields':'id,name,account_id,status'})
+                  if j.get('error') or j.get('id')!=campaign or j.get('account_id')!=account:
+                      raise RuntimeError('Existing campaign identity could not be verified; no campaign changes made')
+                  before.append(j)
+              (backup/'campaigns-before.json').write_text(json.dumps(before,indent=2))
+              changed=[]
+              for original in before:
+                  record={'id':original['id'],'name':original['name'],'before':original['status']}
+                  if original['status']!='PAUSED':record['pause_response']=req(c,'POST',original['id'],data={'status':'PAUSED'})
+                  check=req(c,'GET',original['id'],params={'fields':'id,status,effective_status'})
+                  record['after']=check;record['verified_paused']=check.get('status')=='PAUSED';changed.append(record)
+              out['previous_campaigns']=changed
+              out['all_previous_campaigns_paused']=all(r['verified_paused'] for r in changed)
+          
+          envpath=ROOT/'.env';before=dotenv_values(envpath);original_stat=envpath.stat()
+          out['capi_test_code_was_enabled']=bool((before.get('META_CAPI_TEST_CODE') or '').strip())
+          if out['capi_test_code_was_enabled']:
+              saved=backup/'server.env';shutil.copy2(envpath,saved);os.chmod(saved,0o600)
+              assert hashlib.sha256(saved.read_bytes()).digest()==hashlib.sha256(envpath.read_bytes()).digest()
+              try:
+                  set_key(envpath,'META_CAPI_TEST_CODE','',quote_mode='always')
+                  os.chown(envpath,original_stat.st_uid,original_stat.st_gid);os.chmod(envpath,stat.S_IMODE(original_stat.st_mode))
+                  after=dotenv_values(envpath)
+                  assert {k:v for k,v in before.items() if k!='META_CAPI_TEST_CODE'}=={k:v for k,v in after.items() if k!='META_CAPI_TEST_CODE'}
+                  assert not (after.get('META_CAPI_TEST_CODE') or '').strip()
+                  subprocess.run(['systemctl','restart','thebookswanderer.service'],check=True,capture_output=True)
+                  healthy=False
+                  for _ in range(10):
+                      try:
+                          if httpx.get('http://127.0.0.1:8010/api/health',timeout=3).status_code==200:healthy=True;break
+                      except httpx.HTTPError:pass
+                      time.sleep(1)
+                  if not healthy:raise RuntimeError('Service health did not recover after configuration reload')
+                  out['capi_test_code_enabled_after']=False;out['other_environment_values_unchanged']=True;out['service_healthy']=True
+              except Exception as e:
+                  shutil.copy2(saved,envpath);os.chown(envpath,original_stat.st_uid,original_stat.st_gid);os.chmod(envpath,stat.S_IMODE(original_stat.st_mode))
+                  subprocess.run(['systemctl','restart','thebookswanderer.service'],capture_output=True)
+                  out['capi_change_rolled_back']=True;out['error_type']=type(e).__name__
+          else:out['capi_test_code_enabled_after']=False;out['other_environment_values_unchanged']=True
+          out['backup_dir']=str(backup)
+          (backup/'preparation-result.json').write_text(json.dumps(out,indent=2))
           print(json.dumps(out,sort_keys=True))
           PYCODE
