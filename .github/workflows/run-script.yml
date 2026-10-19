@@ -34,30 +34,50 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Read-only India traffic verification
+      - name: Audit India supplier shipping without orders
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          import json,sqlite3
+          """Inventory and shipping quotations only: never creates orders or payments."""
+          import asyncio,json,sys,sqlite3
           from pathlib import Path
-          from datetime import datetime,timedelta,timezone
-          from dotenv import dotenv_values
-          root=Path('/var/www/thebookswanderer.com/server')
-          env=dotenv_values(root/'.env')
-          u=env.get('DATABASE_URL') or 'sqlite:///'+str(root/'data/store.db')
+          from datetime import datetime,timezone
+          from dotenv import load_dotenv,dotenv_values
+          ROOT=Path('/var/www/thebookswanderer.com/server');sys.path.insert(0,str(ROOT));load_dotenv(ROOT/'.env')
+          from services import cj,printify,lulu,digital
+          cfg=dotenv_values(ROOT/'.env');u=cfg.get('DATABASE_URL') or 'sqlite:///'+str(ROOT/'data/store.db')
           assert u.startswith('sqlite:///')
-          p=Path(u[len('sqlite:///'):]);p=p if p.is_absolute() else root/p
-          c=sqlite3.connect('file:'+str(p)+'?mode=ro',uri=True);c.row_factory=sqlite3.Row
-          now=datetime.now(timezone.utc);since=(now-timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
-          def q(sql,args=()):return [dict(r) for r in c.execute(sql,args)]
-          base=" FROM live_events WHERE country='IN' AND ts>=? "
-          human=" AND COALESCE(ua_class,'') NOT IN ('server','datacenter','bot') "
-          r={'india_traffic_audit':True,'checked_at_utc':now.isoformat(),'window_start_utc':since,
-          'all_30d':q('SELECT count(*) events,count(distinct session_id) sessions,min(ts) first_seen_utc,max(ts) last_seen_utc'+base,(since,)),
-          'classification':q('SELECT ua_class,count(*) events,count(distinct session_id) sessions'+base+'GROUP BY ua_class',(since,)),
-          'days':q('SELECT substr(ts,1,10) day_utc,count(distinct session_id) sessions'+base+human+'GROUP BY 1 ORDER BY 1',(since,)),
-          'events':q('SELECT event_type,count(*) events,count(distinct session_id) sessions'+base+human+'GROUP BY 1',(since,)),
-          'sources':q("SELECT COALESCE(NULLIF(source,''),NULLIF(referrer_domain,''),'direct/unknown') source,COALESCE(medium,'') medium,COALESCE(campaign,'') campaign,count(distinct session_id) sessions"+base+human+'GROUP BY 1,2,3 ORDER BY sessions DESC',(since,)),
-          'product_views':q("SELECT product_slug,count(*) events,count(distinct session_id) sessions"+base+human+"AND event_type='product_view' GROUP BY 1",(since,)),
-          'all_today':q('SELECT ua_class,count(distinct session_id) sessions'+base+'GROUP BY 1',(now.strftime('%Y-%m-%d 00:00:00'),))}
-          print(json.dumps(r,sort_keys=True));c.close()
+          f=Path(u[len('sqlite:///'):]);f=f if f.is_absolute() else ROOT/f
+          c=sqlite3.connect('file:'+str(f)+'?mode=ro',uri=True);c.row_factory=sqlite3.Row
+          products=[dict(r) for r in c.execute('SELECT id,slug,title,supplier,price_usd,from_country,cj_vid,printify_product_id,lulu_package,digital_file FROM products WHERE active=1 ORDER BY id DESC')]
+          for p in products:p['variants']=[dict(v) for v in c.execute('SELECT id,name,cj_vid,printify_variant_id,digital_file FROM product_variants WHERE product_id=? AND active=1 ORDER BY sort_order,id',(p['id'],))]
+          c.close()
+          out={'india_shipping_audit':True,'checked_at_utc':datetime.now(timezone.utc).isoformat(),'orders_created':0,'payments_made':0,'product_changes':0,'lulu_store_countries':sorted(lulu.ship_countries()),'printify_store_countries':sorted(printify.SHIP_COUNTRIES),'results':[]}
+          def err(e):
+           payload=getattr(e,'payload',None)
+           return {'error_type':type(e).__name__,'supplier_error_code':payload.get('code') if isinstance(payload,dict) else None}
+          async def main():
+           for p in products:
+            s=p['supplier'] or 'cj';vs=p['variants'];v=vs[0] if vs else None
+            r={'id':p['id'],'slug':p['slug'],'title':p['title'],'supplier':s,'retail_usd':p['price_usd'],'active_variants':len(vs),'quoted_variant_id':v['id'] if v else None,'variant_scope':'first active variant only'}
+            try:
+             if s=='cj':
+              options=await asyncio.wait_for(cj.freight_calculate(start_country=p['from_country'] or 'CN',end_country='IN',products=[{'vid':v['cj_vid'] if v else p['cj_vid'],'quantity':1}],zip_code='110001'),timeout=65)
+              r.update(origin=p['from_country'] or 'CN',route_count=len(options),route_available=bool(options),options=[{'name':o.get('logisticName'),'shipping_usd':o.get('logisticPrice'),'eta_days':o.get('logisticAging')} for o in sorted(options,key=lambda x:float(x.get('logisticPrice') or 0))[:3]])
+              await asyncio.sleep(1.3)
+             elif s=='printify':
+              r['shipping_quote_usd']=await asyncio.wait_for(printify.shipping_cost([{'product_id':p['printify_product_id'],'variant_id':v['printify_variant_id'],'quantity':1}],'IN'),timeout=50)
+              r['supplier_returned_quote']=True
+             elif s=='lulu':
+              import fitz
+              fp=digital.file_path((v['digital_file'] if v else '') or p['digital_file'])
+              if not fp:raise ValueError('Missing print file')
+              with fitz.open(fp) as doc:pages=len(doc)
+              address={'name':'Rate estimate','street1':'India Gate','city':'New Delhi','state_code':'DL','postcode':'110001','country_code':'IN','phone_number':'+919000000000'}
+              quote=await asyncio.wait_for(lulu.cost(p['lulu_package'],pages,1,address),timeout=65)
+              r.update(page_count=pages,shipping_option='MAIL',supplier_returned_quote=True,currency=quote.get('currency'),total_cost_incl_tax=quote.get('total_cost_incl_tax'),total_shipping_cost=quote.get('total_shipping_cost'))
+             elif s=='digital':r['physical_shipping_required']=False
+            except Exception as e:r.update(err(e))
+            out['results'].append(r)
+           print(json.dumps(out,sort_keys=True))
+          asyncio.run(main())
           PYCODE
