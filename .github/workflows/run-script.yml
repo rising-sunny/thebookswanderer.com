@@ -34,55 +34,30 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Associate the existing TBW pixel with the approved MathRelaxing ad account
+      - name: Read-only India traffic verification
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Associate only the user's existing TBW pixel with the chosen MathRelaxing account.
-          
-          This does not create/activate ads, change users or billing, or send events.
-          """
-          import json,os,re
+          import json,sqlite3
           from pathlib import Path
-          from datetime import datetime,timezone
-          import httpx
+          from datetime import datetime,timedelta,timezone
           from dotenv import dotenv_values
-          cfg=dotenv_values('/root/vps_x_bot/.env');env=dotenv_values('/var/www/thebookswanderer.com/server/.env')
-          token=cfg['FACEBOOK_USER_ACCESS_TOKEN'];pixel=env['META_PIXEL_ID']
-          if pixel!='907494619068513':raise RuntimeError('Unexpected pixel: no changes made')
-          business='614062214558484';account='act_2206299143461363'
-          v=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip();BASE='https://graph.facebook.com/'+(v+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',v) else '')
-          out={'tbw_pixel_assignment':True,'ad_changes':0,'payments_made':0,'conversion_events_sent':0,'credential_values_disclosed':False}
-          def req(c,method,path,data=None,params=None):
-           try:
-            r=c.request(method,BASE+path,data=data,params=params);j=r.json()
-            if not r.is_success or j.get('error'):
-             e=j.get('error') or {};safe={k:e[k] for k in ['code','error_subcode','message','error_user_title','error_user_msg'] if k in e}
-             for k,value in list(safe.items()):
-              if isinstance(value,str):safe[k]=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',value.replace(token,'[redacted]'))[:400]
-             return {'error':safe}
-            if 'paging' in j:return {'data':j.get('data',[])}
-            return j
-           except Exception as e:return {'error_type':type(e).__name__}
-          with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=30) as c:
-           owned=req(c,'GET',business+'/owned_pixels',params={'fields':'id,name','limit':100})
-           target=req(c,'GET',account,params={'fields':'id,name,currency'})
-           if not any(p.get('id')==pixel and p.get('name')=='The Books Wanderer' for p in owned.get('data',[])):
-            raise RuntimeError('Expected pixel ownership could not be verified; no changes made')
-           if target.get('id')!=account or target.get('name')!='MathRelaxing' or target.get('currency')!='USD':
-            raise RuntimeError('Target ad account identity changed; no changes made')
-           shared=req(c,'GET',pixel+'/shared_accounts',params={'business':business,'fields':'id,name','limit':100})
-           out['shared_accounts_before']=shared
-           already=any(a.get('id')==account for a in shared.get('data',[]))
-           if shared.get('error') or shared.get('error_type'):
-            out['assignment_skipped']='Cannot inspect existing grants safely.'
-           elif already:out['already_assigned']=True
-           else:
-            out['assignment_result']=req(c,'POST',pixel+'/shared_accounts',data={'business':business,'account_id':account.removeprefix('act_')})
-           after=req(c,'GET',account+'/adspixels',params={'fields':'id,name','limit':100})
-           out['account_pixel_list_after']=after
-           out['target_pixel_access_verified']=any(p.get('id')==pixel for p in after.get('data',[]))
-          os.umask(0o077)
-          folder=Path('/var/backups/thebookswanderer-meta-ads');folder.mkdir(mode=0o700,parents=True,exist_ok=True)
-          (folder/('pixel-assignment-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'.json')).write_text(json.dumps(out,indent=2))
-          print(json.dumps(out,sort_keys=True))
+          root=Path('/var/www/thebookswanderer.com/server')
+          env=dotenv_values(root/'.env')
+          u=env.get('DATABASE_URL') or 'sqlite:///'+str(root/'data/store.db')
+          assert u.startswith('sqlite:///')
+          p=Path(u[len('sqlite:///'):]);p=p if p.is_absolute() else root/p
+          c=sqlite3.connect('file:'+str(p)+'?mode=ro',uri=True);c.row_factory=sqlite3.Row
+          now=datetime.now(timezone.utc);since=(now-timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+          def q(sql,args=()):return [dict(r) for r in c.execute(sql,args)]
+          base=" FROM live_events WHERE country='IN' AND ts>=? "
+          human=" AND COALESCE(ua_class,'') NOT IN ('server','datacenter','bot') "
+          r={'india_traffic_audit':True,'checked_at_utc':now.isoformat(),'window_start_utc':since,
+          'all_30d':q('SELECT count(*) events,count(distinct session_id) sessions,min(ts) first_seen_utc,max(ts) last_seen_utc'+base,(since,)),
+          'classification':q('SELECT ua_class,count(*) events,count(distinct session_id) sessions'+base+'GROUP BY ua_class',(since,)),
+          'days':q('SELECT substr(ts,1,10) day_utc,count(distinct session_id) sessions'+base+human+'GROUP BY 1 ORDER BY 1',(since,)),
+          'events':q('SELECT event_type,count(*) events,count(distinct session_id) sessions'+base+human+'GROUP BY 1',(since,)),
+          'sources':q("SELECT COALESCE(NULLIF(source,''),NULLIF(referrer_domain,''),'direct/unknown') source,COALESCE(medium,'') medium,COALESCE(campaign,'') campaign,count(distinct session_id) sessions"+base+human+'GROUP BY 1,2,3 ORDER BY sessions DESC',(since,)),
+          'product_views':q("SELECT product_slug,count(*) events,count(distinct session_id) sessions"+base+human+"AND event_type='product_view' GROUP BY 1",(since,)),
+          'all_today':q('SELECT ua_class,count(distinct session_id) sessions'+base+'GROUP BY 1',(now.strftime('%Y-%m-%d 00:00:00'),))}
+          print(json.dumps(r,sort_keys=True));c.close()
           PYCODE
