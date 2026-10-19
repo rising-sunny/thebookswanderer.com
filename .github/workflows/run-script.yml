@@ -34,48 +34,88 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Check new product autonomous social eligibility read only
+      - name: Locate Meta credential variable names without emitting values
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only eligibility and scheduler check. No rendering or social/email sends."""
-          import json,os,shutil,subprocess,sys
+          """Authorized read-only credential location inventory; never emits values."""
+          import json, os, re, stat, time
           from pathlib import Path
-          from datetime import datetime
-          from dotenv import load_dotenv
-          ROOT=Path.cwd();load_dotenv(ROOT/'.env');sys.path.insert(0,str(ROOT/'scripts'))
-          import daily_social_post as social
-          from database import SessionLocal
-          from models import Product
-          from services import pinterest as pin,pinterest_jobs as jobs
-          import httpx
-          SLUG='bedside-book-rest'
-          with httpx.Client(timeout=30) as c:
-           state=social.load_state();chosen=social.pick_product(c,state,None)
-           p=c.get(social.BASE+'/api/products/by-slug/'+SLUG);p.raise_for_status();product=p.json()
-          media=list(dict.fromkeys([product['image_url'],*product.get('lifestyle_images',[]),*[v.get('image_url') for v in product.get('variants',[])]]))
-          out={'product_active':True,'product_id':product['id'],'social_enabled':(os.getenv('SOCIAL_POST_ENABLED','1') or '').strip()!='0','facebook_credentials_configured':bool(os.getenv('FB_PAGE_ID') and os.getenv('FB_PAGE_TOKEN')),'ffmpeg_available':bool(shutil.which('ffmpeg')),'next_selected_product':chosen['slug'],'new_product_is_next_candidate':chosen['slug']==SLUG,'social_photos':media,'new_product_history':[{'date':e.get('date'),'facebook_posted':bool(e.get('facebook')),'instagram_posted':bool(e.get('instagram')),'pinterest_attempted':bool(e.get('pinterest')),'ok':bool(e.get('ok'))} for e in state if e.get('slug')==SLUG]}
-          with SessionLocal() as db:
-           candidates=jobs.select_drip_candidates(db,limit=1000)
-           out['pinterest_eligible']=any(p.slug==SLUG for p in candidates)
-           out['pinterest_auto_enabled']=jobs.auto_pin_enabled();out['pinterest_configured']=pin.is_configured()
-           health=pin.token_health();out['pinterest_token_connected']=health.get('connected');out['pinterest_reauth_required']=health.get('reauth_required')
-           out['pinterest_board_configured']=bool(jobs.board_id_for_category(product.get('category_slug')))
-           out['last_pin_for_product']=jobs.last_successful_pin_at(db,SLUG).isoformat() if jobs.last_successful_pin_at(db,SLUG) else None
-          cron_text=[]
-          r=subprocess.run(['crontab','-l'],capture_output=True,text=True)
-          if r.returncode==0:cron_text.append(('root',r.stdout))
-          for file in Path('/etc/cron.d').iterdir():
-           if file.is_file():cron_text.append((file.name,file.read_text(errors='replace')))
-          entries=[]
-          for source,content in cron_text:
-           for line in content.splitlines():
-            line=line.strip()
-            if not line or line.startswith('#'):continue
-            for script in ('daily_social_post.py','pinterest_auto_pin.py'):
-             if script in line:entries.append({'source':source,'schedule':' '.join(line.split()[:5]),'script':script})
-          out['cron_entries']=entries
-          out['cron_service_active']=subprocess.run(['systemctl','is-active','cron'],capture_output=True,text=True).stdout.strip()=='active'
-          now=datetime.now(social.NY);out['checked_at_new_york']=now.isoformat(timespec='seconds');out['today_already_posted']=any(e.get('date')==now.date().isoformat() and e.get('ok') for e in state)
-          out['new_posts_sent_by_audit']=0
-          print(json.dumps(out,sort_keys=True))
+          from datetime import datetime, timezone
+          
+          ROOTS=['/root','/opt','/srv','/var/www','/home']
+          SKIP={'.git','.venv','venv','env','node_modules','__pycache__','.cache','.npm',
+                '.local','.rustup','.cargo','site-packages','dist-packages','backups',
+                'generated_media','auto_videos','long_form','project_media','models',
+                'output','outputs','logs','.mypy_cache','.pytest_cache','.next'}
+          ASSIGN=re.compile(r'^\s*(?:export\s+)?[\"\']?([A-Za-z_][A-Za-z0-9_]*)[\"\']?\s*[:=]\s*(.*)$')
+          PREFIX=re.compile(r'^(?:FB_|FACEBOOK_|META_|IG_|INSTAGRAM_|ADS_|AD_ACCOUNT|PIXEL_|BUSINESS_MANAGER|SYSTEM_USER)',re.I)
+          GENERIC={'access_token','user_access_token','page_access_token','app_secret','app_id',
+                   'ad_account_id','account_id','pixel_id','business_id','system_user_token'}
+          PLACEHOLDERS={'','none','null','false','changeme','your_token','your_access_token','xxx','...'}
+          hits=[];errors=[];scanned=0;visited=0;start=time.monotonic()
+          
+          def nonempty(value):
+              if not isinstance(value,(str,int,float)):return False
+              v=str(value).strip().strip('\"\'').rstrip(',').strip().strip('\"\'')
+              if v.lower() in PLACEHOLDERS:return False
+              if v.startswith('${') or v.startswith('os.getenv('):return False
+              return bool(v)
+          
+          def classify(name):
+              n=name.upper()
+              if 'CAPI' in n:return 'conversions_api'
+              if 'PIXEL' in n:return 'pixel'
+              if ('USER' in n or 'AD' in n or 'SYSTEM' in n) and 'TOKEN' in n:return 'possible_ads_or_user_token'
+              if 'PAGE' in n and 'TOKEN' in n:return 'page_token'
+              if 'TOKEN' in n:return 'token_scope_not_verified'
+              if 'SECRET' in n:return 'app_secret'
+              return 'identifier_or_setting'
+          
+          for root in ROOTS:
+              if not Path(root).is_dir():continue
+              for folder,dirs,files in os.walk(root,followlinks=False):
+                  visited+=1
+                  dirs[:]=[d for d in dirs if d not in SKIP and not d.endswith(('.dist-info','.egg-info'))]
+                  if time.monotonic()-start>90:dirs[:]=[];continue
+                  for name in files:
+                      path=Path(folder)/name;low=name.lower()
+                      candidate=(low.startswith('.env') or path.suffix.lower() in {'.json','.yaml','.yml','.ini','.toml','.conf','.service'})
+                      if not candidate:continue
+                      try:
+                          if path.is_symlink() or not path.is_file() or path.stat().st_size>2_000_000:continue
+                          text=path.read_text(errors='replace');scanned+=1
+                          context=bool(re.search(r'facebook|meta[_ -]?ads|graph\.facebook|instagram|fb[_-]',str(path)+' '+text,re.I))
+                          found={}
+                          if path.suffix.lower()=='.json':
+                              try:
+                                  obj=json.loads(text)
+                                  def walk(o,prefix=''):
+                                      if isinstance(o,dict):
+                                          for k,v in o.items():
+                                              k=str(k);label=(prefix+'.'+k).strip('.')
+                                              if PREFIX.search(k) or (context and k.lower() in GENERIC):
+                                                  if not isinstance(v,(dict,list)):found[label]={'name':label,'configured':nonempty(v),'kind':classify(k)}
+                                              if isinstance(v,(dict,list)):walk(v,label)
+                                      elif isinstance(o,list):
+                                          for v in o[:50]:walk(v,prefix+'[]')
+                                  walk(obj)
+                              except (ValueError,RecursionError):pass
+                          for line in text.splitlines():
+                              m=ASSIGN.match(line)
+                              if not m:continue
+                              key,value=m.groups()
+                              if PREFIX.search(key) or (context and key.lower() in GENERIC):
+                                  found.setdefault(key,{'name':key,'configured':nonempty(value),'kind':classify(key)})
+                          if found:
+                              info=path.stat()
+                              hits.append({'path':str(path),'example_or_backup':any(s in low for s in ('example','sample','.bak','backup')),
+                                           'mode':oct(stat.S_IMODE(info.st_mode)),
+                                           'variables':sorted(found.values(),key=lambda r:r['name'])})
+                      except (OSError,PermissionError) as exc:
+                          errors.append({'path':str(path),'error_type':type(exc).__name__})
+          
+          print(json.dumps({'meta_credential_inventory':True,'checked_at_utc':datetime.now(timezone.utc).isoformat(),
+              'roots':ROOTS,'folders_visited':visited,'configuration_files_scanned':scanned,
+              'locations':sorted(hits,key=lambda r:r['path']),'errors':errors[:20],
+              'credential_values_disclosed':False,'files_modified_on_vps':False,'api_calls_made':False},sort_keys=True))
           PYCODE
