@@ -1,0 +1,15 @@
+{
+  "duration_s": "20.000000",
+  "dimensions": [
+    1080,
+    1920
+  ],
+  "fps": "30/1",
+  "pixel_format": "yuv420p",
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "sample_rate": "48000",
+  "audio_channels": 2,
+  "bytes": 2908997,
+  "faststart": true
+}
