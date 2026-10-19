@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
 from services.qikink import PlainOrder, PrintedOrder, PrintDesign, QikinkError, SandboxClient, SandboxJournal, DEFAULT_JOURNAL
+from services.qikink_catalog import DEFAULT_CATALOG, DEFAULT_STORE_DB, load_catalog, catalog_report
 
 
 # Matches the synthetic address of the manually confirmed Sandbox order.
@@ -28,6 +29,10 @@ def parser() -> argparse.ArgumentParser:
     cli.add_argument("--journal", type=Path, default=DEFAULT_JOURNAL)
     commands = cli.add_subparsers(dest="command", required=True)
     commands.add_parser("auth", help="Authenticate only; prints no token")
+    catalog = commands.add_parser("catalog", help="Offline draft mapping/cost report; never publishes products")
+    catalog.add_argument("--file", type=Path, default=DEFAULT_CATALOG)
+    catalog.add_argument("--store-db", type=Path, default=DEFAULT_STORE_DB)
+    catalog.add_argument("--country", action="append", help="Requested ISO country, e.g. US; repeat as needed")
     lookup = commands.add_parser("lookup", help="Read only; unavailable Sandbox routes are reported")
     lookup.add_argument("order_id")
     history = commands.add_parser("status", help="Read the local journal, with no network call")
@@ -51,6 +56,11 @@ def parser() -> argparse.ArgumentParser:
 
 
 async def run(args) -> dict:
+    if args.command == "catalog":
+        catalog = load_catalog(args.file)
+        if args.country is not None:
+            catalog = type(catalog).model_validate(catalog.model_dump() | {"requested_countries": args.country})
+        return catalog_report(catalog, args.store_db)
     order = None
     if args.command in {"plain", "printed", "remember"}:
         values = dict(reference=args.reference, sku=args.sku, shipping_address=TEST_ADDRESS)
