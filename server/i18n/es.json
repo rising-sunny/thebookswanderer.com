@@ -43,8 +43,14 @@
     }
   },
   "templates": [
-    ["^This item ships to US addresses only, so it can't be sent to (.+)\\.$", "Este producto solo se envía a direcciones de EE. UU., así que no puede llegar a $1."],
-    ["^This item can't be shipped to (.+)\\. Pick another country above if you are sending it as a gift\\.$", "Este producto no se puede enviar a $1. Elige otro país arriba si es un regalo para otra persona."],
+    [
+      "^This item ships to US addresses only, so it can't be sent to (.+)\\.$",
+      "Este producto solo se envía a direcciones de EE. UU., así que no puede llegar a $1."
+    ],
+    [
+      "^This item can't be shipped to (.+)\\. Pick another country above if you are sending it as a gift\\.$",
+      "Este producto no se puede enviar a $1. Elige otro país arriba si es un regalo para otra persona."
+    ],
     [
       "^(.+) is part of The Books Wanderer literary boutique — accessories chosen for everyday reading, not novelty clutter\\. We list real stock options, clear USD pricing, and ship with tracking\\. Checkout is secured with PayPal\\.$",
       "$1 forma parte de la boutique literaria The Books Wanderer: accesorios elegidos para leer todos los días, no adornos de relleno. Mostramos opciones reales en stock, precios claros en USD y envíos con seguimiento. El pago se hace de forma segura con PayPal."
@@ -168,6 +174,10 @@
     [
       "^Order #(\\d+)$",
       "Pedido n.º $1"
+    ],
+    [
+      "^Delivery is not available to this destination for: (.+)\\. Choose another destination or remove these items\\.$",
+      "No hay envío a este destino para: $1. Elige otro destino o retira estos productos."
     ]
   ],
   "phrases": {
@@ -671,6 +681,30 @@
     "Play animations": "Activar animaciones",
     "Motion settings": "Animaciones",
     "Nothing on this shelf just yet. Explore the full collection.": "Esta selección aún está vacía. Explora la colección completa.",
-    "Get the free reading challenge →": "Quiero mi reto de lectura gratuito →"
+    "Get the free reading challenge →": "Quiero mi reto de lectura gratuito →",
+    "Standard US shipping included · other destinations quoted below": "Envío estándar a EE. UU. incluido · otros destinos cotizados abajo",
+    "Standard US shipping included. Select your destination to check availability and any additional shipping.": "Envío estándar a EE. UU. incluido. Elige tu destino para consultar disponibilidad y cualquier costo adicional de envío.",
+    "State / province code": "Código de estado o provincia",
+    "Availability varies by product and address. The final total is confirmed at checkout. Import duties or taxes collected on arrival are not included.": "La disponibilidad depende del producto y la dirección. El total final se confirma antes del pago. No incluye aranceles ni impuestos cobrados a la llegada.",
+    "Choose your destination to confirm delivery and the total": "Elige tu destino para confirmar el envío y el total",
+    "Delivery availability and total confirmed before payment": "Disponibilidad de envío y total confirmados antes del pago",
+    "Standard US shipping included. For other destinations, availability and any additional shipping are confirmed before payment.": "Envío estándar a EE. UU. incluido. Para otros destinos, la disponibilidad y el costo adicional se confirman antes del pago.",
+    "Complete your shipping address to confirm the final total before payment.": "Completa tu dirección para confirmar el total final antes de pagar.",
+    "Import duties or taxes collected by your country on arrival are not included in this total.": "Este total no incluye aranceles ni impuestos que tu país cobre a la llegada.",
+    "Your delivery total has changed or needs confirmation. Review the updated total before paying.": "El total de envío cambió o necesita confirmación. Revisa el total actualizado antes de pagar.",
+    "Recipient tax ID (CPF/CNPJ, RUT or RFC)": "Identificación fiscal del destinatario (CPF/CNPJ, RUT o RFC)",
+    "Required for printed books sent to Brazil, Chile or Mexico.": "Obligatoria para libros impresos enviados a Brasil, Chile o México.",
+    "Please complete city and country.": "Completa la ciudad y el país.",
+    "Estimated total": "Total estimado",
+    "All totals are in USD. You’ll complete payment securely on PayPal, where you can pay by debit or credit card. Shipping is recalculated on our server before charge.": "Todos los totales están en USD. Completarás el pago de forma segura en PayPal, con tarjeta de débito o crédito. El envío se comprueba de nuevo en nuestro servidor antes del cobro.",
+    "Where we deliver": "A dónde enviamos",
+    "Choose your country or territory on the product page or at checkout. Delivery is confirmed for each product, variant, quantity and address. Some products cannot ship to every country; we show a warning and prevent payment when delivery is unavailable.": "Elige tu país o territorio en la página del producto o al pagar. La disponibilidad se confirma según el producto, la variante, la cantidad y la dirección. Si no hay envío a tu destino, mostramos una advertencia y bloqueamos el pago.",
+    "Accessories may ship from China or a local warehouse. Our books and stationery are printed to order by our production partners. Items from different partners may arrive separately.": "Los accesorios pueden enviarse desde China o un almacén local. Nuestros libros y artículos de papelería se imprimen bajo pedido. Los productos de distintos proveedores pueden llegar en paquetes separados.",
+    "Available delivery estimates appear with your quote. Printing and preparation happen before dispatch. Transit and customs processing vary by destination; estimates are not guarantees.": "Los plazos estimados aparecen junto a la cotización. La impresión y preparación se realizan antes del despacho. El transporte y los trámites aduaneros dependen del destino; los plazos son estimaciones.",
+    "Standard US shipping is included in our listed prices. For other destinations, we calculate any additional shipping from the provider's quote. Select your destination and complete your delivery details to see the product subtotal, shipping and the total in USD before payment. If a quote changes, you must review the new total before paying.": "El envío estándar a EE. UU. está incluido en los precios publicados. Para otros destinos, calculamos cualquier importe adicional según la cotización del proveedor. Elige tu destino y completa la dirección para ver el subtotal, el envío y el total en USD antes de pagar. Si la cotización cambia, deberás revisar el nuevo total.",
+    "Your checkout total includes the amount payable to our store, including quoted shipping. Import duties or taxes collected by your country on arrival are not included; these charges are set by the local authority and are payable by you.": "El total al pagar incluye el importe que cobra nuestra tienda, incluido el envío cotizado. No incluye aranceles ni impuestos cobrados por tu país a la llegada; esos cargos los determina la autoridad local y son responsabilidad del destinatario.",
+    "Delivery could not be calculated right now. Please try again.": "No pudimos calcular el envío en este momento. Inténtalo de nuevo.",
+    "Delivery could not be confirmed for these items and destination. Please check your address or try again.": "No pudimos confirmar el envío de estos productos al destino indicado. Revisa tu dirección o inténtalo de nuevo.",
+    "Please check the postal code, city and state/province (use its region code) to confirm delivery for this book.": "Revisa el código postal, la ciudad y el código de estado o provincia para confirmar el envío de este libro."
   }
 }

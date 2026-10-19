@@ -159,35 +159,35 @@ class ProductSchemaTests(unittest.TestCase):
         self.assertIn("return postage would be yours to pay", public)
         self.assertIn("30 days of delivery", public)
 
-    def test_shipping_is_zero_per_country_without_invented_times(self):
+    def test_only_us_has_a_known_included_rate_without_invented_times(self):
         _, markup = self.render()
         shipping = markup.product()["offers"][0]["shippingDetails"]
         self.assertEqual({s["shippingDestination"]["addressCountry"] for s in shipping},
-                         {d["code"] for d in main.SHIP_DESTINATIONS})
+                         {"US"})
         for row in shipping:
             self.assertEqual(row["shippingRate"],
                              {"@type": "MonetaryAmount", "value": 0, "currency": "USD"})
             self.assertNotIn("deliveryTime", row)
 
-    def test_printify_and_cj_us_have_only_us_shipping_and_returns(self):
+    def test_printify_and_cj_us_only_advertise_confirmed_us_rate(self):
         for supplier in ("printify", "cj"):
             with self.subTest(supplier=supplier):
                 self.detail.update(supplier=supplier, from_country="US")
                 _, markup = self.render()
                 offer = markup.product()["offers"][0]
-                self.assertEqual(offer["hasMerchantReturnPolicy"]["applicableCountry"], ["US"])
+                self.assertIn("IN", offer["hasMerchantReturnPolicy"]["applicableCountry"])
                 self.assertEqual([s["shippingDestination"]["addressCountry"]
                                   for s in offer["shippingDetails"]], ["US"])
 
-    def test_lulu_uses_configured_destinations_and_always_free_rate(self):
+    def test_lulu_does_not_advertise_free_international_rates(self):
         self.detail["supplier"] = "lulu"
         with patch.dict("os.environ", {"LULU_SHIP_COUNTRIES": "US,GB"}), \
                 patch.object(main, "FREE_SHIPPING", False):
             _, markup = self.render()
         offer = markup.product()["offers"][0]
-        self.assertEqual(set(offer["hasMerchantReturnPolicy"]["applicableCountry"]), {"US", "GB"})
+        self.assertIn("IN", offer["hasMerchantReturnPolicy"]["applicableCountry"])
         self.assertEqual({s["shippingDestination"]["addressCountry"]
-                          for s in offer["shippingDetails"]}, {"US", "GB"})
+                          for s in offer["shippingDetails"]}, {"US"})
 
     def test_paid_shipping_omits_unverified_rates(self):
         with patch.object(main, "FREE_SHIPPING", False):

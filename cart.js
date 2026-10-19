@@ -250,7 +250,7 @@
       <span>Subtotal</span>
       <strong>${money(data.product_total)}</strong>
     </div>
-    <p class="cart-summary__note">Free shipping worldwide — nothing is added at checkout.</p>
+    <p class="cart-summary__note">Standard US shipping included. For other destinations, availability and any additional shipping are confirmed before payment.</p>
     <p class="cart-summary__note">Payment: <strong>PayPal</strong> only.</p>
     <a class="btn cart-summary__cta" href="/checkout.html">Proceed to checkout</a>
     <a class="btn btn--ghost cart-summary__shop" href="/products/">Continue shopping</a>

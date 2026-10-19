@@ -87,11 +87,14 @@ async def reconcile(db, order, lines, *, apply=False):
     return True
 
 
-async def submit(db, order, lines, address):
+async def submit(db, order, lines, address, *, shipping_level=None):
     if order.lulu_job_id:
         return order.lulu_job_id
     external_id = f'tbw-{order.id}'
-    digest = hashlib.sha256(json.dumps({'lines': lines, 'address': address},
+    manifest = {'lines': lines, 'address': address}
+    if shipping_level:
+        manifest['shipping_level'] = shipping_level
+    digest = hashlib.sha256(json.dumps(manifest,
                                       sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     claim = db.get(LuluSubmission, order.id)
     owns_claim = False
@@ -137,7 +140,10 @@ async def submit(db, order, lines, address):
     if not transitioned:
         raise Pending('Lulu submission state changed during lookup; no creation was sent')
     try:
-        result = await lulu.create_print_job(external_id, lines, address)
+        if shipping_level:
+            result = await lulu.create_print_job(external_id, lines, address, shipping_level=shipping_level)
+        else:
+            result = await lulu.create_print_job(external_id, lines, address)
         if not isinstance(result, dict) or not result.get('id'):
             raise Pending('Lulu creation returned no job ID; reconciliation required')
         return _accept(db, order, claim, result)

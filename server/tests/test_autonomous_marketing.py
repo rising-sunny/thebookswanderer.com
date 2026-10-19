@@ -43,7 +43,7 @@ class PinterestTests(Fixture):
   self.assertEqual(result['editing_blocked']['feature'],'pin_edit');self.assertEqual(result['updated'],0);self.assertEqual(result['pending_descriptions'],2)
   plan=json.loads((Path(self.folder.name)/'pinterest_copy_repairs.json').read_text())
   self.assertEqual(plan['pending'][0]['title'],'Original variant title');self.assertNotIn('worldwide',plan['pending'][0]['description'])
-  self.assertIn('USD. Printed',plan['pending'][0]['description'])
+  self.assertIn('USD. Standard US shipping included.',plan['pending'][0]['description'])
 
  def test_copy_plan_requires_admin_and_stays_private(self):
   from fastapi import FastAPI
@@ -60,8 +60,8 @@ class PinterestTests(Fixture):
   for supplier in ('lulu','printify','digital','cj'):
    payload=pin.product_pin_payload({'slug':'book','title':'Book','supplier':supplier,'price_usd':20})
    self.assertNotIn('worldwide',payload['description'])
-   if supplier=='lulu':self.assertIn('GB, US',payload['description']);self.assertNotIn('AU',payload['description'])
-   if supplier=='printify':self.assertIn('US delivery only',payload['description'])
+   if supplier=='lulu':self.assertIn('confirm delivery availability',payload['description']);self.assertNotIn('Shipping included to:',payload['description'])
+   if supplier=='printify':self.assertNotIn('US delivery only',payload['description']);self.assertIn('including shipping',payload['description'])
    if supplier=='digital':self.assertIn('no physical shipping',payload['description'])
   with patch.dict(os.environ,{'FREE_SHIPPING':'0'}):
    self.assertNotIn('shipping included',pin.shipping_copy({'supplier':'printify'}).lower())
@@ -70,7 +70,7 @@ class PinterestTests(Fixture):
   original='A book. From $22 USD with free worldwide shipping. Shop the collection.'
   product={'supplier':'lulu'}
   repaired=repair.corrected_description(original,product)
-  self.assertNotIn('worldwide',repaired);self.assertIn('GB, US',repaired)
+  self.assertNotIn('worldwide',repaired);self.assertIn('confirm delivery availability',repaired)
   self.assertEqual(repair.corrected_description(repaired,product),repaired)
 
  def test_recording_same_remote_pin_never_inflates_the_count(self):

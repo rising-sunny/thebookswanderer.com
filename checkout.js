@@ -19,6 +19,8 @@
     let quoteStatus = "idle"; // idle | loading | ok | error
     let preview = null;
     let submitting = false;
+    let quoteSequence = 0;
+    let quotedFingerprint = "";
 
     const STATUS_COPY = {
         success: {
@@ -128,6 +130,7 @@
             shipping_address2: g("coAddress2"),
             shipping_city: g("coCity"),
             shipping_province: g("coProvince"),
+            recipient_tax_id: g("coTaxId"),
             shipping_zip: g("coZip"),
             shipping_country: dest?.name || code,
             shipping_country_code: code,
@@ -196,7 +199,18 @@
         return quotePending;
     }
 
+    function quoteAddress() {
+        const v = formValues();
+        return {country_code: v.shipping_country_code, zip_code: v.shipping_zip || null,
+            city: v.shipping_city, state: v.shipping_province, street1: v.shipping_address,
+            street2: v.shipping_address2, phone_number: v.phone, recipient_tax_id: v.recipient_tax_id,
+            items: cartPayload()};
+    }
+
     async function fetchQuote() {
+        const seq = ++quoteSequence;
+        const payload = quoteAddress();
+        const fingerprint = JSON.stringify(payload);
         const code = document.getElementById("coCountry")?.value || "";
         const zip = document.getElementById("coZip")?.value?.trim() || "";
         const items = cartPayload();
@@ -216,15 +230,13 @@
                     Accept: "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    country_code: code,
-                    zip_code: zip || null,
-                    items,
-                }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.detail || "quote failed");
+            if (seq !== quoteSequence) return;
+            if (!res.ok) throw new Error(data.detail?.message || data.detail || "Delivery could not be calculated.");
             quote = data;
+            quotedFingerprint = fingerprint;
             quoteStatus = "ok";
             try {
                 localStorage.setItem(Cart.SHIP_KEY, code);
@@ -232,7 +244,7 @@
                 /* ignore */
             }
         } catch (err) {
-            console.warn(err);
+            if (seq !== quoteSequence) return;
             quote = { message: String(err.message || err) };
             quoteStatus = "error";
         }
@@ -244,7 +256,7 @@
         const ship = document.getElementById("coShip");
         const grand = document.getElementById("coGrand");
         const eta = document.getElementById("coEta");
-        const productTotal = preview?.product_total || 0;
+        const productTotal = quoteStatus === "ok" ? quote.product_total : (preview?.product_total || 0);
         if (sub) sub.textContent = money(productTotal);
 
         if (ship) {
@@ -264,22 +276,23 @@
         }
 
         if (eta) {
-            if (quoteStatus === "ok" && quote?.eta_days) {
+            const dates = (quote?.legs || []).filter((l) => l.delivery_min && l.delivery_max);
+            if (quoteStatus === "ok" && (quote?.eta_days || dates.length)) {
                 eta.hidden = false;
-                eta.textContent = `Estimated transit ${quote.eta_days} days (+1–3 prep)`;
+                eta.textContent = dates.length ? "Estimated delivery: " + dates.map((l) => l.delivery_min + " – " + l.delivery_max).join("; ") : `Estimated transit ${quote.eta_days} days; preparation may take additional time.`;
             } else {
                 eta.hidden = true;
                 eta.textContent = "";
             }
         }
 
-        if (grand) {
-            const g =
-                quoteStatus === "ok" && quote
-                    ? quote.grand_total
-                    : productTotal;
-            grand.textContent = money(g);
-        }
+        if (grand) grand.textContent = quoteStatus === "ok" && quote && !quote.is_estimate ? money(quote.grand_total) : "—";
+        const btn = document.getElementById("coSubmit");
+        if (btn) btn.disabled = submitting || quoteStatus !== "ok" || Boolean(quote?.is_estimate);
+        const notice = document.getElementById("coDeliveryNotice");
+        if (notice) notice.textContent = quoteStatus === "ok" && quote?.is_estimate
+            ? "Complete your shipping address to confirm the final total before payment."
+            : (quote?.import_charges_notice || "");
     }
 
     function renderForm() {
@@ -378,20 +391,25 @@
           <input id="coCity" name="city" type="text" required autocomplete="address-level2">
         </label>
         <label class="field">
-          <span>State / province</span>
-          <input id="coProvince" name="province" type="text" required autocomplete="address-level1">
+          <span>State / province code</span>
+          <input id="coProvince" name="province" type="text" autocomplete="address-level1">
         </label>
       </div>
       <label class="field">
         <span>Postal code</span>
         <input id="coZip" name="zip" type="text" autocomplete="postal-code">
       </label>
+      <label class="field" id="coTaxField" hidden>
+        <span>Recipient tax ID (CPF/CNPJ, RUT or RFC)</span>
+        <input id="coTaxId" name="tax_id" type="text" maxlength="80" autocomplete="off">
+        <small>Required for printed books sent to Brazil, Chile or Mexico.</small>
+      </label>
       </div>
     </fieldset>
 
     <p class="checkout-error" id="coError" hidden></p>
 
-    <button class="btn checkout-pay" type="submit" id="coSubmit">
+    <button class="btn checkout-pay" type="submit" id="coSubmit" disabled>
       Pay with PayPal or card
     </button>
     <a class="btn btn--ghost" href="/cart.html">Back to cart</a>
@@ -411,15 +429,33 @@
     <p class="pdp__ship-eta" id="coEta" hidden></p>
     <div class="cart-summary__row cart-summary__row--grand">
       <span>Total</span>
-      <strong id="coGrand">${money(preview.product_total)}</strong>
+      <strong id="coGrand">—</strong>
     </div>
-    <p class="cart-summary__note">You’ll complete payment securely on PayPal, where you can pay by debit or credit card. Shipping is recalculated on our server before charge.</p>
+    <p class="cart-summary__note" id="coDeliveryNotice" role="status"></p>
+    <p class="cart-summary__note">All totals are in USD. You’ll complete payment securely on PayPal, where you can pay by debit or credit card. Shipping is recalculated on our server before charge.</p>
   </aside>
 </div>`;
 
         const form = document.getElementById("checkoutForm");
-        document.getElementById("coCountry")?.addEventListener("change", loadQuote);
-        document.getElementById("coZip")?.addEventListener("change", loadQuote);
+        function showTaxField() {
+            const required = ["BR", "CL", "MX"].includes(formValues().shipping_country_code) && items.some((i) => i.supplier === "lulu");
+            const field = document.getElementById("coTaxField");
+            if (field) field.hidden = !required;
+            const input = document.getElementById("coTaxId");
+            if (input) input.required = required;
+        }
+        document.getElementById("coCountry")?.addEventListener("change", () => {showTaxField(); loadQuote();});
+        let deliveryTimer;
+        ["coZip", "coCity", "coProvince", "coAddress", "coAddress2", "coPhone", "coTaxId"].forEach((id) => {
+            const input = document.getElementById(id);
+            input?.addEventListener("input", () => {
+                clearTimeout(deliveryTimer);
+                ++quoteSequence; quote = null; quoteStatus = "idle"; patchTotals();
+                deliveryTimer = setTimeout(loadQuote, 700);
+            });
+            input?.addEventListener("change", () => { clearTimeout(deliveryTimer); loadQuote(); });
+        });
+        showTaxField();
         form?.addEventListener("submit", onSubmit);
 
         if (savedCountry) loadQuote();
@@ -452,12 +488,17 @@
             showErr(dOnly ? "Please fill in email and name." : "Please fill in email, name, and address.");
             return;
         }
-        if (!vals.shipping_country_code || (!dOnly && (!vals.shipping_city || !vals.shipping_province))) {
-            showErr("Please complete city, province/state, and country.");
+        if (!vals.shipping_country_code || (!dOnly && !vals.shipping_city)) {
+            showErr("Please complete city and country.");
+            return;
+        }
+        if (document.getElementById("coTaxId")?.required && !vals.recipient_tax_id) {
+            showErr("Please provide the recipient tax ID required for delivery to this country.");
             return;
         }
         if (quoteStatus === "loading") await quotePending;
-        if (quoteStatus !== "ok" || !quote) {
+        if (JSON.stringify(quoteAddress()) !== quotedFingerprint) await loadQuote();
+        if (quoteStatus !== "ok" || !quote || quote.is_estimate) {
             showErr("Select a country with available shipping before paying.");
             return;
         }
@@ -480,6 +521,7 @@
                     items,
                     logistic_name: quote.logistic_name || "",
                     shipping_total: quote.shipping_total,
+                    expected_total: quote.grand_total,
                 }),
             });
             const data = await res.json().catch(() => ({}));
@@ -491,6 +533,7 @@
                         : Array.isArray(detail)
                           ? detail.map((d) => d.msg || d).join("; ")
                           : "Checkout failed";
+                if (res.status === 409) await loadQuote();
                 throw new Error(msg);
             }
             if (!data.checkout_url) throw new Error("No PayPal URL returned");
@@ -510,7 +553,7 @@
             showErr(err.message || "Checkout failed. Try again.");
             submitting = false;
             if (btn) {
-                btn.disabled = false;
+                btn.disabled = quoteStatus !== "ok" || Boolean(quote?.is_estimate);
                 btn.textContent = "Pay with PayPal or card";
             }
         }
