@@ -108,7 +108,8 @@ def product(p: dict[str, Any], lang: str) -> dict[str, Any]:
     if es.get("title"):
         out["title"] = es["title"]
     if es.get("description"):
-        out["description"] = es["description"]
+        from services.shipping import description
+        out["description"] = description(es["description"], p.get("supplier"), "es")
     # Localized mockups (e.g. a printable whose pages are in Spanish).
     if es.get("image_url"):
         out["image_url"] = es["image_url"]

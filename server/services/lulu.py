@@ -9,9 +9,6 @@ Auto Pay and batch payments to remain disabled in the connected Lulu account.
 Env:
   LULU_CLIENT_KEY / LULU_CLIENT_SECRET   API keys (developers.lulu.com > API Keys)
   LULU_ENV                               "production" (default) or "sandbox"
-  LULU_SHIP_COUNTRIES                    where printed books are offered (shipping
-                                         is included in the price, so only
-                                         countries with a sane MAIL rate)
   LULU_SHIPPING_LEVEL                    MAIL (default), PRIORITY_MAIL, GROUND…
   LULU_CONTACT_EMAIL                     who Lulu writes to about a job
   LULU_MERCHANT_PHONE                    real business fallback if buyer omits phone
@@ -31,10 +28,6 @@ import httpx
 _TOKEN: dict[str, Any] = {}
 
 SUPPLIER = "lulu"
-# Quoted 2026-10: A5 colour paperback, 40 pages, MAIL: US 5.69, GB 5.22,
-# AU 8.34, DE 7.04, NL 7.76, FR 9.83, IE 10.16, CA 10.92 (+ ~4 print).
-# ES and IT need a province code and MX/CL a tax id, so they wait.
-DEFAULT_COUNTRIES = "US,GB,CA,AU,DE,FR,NL,IE"
 ETA_DAYS = "10-20"  # 3-5 business days printing + MAIL transit
 
 CA_PROVINCES = {
@@ -65,8 +58,9 @@ def base() -> str:
 
 
 def ship_countries() -> set[str]:
-    raw = _env("LULU_SHIP_COUNTRIES") or DEFAULT_COUNTRIES
-    return {c.strip().upper() for c in raw.split(",") if c.strip()}
+    # Coverage is established by /shipping-options/, not a merchant whitelist.
+    from services.countries import COUNTRY_CODES
+    return set(COUNTRY_CODES)
 
 
 def ships_to(country_code: str) -> bool:
@@ -182,12 +176,12 @@ async def cost(pod_package_id: str, page_count: int, quantity: int, address: dic
     })
 
 
-async def create_print_job(external_id: str, lines: list[dict[str, Any]], shipping_address: dict[str, str]) -> dict:
+async def create_print_job(external_id: str, lines: list[dict[str, Any]], shipping_address: dict[str, str], *, shipping_level: str | None = None) -> dict:
     """lines: [{"title", "pod_package_id", "interior_url", "cover_url", "quantity", "external_id"}]"""
     return await request("POST", "/print-jobs/", {
         "external_id": external_id,
         "contact_email": _env("LULU_CONTACT_EMAIL") or "hello@thebookswanderer.com",
-        "shipping_level": _env("LULU_SHIPPING_LEVEL") or "MAIL",
+        "shipping_level": shipping_level or _env("LULU_SHIPPING_LEVEL") or "MAIL",
         "shipping_address": shipping_address,
         "line_items": [
             {

@@ -70,6 +70,7 @@ jobs:
             services/categories.py services/email.py services/meta_capi.py services/health.py \
             services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
             services/printify.py services/digital.py services/lulu.py services/lulu_submission.py \
+            services/shipping.py services/countries.py \
             services/collaborators.py services/collaborators_store.py \
             services/invitation.py services/outreach.py services/monthly_newsletter.py \
             "$VPS_HOST:$REMOTE/server/services/"

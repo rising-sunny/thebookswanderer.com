@@ -246,7 +246,7 @@
         if (isDigital() || !selectedCountry) return true;
         const only = shipOnly();
         if (only && !only.includes(selectedCountry)) return false;
-        return shippingStatus !== "unavailable";
+        return shippingStatus !== "loading" && (shippingStatus !== "unavailable" || shippingQuote?.reason === "address_required");
     }
 
     function countryName(code) {
@@ -283,6 +283,12 @@
             : "This item can't be shipped to " + countryName(selectedCountry) + ". Pick another country above if you are sending it as a gift.";
     }
 
+    function quoteDeliveryLabel(q) {
+        const dates = (q?.legs || []).filter((l) => l.delivery_min && l.delivery_max);
+        if (dates.length) return "Estimated delivery: " + dates.map((l) => l.delivery_min + " – " + l.delivery_max).join("; ");
+        return q?.eta_days ? "Estimated transit " + q.eta_days + " days; preparation may take additional time." : "Delivery timing will be confirmed for your address.";
+    }
+
     function shippingBlockHtml() {
         if (isDigital()) {
             return `
@@ -303,7 +309,7 @@
 
         let shipLine = `<span class="pdp__ship-muted">Select a country to see shipping</span>`;
         let etaLine = "";
-        let total = price;
+        let total = null;
 
         if (shippingStatus === "loading") {
             shipLine = `<span class="pdp__ship-muted">Calculating shipping…</span>`;
@@ -316,25 +322,25 @@
         } else if (shippingStatus === "ok" && shippingQuote) {
             shipLine = `<strong>${money(shippingQuote.shipping_total)}</strong> <small>USD</small>`;
             // Transit (CJ) + default prep 1–3 days; no carrier name
-            etaLine = shippingQuote.eta_days
-                ? `<p class="pdp__ship-eta">${escapeHtml(deliveryRangeLabel(shippingQuote.eta_days))}</p>`
-                : `<p class="pdp__ship-eta">Delivery ${PREP_MIN}–${PREP_MAX}+ days (incl. prep)</p>`;
+            etaLine = `<p class="pdp__ship-eta">${escapeHtml(quoteDeliveryLabel(shippingQuote))}</p>`;
             total = shippingQuote.grand_total;
         }
 
         return `
 <div class="pdp__variants pdp__shipping" id="pdpShipping">
   <h2 class="pdp__variants-title">Shipping</h2>
-  <p class="pdp__variants-label">${usOnly()
-      ? "<strong>Free shipping</strong> within the United States — this item ships to US addresses only"
-      : isPrinted()
-      ? "<strong>Free shipping</strong> to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland — pick your country for the delivery estimate"
-      : "<strong>Free worldwide</strong> — pick your country for the delivery estimate"}</p>
+  <p class="pdp__variants-label">Standard US shipping included. Select your destination to check availability and any additional shipping.</p>
   <label class="pdp__ship-label" for="pdpCountry">Ship to</label>
   <select id="pdpCountry" class="pdp__ship-select" aria-label="Destination country">
     <option value="">Choose country…</option>
     ${opts}
   </select>
+  <div class="field-row">
+    <label class="field"><span>Postal code</span><input id="pdpZip" autocomplete="postal-code" placeholder="Delivery postal code"></label>
+    <label class="field"><span>State / province code</span><input id="pdpState" autocomplete="address-level1" placeholder="e.g. CA, DL, NSW"></label>
+    <label class="field"><span>City</span><input id="pdpCity" autocomplete="address-level2"></label>
+  </div>
+  <p class="pdp__ship-muted">Availability varies by product and address. The final total is confirmed at checkout. Import duties or taxes collected on arrival are not included.</p>
   <div class="pdp__totals" aria-live="polite">
     <div class="pdp__total-row">
       <span>Product</span>
@@ -346,8 +352,8 @@
     </div>
     ${etaLine}
     <div class="pdp__total-row pdp__total-row--grand">
-      <span>Total</span>
-      <span><strong id="pdpGrandLine">${money(total)}</strong> <small>USD</small></span>
+      <span>Estimated total</span>
+      <span><strong id="pdpGrandLine">${total === null ? "—" : money(total)}</strong> <small>USD</small></span>
     </div>
   </div>
 </div>`;
@@ -471,11 +477,7 @@
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
   <p class="pdp__shipnote">${isDigital()
         ? "Instant download — PDF, no shipping"
-        : usOnly()
-        ? "Free shipping · US addresses only"
-        : isPrinted()
-        ? "Free shipping to the US, UK, CA, AU, DE, FR, NL and IE"
-        : "Free shipping worldwide"}</p>
+        : "Standard US shipping included · other destinations quoted below"}</p>
   ${desc ? `<p class="pdp__lead">${desc}</p>` : ""}
   ${variantPicker}
   ${cartPanelHtml()}
@@ -490,10 +492,10 @@
     <li>Problem with a file? We send a fresh link or refund you</li>`
         : isPrinted()
         ? `<li>Printed to order for you — ships in 3–5 business days</li>
-    <li>Free shipping to the US, UK, CA, AU, DE, FR, NL and IE</li>
+    <li>Choose your destination to confirm delivery and the total</li>
     <li>Secure checkout with PayPal</li>
     <li>Printing faults replaced or refunded in full</li>`
-        : `<li>Free shipping worldwide — no cost added at checkout</li>
+        : `<li>Delivery availability and total confirmed before payment</li>
     <li>Secure checkout with PayPal</li>
     <li>Faulty or wrong items refunded in full</li>`}
     ${sku ? `<li id="pdpSku">SKU ${escapeHtml(sku)}</li>` : ""}
@@ -581,14 +583,16 @@
     }
 
     async function loadShippingQuote() {
+        const seq = ++shipSeq;
         if (!product || !selectedCountry) {
             shippingQuote = null;
             shippingStatus = "idle";
+            paintAvailability();
             patchShippingUi();
             return;
         }
-        const seq = ++shipSeq;
         shippingStatus = "loading";
+        paintAvailability();
         shippingQuote = null;
         patchShippingUi();
 
@@ -596,7 +600,10 @@
             const v = selectedVariant();
             const q = new URLSearchParams({
                 country_code: selectedCountry,
-                quantity: "1",
+                quantity: String(addQty),
+                zip_code: document.getElementById("pdpZip")?.value?.trim() || "",
+                state: document.getElementById("pdpState")?.value?.trim() || "",
+                city: document.getElementById("pdpCity")?.value?.trim() || "",
             });
             if (v?.id) q.set("variant_id", String(v.id));
             const res = await fetch(
@@ -627,7 +634,7 @@
         const productLine = document.getElementById("pdpProductLine");
         const shipLine = document.getElementById("pdpShipLine");
         const grandLine = document.getElementById("pdpGrandLine");
-        const price = unitPrice();
+        const price = unitPrice() * addQty;
         if (productLine) productLine.innerHTML = money(price);
 
         if (shipLine) {
@@ -650,9 +657,7 @@
 
         let eta = panel.querySelector(".pdp__ship-eta");
         if (shippingStatus === "ok" && shippingQuote) {
-            const text = shippingQuote.eta_days
-                ? deliveryRangeLabel(shippingQuote.eta_days)
-                : `Delivery ${PREP_MIN}–${PREP_MAX}+ days (incl. prep)`;
+            const text = quoteDeliveryLabel(shippingQuote);
             if (!eta) {
                 eta = document.createElement("p");
                 eta.className = "pdp__ship-eta";
@@ -670,8 +675,9 @@
             const total =
                 shippingStatus === "ok" && shippingQuote
                     ? shippingQuote.grand_total
-                    : price;
-            grandLine.innerHTML = money(total);
+                    : null;
+            grandLine.innerHTML = total === null ? "—" : money(total);
+            grandLine.title = shippingQuote?.is_estimate ? "Estimate — final total confirmed with your address at checkout" : "";
         }
 
         const priceEl = document.getElementById("pdpPrice");
@@ -685,6 +691,7 @@
         el.querySelector('[data-add-act="dec"]')?.addEventListener("click", () => {
             addQty = Math.max(1, addQty - 1);
             if (qtyInput) qtyInput.value = String(addQty);
+            if (selectedCountry) loadShippingQuote();
             const btn = el.querySelector("[data-add-to-cart]");
             if (btn) {
                 const inCart = qtyInCartForVariant(selectedVariant()?.id);
@@ -695,6 +702,7 @@
         el.querySelector('[data-add-act="inc"]')?.addEventListener("click", () => {
             addQty = Math.min(20, addQty + 1);
             if (qtyInput) qtyInput.value = String(addQty);
+            if (selectedCountry) loadShippingQuote();
             const btn = el.querySelector("[data-add-to-cart]");
             if (btn) {
                 const inCart = qtyInCartForVariant(selectedVariant()?.id);
@@ -705,9 +713,11 @@
         qtyInput?.addEventListener("change", () => {
             addQty = Math.max(1, Math.min(20, Number(qtyInput.value) || 1));
             qtyInput.value = String(addQty);
+            if (selectedCountry) loadShippingQuote();
         });
 
         el.querySelector("[data-add-to-cart]")?.addEventListener("click", (e) => {
+            if (!shipsToSelected()) return;
             const btn = e.currentTarget;
             const original = btn.textContent;
             try {
@@ -823,6 +833,7 @@
             });
         }
 
+        ["pdpZip", "pdpState", "pdpCity"].forEach((id) => document.getElementById(id)?.addEventListener("change", loadShippingQuote));
         bindAddBar();
         bindCartPanel();
     }

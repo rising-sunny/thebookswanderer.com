@@ -103,6 +103,9 @@ def init_db() -> None:
     # orders.cart_reminder_sent_at
     if "orders" in insp.get_table_names():
         rcols = {c["name"] for c in insp.get_columns("orders")}
+        if "shipping_tax_id" not in rcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN shipping_tax_id VARCHAR(80) DEFAULT ''"))
         if "cart_reminder_sent_at" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN cart_reminder_sent_at DATETIME"))

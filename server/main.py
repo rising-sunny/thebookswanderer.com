@@ -5,6 +5,7 @@ Static site + FastAPI (CJ Dropshipping + PayPal), same VPS pattern as mathrelaxi
 from __future__ import annotations
 
 import logging
+import math
 import json
 import os
 import re
@@ -36,6 +37,8 @@ from services import printify as printify_service  # noqa: E402
 from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
+from services import shipping as shipping_service  # noqa: E402
+from services.countries import DESTINATIONS  # noqa: E402
 from ssr import (  # noqa: E402
     affiliate_by_slug,
     render_catalog_page,
@@ -62,11 +65,9 @@ import i18n  # noqa: E402
 from routers.pinterest import router as pinterest_router  # noqa: E402
 from routers.collaborators import router as collaborators_router  # noqa: E402
 from routers.outreach import router as outreach_router  # noqa: E402
-SHIP_MARKUP = float(os.getenv("SHIPPING_MARKUP", "1.15"))
 
-# Shipping is priced into the product instead of charged at checkout. CJ is
-# still queried for the delivery estimate — only the amount is zeroed, so
-# flipping FREE_SHIPPING=0 restores charged shipping without a code change.
+# Standard US shipping is included in existing prices. International delivery
+# is quoted live and may add a surcharge over the same basket's US cost.
 FREE_SHIPPING = (os.getenv("FREE_SHIPPING", "1") or "").strip().lower() in (
     "1",
     "true",
@@ -92,11 +93,6 @@ def _log_freight_failure(exc: Exception, *, origin: str, country: str) -> None:
     log.error("freight quote failed %s -> %s: %s", origin, country, exc)
 
 
-def _ship_retail(cost_usd: float) -> float:
-    """What the customer is charged for shipping."""
-    if FREE_SHIPPING:
-        return 0.0
-    return round(float(cost_usd) * SHIP_MARKUP, 2)
 CJ_PAY_TYPE = int(os.getenv("CJ_PAY_TYPE", "3"))
 # How much dearer a carrier may be before we stop trading money for speed.
 # CJ's cheapest line is not always the sane pick: to Malaysia it is $1.89 for
@@ -149,6 +145,12 @@ class CartItemIn(BaseModel):
 class ShippingQuoteIn(BaseModel):
     country_code: str = Field(min_length=2, max_length=2)
     zip_code: str | None = None
+    city: str = Field("", max_length=80)
+    state: str = Field("", max_length=80)
+    street1: str = Field("", max_length=200)
+    street2: str = Field("", max_length=200)
+    phone_number: str = Field("", max_length=30)
+    recipient_tax_id: str = Field("", max_length=80)
     items: list[CartItemIn]
 
 
@@ -156,6 +158,7 @@ class CheckoutIn(BaseModel):
     email: EmailStr
     customer_name: str = Field(min_length=2, max_length=80)
     phone: str = ""
+    recipient_tax_id: str = Field("", max_length=80)
     # Address fields are checked in checkout(): a cart of digital downloads
     # has nothing to ship, so they may be empty.
     shipping_address: str = Field("", max_length=200)
@@ -168,6 +171,7 @@ class CheckoutIn(BaseModel):
     items: list[CartItemIn]
     logistic_name: str = ""
     shipping_total: float | None = None  # client can pass quote; revalidated server-side
+    expected_total: float | None = None
     lang: str = "en"
 
 
@@ -337,9 +341,7 @@ async def get_product_by_slug(slug: str, lang: str = Query("en"), db: Session = 
 
 
 def _with_ship_only(p: Product, detail: dict) -> dict:
-    """Add ship_only: the countries this product can go to when narrower than
-    the shop's list (Printify and CJ-US: the US; Lulu: its countries), else null.
-    The product page uses it to say so up front and to block the add button."""
+    """Legacy field retained for clients; coverage now comes from live quotes."""
     from ssr import _supplier_countries
 
     only = None if p.supplier == "digital" else _supplier_countries(p.supplier, p.from_country)
@@ -737,8 +739,8 @@ def google_products_feed(db: Session = Depends(get_db)):
                 parts.append(f"<g:google_product_category>{gpc}</g:google_product_category>")
             if group:
                 parts.append(f"<g:item_group_id>tbw-{p.id}</g:item_group_id>")
-            if p.supplier == "lulu" or _free_shipping():
-                for c in countries:
+            if p.supplier != "digital" and (p.supplier == "lulu" or _free_shipping()):
+                for c in [c for c in countries if c == "US"]:
                     parts.append(f"<g:shipping><g:country>{c}</g:country><g:price>0.00 USD</g:price></g:shipping>")
             items.append("<item>" + "".join(parts) + "</item>")
     body = (
@@ -894,66 +896,14 @@ async def _ensure_product_media(p: Product, db: Session) -> None:
 
 # ── Shipping destinations (curated; availability checked per quote) ───
 
-# Markets we actively quote. A country only "works" for a product if CJ
-# returns at least one freight option for that variant.
-SHIP_DESTINATIONS: list[dict[str, str]] = [
-    {"code": "US", "name": "United States"},
-    {"code": "CA", "name": "Canada"},
-    {"code": "GB", "name": "United Kingdom"},
-    {"code": "AU", "name": "Australia"},
-    {"code": "NZ", "name": "New Zealand"},
-    {"code": "DE", "name": "Germany"},
-    {"code": "FR", "name": "France"},
-    {"code": "ES", "name": "Spain"},
-    {"code": "IT", "name": "Italy"},
-    {"code": "NL", "name": "Netherlands"},
-    {"code": "BE", "name": "Belgium"},
-    {"code": "PT", "name": "Portugal"},
-    {"code": "IE", "name": "Ireland"},
-    {"code": "AT", "name": "Austria"},
-    {"code": "CH", "name": "Switzerland"},
-    {"code": "SE", "name": "Sweden"},
-    {"code": "NO", "name": "Norway"},
-    {"code": "DK", "name": "Denmark"},
-    {"code": "FI", "name": "Finland"},
-    {"code": "PL", "name": "Poland"},
-    {"code": "CL", "name": "Chile"},
-    {"code": "MX", "name": "Mexico"},
-    {"code": "BR", "name": "Brazil"},
-    {"code": "AR", "name": "Argentina"},
-    {"code": "CO", "name": "Colombia"},
-    {"code": "PE", "name": "Peru"},
-    {"code": "JP", "name": "Japan"},
-    {"code": "KR", "name": "South Korea"},
-    {"code": "SG", "name": "Singapore"},
-    {"code": "MY", "name": "Malaysia"},
-    {"code": "AE", "name": "United Arab Emirates"},
-]
-
-
-def _transit_ceiling(option: dict) -> int:
-    """Slowest day count in a CJ `logisticAging` string such as "4-6" or "15-30".
-
-    Anything unparseable sorts last, so a carrier that does not declare a
-    transit time never wins on speed.
-    """
-    days = re.findall(r"\d+", str(option.get("logisticAging") or ""))
-    return max(int(d) for d in days) if days else 10**6
+# All countries and territories can be checked; each provider must confirm
+# availability for the actual product, variant, quantity and address.
+SHIP_DESTINATIONS: list[dict[str, str]] = DESTINATIONS
 
 
 def _pick_freight(options: list[dict]) -> dict:
-    """Cheapest carrier, upgraded to a faster one when the surcharge is small.
-
-    Sorting on price alone quotes month-long lines in Asia. Anything within
-    SHIP_UPGRADE_MAX_USD of the cheapest counts as affordable; among those the
-    fastest wins, and ties go back to the cheaper carrier.
-    """
-    def price(option: dict) -> float:
-        return float(option.get("logisticPrice") or 0)
-
-    ceiling = price(min(options, key=price)) + SHIP_UPGRADE_MAX_USD
-    affordable = [o for o in options if price(o) <= ceiling]
-    return min(affordable, key=lambda o: (_transit_ceiling(o), price(o)))
+    """Fulfil using the same method selection used by customer quotations."""
+    return shipping_service.pick_freight(options)
 
 
 @app.get("/api/shipping/destinations")
@@ -983,165 +933,33 @@ async def product_shipping_quote(
     country_code: str = Query(..., min_length=2, max_length=2),
     variant_id: int | None = Query(None),
     quantity: int = Query(1, ge=1, le=20),
+    zip_code: str = Query("", max_length=64),
+    city: str = Query("", max_length=80),
+    state: str = Query("", max_length=80),
     db: Session = Depends(get_db),
 ):
-    """
-    Quote shipping for one product line to a country (CJ freight + markup).
-    Returns available=false when CJ has no route for this variant/destination.
-    """
     product = db.get(Product, product_id)
     if not product or not product.active:
         raise HTTPException(404, "Product not found")
-
     variant = _resolve_variant(db, product, variant_id)
-    if digital_service.is_digital(product):
-        total = round(float(variant.price_usd if variant else product.price_usd) * quantity, 2)
-        return {
-            "available": True, "digital": True, "country_code": country_code.upper(),
-            "product_id": product_id, "variant_id": variant.id if variant else None,
-            "quantity": quantity, "product_total": total, "shipping_total": 0.0,
-            "grand_total": total, "eta_days": None, "logistic_name": DIGITAL_LOGISTIC,
-            "options": [],
-        }
-    if (product.supplier or "cj") == "printify":
-        return await _printify_product_quote(product, variant, country_code.upper(), quantity)
-    if product.supplier == lulu_service.SUPPLIER:
-        return _lulu_product_quote(product, variant, country_code.upper(), quantity)
-    vid = (variant.cj_vid if variant else product.cj_vid) or ""
-    if not vid:
-        raise HTTPException(400, "Product has no CJ variant id")
-
-    unit_price = float(variant.price_usd if variant else product.price_usd)
-    product_total = round(unit_price * quantity, 2)
-    origin = (product.from_country or "CN").upper()
-    country = country_code.upper()
-
     try:
-        options = await cj_service.freight_calculate(
-            start_country=origin,
-            end_country=country,
-            products=[{"vid": vid, "quantity": quantity}],
-        )
-    except cj_service.CJError as exc:
-        _log_freight_failure(exc, origin=origin, country=country)
-        return {
-            "available": False,
-            "country_code": country,
-            "product_id": product_id,
-            "variant_id": variant.id if variant else None,
-            "quantity": quantity,
-            "product_total": product_total,
-            "shipping_total": None,
-            "grand_total": None,
-            "message": SHIPPING_UNAVAILABLE_MSG,
-            "options": [],
-        }
-
-    if not options:
-        return {
-            "available": False,
-            "country_code": country,
-            "product_id": product_id,
-            "variant_id": variant.id if variant else None,
-            "quantity": quantity,
-            "product_total": product_total,
-            "shipping_total": None,
-            "grand_total": None,
-            "message": "Shipping is not available to this country for this item",
-            "options": [],
-        }
-
-    ranked = sorted(options, key=lambda o: float(o.get("logisticPrice") or 0))
-    best = _pick_freight(options)
-    ship_cost = float(best.get("logisticPrice") or 0)
-    ship_retail = _ship_retail(ship_cost)
-
-    return {
-        "available": True,
-        "country_code": country,
-        "from_country": origin,
-        "product_id": product_id,
-        "variant_id": variant.id if variant else None,
-        "quantity": quantity,
-        "product_total": product_total,
-        "shipping_total": ship_retail,
-        "shipping_cost_raw": round(ship_cost, 2),
-        "grand_total": round(product_total + ship_retail, 2),
-        "eta_days": best.get("logisticAging"),
-        "logistic_name": best.get("logisticName"),
-        "options": [
-            {
-                "name": o.get("logisticName"),
-                "eta_days": o.get("logisticAging"),
-                "cost_usd": round(float(o.get("logisticPrice") or 0), 2),
-                "retail_usd": _ship_retail(float(o.get("logisticPrice") or 0)),
-            }
-            for o in ranked[:6]
-        ],
-    }
+        result = await shipping_service.quote([(product, variant, quantity)], country_code,
+            {"postcode": zip_code, "city": city, "state": state}, free_us=FREE_SHIPPING)
+    except shipping_service.QuoteError as exc:
+        return {"available": False, "reason": exc.reason, "message": str(exc),
+                "country_code": country_code.upper(), "product_id": product_id,
+                "shipping_total": None, "grand_total": None, "options": []}
+    return {**result, "product_id": product_id, "variant_id": variant.id if variant else None,
+            "quantity": quantity, "options": result["legs"]}
 
 
-PRINTIFY_ONLY_US_MSG = "Printed to order in the US; ships to United States addresses only."
 DIGITAL_LOGISTIC = "Digital download"
+LULU_LOGISTIC = "Printed to order"
 
 
 def _printify_line(product: Product, variant: ProductVariant | None, qty: int) -> dict:
-    return {
-        "product_id": product.printify_product_id,
-        "variant_id": int(variant.printify_variant_id if variant else 0),
-        "quantity": qty,
-    }
-
-
-async def _printify_product_quote(product, variant, country: str, quantity: int) -> dict:
-    unit_price = float(variant.price_usd if variant else product.price_usd)
-    product_total = round(unit_price * quantity, 2)
-    base = {
-        "country_code": country,
-        "product_id": product.id,
-        "variant_id": variant.id if variant else None,
-        "quantity": quantity,
-        "product_total": product_total,
-    }
-    unavailable = {**base, "available": False, "shipping_total": None, "grand_total": None, "options": []}
-    if not printify_service.ships_to(country):
-        return {**unavailable, "message": PRINTIFY_ONLY_US_MSG}
-    try:
-        cost = await printify_service.shipping_cost([_printify_line(product, variant, quantity)], country)
-    except printify_service.PrintifyError as exc:
-        log.warning("printify shipping quote failed for product %s: %s", product.id, exc)
-        return {**unavailable, "message": SHIPPING_UNAVAILABLE_MSG}
-    retail = _ship_retail(cost)
-    option = {"name": "Printify Standard", "eta_days": printify_service.ETA_DAYS,
-              "cost_usd": cost, "retail_usd": retail}
-    return {
-        **base,
-        "available": True,
-        "from_country": "US",
-        "shipping_total": retail,
-        "shipping_cost_raw": cost,
-        "grand_total": round(product_total + retail, 2),
-        "eta_days": printify_service.ETA_DAYS,
-        "logistic_name": option["name"],
-        "options": [option],
-    }
-
-
-LULU_LOGISTIC = "Printed to order · free shipping"
-LULU_COUNTRIES_MSG = "Printed to order; ships to the US, UK, Canada, Australia, Germany, France, the Netherlands and Ireland."
-
-
-def _lulu_product_quote(product, variant, country: str, quantity: int) -> dict:
-    """Shipping is part of the price; only the country decides."""
-    total = round(float(variant.price_usd if variant else product.price_usd) * quantity, 2)
-    base = {"country_code": country, "product_id": product.id,
-            "variant_id": variant.id if variant else None, "quantity": quantity, "product_total": total}
-    if not lulu_service.ships_to(country):
-        return {**base, "available": False, "shipping_total": None, "grand_total": None,
-                "options": [], "message": LULU_COUNTRIES_MSG}
-    option = {"name": LULU_LOGISTIC, "eta_days": lulu_service.ETA_DAYS, "cost_usd": 0.0, "retail_usd": 0.0}
-    return {**base, "available": True, "shipping_total": 0.0, "grand_total": total,
-            "eta_days": lulu_service.ETA_DAYS, "logistic_name": LULU_LOGISTIC, "options": [option]}
+    return {"product_id": product.printify_product_id,
+            "variant_id": int(variant.printify_variant_id if variant else 0), "quantity": qty}
 
 
 def _lulu_files(product: Product, variant: ProductVariant | None) -> tuple[str, str] | None:
@@ -1159,114 +977,15 @@ def _lulu_files(product: Product, variant: ProductVariant | None) -> tuple[str, 
 @app.post("/api/shipping/quote")
 async def shipping_quote(body: ShippingQuoteIn, db: Session = Depends(get_db)):
     cart = _load_cart_lines(db, body.items)
-    country = body.country_code.upper()
-    by_origin: dict[str, list[dict]] = {}
-    pod_lines: list[dict] = []
-    digital_lines = 0
-    lulu_lines = 0
-    for product, variant, qty in cart:
-        if digital_service.is_digital(product):
-            digital_lines += 1  # nothing to ship
-            continue
-        if product.supplier == lulu_service.SUPPLIER:
-            if not lulu_service.ships_to(country):
-                raise HTTPException(400, f"{product.title}: {LULU_COUNTRIES_MSG}")
-            lulu_lines += 1  # shipping is in the price
-            continue
-        if (product.supplier or "cj") == "printify":
-            if not printify_service.ships_to(country):
-                raise HTTPException(400, f"{product.title}: {PRINTIFY_ONLY_US_MSG}")
-            pod_lines.append(_printify_line(product, variant, qty))
-            continue
-        origin = (product.from_country or "CN").upper()
-        vid = (variant.cj_vid if variant else product.cj_vid) or ""
-        if not vid:
-            raise HTTPException(400, f"Product {product.id} has no CJ variant id")
-        by_origin.setdefault(origin, []).append({"vid": vid, "quantity": qty})
-
-    options_all: list[dict] = []
-    retail_shipping = 0.0
-    eta_bits: list[str] = []
-    chosen_names: list[str] = []
-
-    for origin, products in by_origin.items():
-        try:
-            options = await cj_service.freight_calculate(
-                start_country=origin,
-                end_country=country,
-                products=products,
-                zip_code=body.zip_code,
-            )
-        except cj_service.CJError as exc:
-            _log_freight_failure(exc, origin=origin, country=country)
-            raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG) from exc
-
-        if not options:
-            log.warning("no freight route %s -> %s for cart", origin, country)
-            raise HTTPException(
-                400,
-                f"We don't have a delivery route to {country} for this order yet.",
-            )
-
-        best = _pick_freight(options)
-        cost = float(best.get("logisticPrice") or 0)
-        retail_shipping += _ship_retail(cost)
-        eta_bits.append(str(best.get("logisticAging") or ""))
-        chosen_names.append(str(best.get("logisticName") or ""))
-
-        options_all.append(
-            {
-                "from": origin,
-                "options": [
-                    {
-                        "name": o.get("logisticName"),
-                        "eta_days": o.get("logisticAging"),
-                        "cost_usd": round(float(o.get("logisticPrice") or 0), 2),
-                        "retail_usd": _ship_retail(float(o.get("logisticPrice") or 0)),
-                    }
-                    for o in sorted(
-                        options, key=lambda x: float(x.get("logisticPrice") or 0)
-                    )[:8]
-                ],
-            }
-        )
-
-    if pod_lines:
-        try:
-            cost = await printify_service.shipping_cost(pod_lines, country)
-        except printify_service.PrintifyError as exc:
-            log.warning("printify shipping quote failed (%s): %s", country, exc)
-            raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG) from exc
-        retail_shipping += _ship_retail(cost)
-        eta_bits.append(printify_service.ETA_DAYS)
-        chosen_names.append("Printify Standard")
-        options_all.append({
-            "from": "US",
-            "options": [{"name": "Printify Standard", "eta_days": printify_service.ETA_DAYS,
-                         "cost_usd": cost, "retail_usd": _ship_retail(cost)}],
-        })
-
-    product_total = sum(
-        (v.price_usd if v else p.price_usd) * q for p, v, q in cart
-    )
-    shipping_total = round(retail_shipping, 2)
-    if lulu_lines:
-        eta_bits.append(lulu_service.ETA_DAYS)
-        chosen_names.append(LULU_LOGISTIC)
-    if digital_lines:
-        chosen_names.append(DIGITAL_LOGISTIC)
-
-    return {
-        "country_code": country,
-        "product_total": round(product_total, 2),
-        "shipping_total": shipping_total,
-        "grand_total": round(product_total + shipping_total, 2),
-        "eta_days": " / ".join(e for e in eta_bits if e) or None,
-        "logistic_name": " + ".join(chosen_names),
-        "digital_only": digital_lines == len(cart),
-        "has_digital": bool(digital_lines),
-        "legs": options_all,
-    }
+    try:
+        return await shipping_service.quote(cart, body.country_code,
+            {"postcode": body.zip_code or "", "city": body.city, "state": body.state,
+             "street1": body.street1, "street2": body.street2, "phone_number": body.phone_number,
+             "recipient_tax_id": body.recipient_tax_id},
+            free_us=FREE_SHIPPING)
+    except shipping_service.QuoteError as exc:
+        raise HTTPException(exc.status, {"message": str(exc), "reason": exc.reason,
+                                       "unavailable_products": exc.products}) from None
 
 
 # ── Checkout → PayPal ─────────────────────────────────────────────────
@@ -1337,6 +1056,7 @@ def cart_preview(body: CartPreviewIn, lang: str = Query("en"), db: Session = Dep
                 "line_total": line_total,
                 "category": i18n.product(p.to_public(), lang).get("category") or "",
                 "digital": digital_service.is_digital(p),
+                "supplier": p.supplier or "cj",
                 "cj_sku": (v.cj_sku if v else p.cj_sku) or "",
             }
         )
@@ -1369,11 +1089,12 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
     if needs_address and (
         len(body.shipping_address.strip()) < 3
         or not body.shipping_city.strip()
-        or not body.shipping_province.strip()
     ):
         raise HTTPException(422, "Please complete the shipping address.")
 
     if any(p.supplier == lulu_service.SUPPLIER for p, _, _ in cart):
+        if body.shipping_country_code.upper() in {"BR", "CL", "MX"} and not re.fullmatch(r"[A-Za-z0-9.\-/ ]{6,30}", body.recipient_tax_id.strip()):
+            raise HTTPException(422, "Please provide the recipient tax ID required for printed books to this country.")
         try:
             lulu_service.address(
                 body.customer_name, body.shipping_address, body.shipping_address2 or "",
@@ -1387,16 +1108,23 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         ShippingQuoteIn(
             country_code=body.shipping_country_code,
             zip_code=body.shipping_zip or None,
-            items=body.items,
+            city=body.shipping_city, state=body.shipping_province,
+            street1=body.shipping_address, street2=body.shipping_address2,
+            phone_number=body.phone, recipient_tax_id=body.recipient_tax_id, items=body.items,
         ),
         db,
     )
     if quote.get("shipping_total") is None:
         raise HTTPException(503, SHIPPING_UNAVAILABLE_MSG)
     shipping_total = float(quote["shipping_total"])
+    if (quote.get("is_estimate") or body.shipping_total is None
+            or not math.isfinite(body.shipping_total)
+            or abs(body.shipping_total - shipping_total) > 0.005
+            or body.expected_total is None or not math.isfinite(body.expected_total)
+            or abs(body.expected_total - quote["grand_total"]) > 0.005):
+        raise HTTPException(409, "Your delivery total has changed or needs confirmation. Review the updated total before paying.")
     grand_total = round(product_total + shipping_total, 2)
-    # Never the client's pick: shipping is free, so a carrier named in the
-    # request body would be paid for by the shop. The quote is server-side.
+    # Always use the method and price confirmed by the server-side quote.
     logistic_name = quote.get("logistic_name") or "CJPacket"
 
     order = Order(
@@ -1411,6 +1139,7 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         shipping_zip=body.shipping_zip or "",
         shipping_country=body.shipping_country,
         shipping_country_code=body.shipping_country_code.upper(),
+        shipping_tax_id=body.recipient_tax_id.strip(),
         product_total=product_total,
         shipping_total=shipping_total,
         grand_total=grand_total,
@@ -1680,7 +1409,7 @@ async def _fulfil(order: Order, db: Session) -> None:
     if digital:
         await _deliver_digital(order, db, digital, products_db)
     if cj_items:
-        await _submit_to_cj(order, db, cj_items, mixed=bool(pod))
+        await _submit_to_cj(order, db, cj_items, mixed=bool(pod or books))
     if pod:
         await _submit_to_printify(order, db, pod, products_db)
     if books:
@@ -1802,7 +1531,14 @@ async def _submit_to_lulu(order: Order, db: Session, items: list[OrderItem], pro
         order.shipping_city, order.shipping_province, order.shipping_country_code,
         order.shipping_zip or "", order.phone or "",
     )
-    await lulu_submission.submit(db, order, lines, address)
+    address["email"] = order.email
+    if order.shipping_tax_id:
+        address["recipient_tax_id"] = order.shipping_tax_id
+    match = re.search(r"\bLulu (MAIL|PRIORITY_MAIL|GROUND_HD|GROUND_BUS|GROUND|EXPEDITED|EXPRESS)\b", order.logistic_name or "")
+    if match:
+        await lulu_submission.submit(db, order, lines, address, shipping_level=match.group(1))
+    else:
+        await lulu_submission.submit(db, order, lines, address)
 
 
 async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed: bool = False) -> None:

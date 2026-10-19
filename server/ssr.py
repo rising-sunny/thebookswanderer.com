@@ -122,25 +122,7 @@ def _ship_countries() -> list[str]:
 
 
 def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
-    """Countries a supplier can deliver to, when narrower than the shop's list.
-
-    Printify products are US-only (checkout refuses anything else), so their
-    merchant listing must not advertise the other 30 destinations.
-    """
-    if supplier == "lulu":
-        from services import lulu
-
-        return lulu.ship_countries()
-    if supplier == "printify":
-        try:
-            from services import printify
-
-            return set(printify.SHIP_COUNTRIES)
-        except Exception:  # noqa: BLE001
-            return {"US"}
-    # CJ's US warehouse only has domestic routes (checkout refuses the rest).
-    if (from_country or "").upper() == "US":
-        return {"US"}
+    """No country whitelist: providers confirm each product/address via quotes."""
     return None
 
 
@@ -174,26 +156,16 @@ def _free_shipping() -> bool:
 def _shipping_details(
     only: set[str] | None = None, *, supplier: str | None = None
 ) -> list[dict[str, Any]]:
-    """Publish known rates, not invented caps or guaranteed delivery windows.
+    """Only US standard shipping has a known included rate.
 
-    Lulu always includes shipping. Other physical suppliers use FREE_SHIPPING.
-    Paid CJ/Printify rates need a live destination/variant quote, so omit them.
-    The public transit guide excludes packing and promises no fixed handling
-    time; it cannot be turned into a complete ShippingDeliveryTime guarantee.
+    International rates and availability require a live quote; do not advertise
+    free shipping or guaranteed country coverage in structured data.
     """
     if supplier == "digital" or (supplier != "lulu" and not _free_shipping()):
         return []
-    countries = _ship_countries()
-    if only is not None:
-        countries = [c for c in countries if c in only]
-    return [
-        {
-            "@type": "OfferShippingDetails",
-            "shippingDestination": {"@type": "DefinedRegion", "addressCountry": country},
-            "shippingRate": {"@type": "MonetaryAmount", "value": 0, "currency": "USD"},
-        }
-        for country in countries
-    ]
+    return [{"@type": "OfferShippingDetails",
+             "shippingDestination": {"@type": "DefinedRegion", "addressCountry": "US"},
+             "shippingRate": {"@type": "MonetaryAmount", "value": 0, "currency": "USD"}}]
 
 
 def _related_block_html(related: list[dict[str, Any]]) -> str:
@@ -527,8 +499,8 @@ def render_product_page(
     </div>
 </footer>
 <script src="/track.js?v=6" defer></script>
-<script src="/cart.js?v=3" defer></script>
-<script src="/product.js?v=32" defer></script>
+<script src="/cart.js?v=4" defer></script>
+<script src="/product.js?v=33" defer></script>
 </body>
 </html>
 """
@@ -757,7 +729,7 @@ def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
     </div>
 </footer>
 <script src="/track.js?v=6" defer></script>
-<script src="/cart.js?v=3" defer></script>
+<script src="/cart.js?v=4" defer></script>
 <script src="/affiliate-data.js?v=5" defer></script>
 <script src="/pick.js?v=5" defer></script>
 </body>
@@ -961,7 +933,7 @@ def render_collection_page(
 </main>
 {_site_footer(note=name)}
 <script src="/track.js?v=6" defer></script>
-<script src="/cart.js?v=3" defer></script>
+<script src="/cart.js?v=4" defer></script>
 </body>
 </html>
 """
@@ -1106,7 +1078,7 @@ def render_catalog_page(
 </main>
 {_site_footer(note="Shop")}
 <script src="/track.js?v=6" defer></script>
-<script src="/cart.js?v=3" defer></script>
+<script src="/cart.js?v=4" defer></script>
 </body>
 </html>
 """
@@ -1204,7 +1176,7 @@ def render_collections_index(
 </main>
 {_site_footer()}
 <script src="/track.js?v=6" defer></script>
-<script src="/cart.js?v=3" defer></script>
+<script src="/cart.js?v=4" defer></script>
 </body>
 </html>
 """

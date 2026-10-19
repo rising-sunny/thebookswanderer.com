@@ -75,6 +75,7 @@ class Product(Base):
 
     def to_public(self) -> dict:
         from services import categories as cat_service
+        from services.shipping import description
 
         variants = self.active_variants()
         prices = [v.price_usd for v in variants] or [self.price_usd]
@@ -87,7 +88,7 @@ class Product(Base):
             "id": self.id,
             "slug": self.slug,
             "title": self.title,
-            "description": self.description,
+            "description": description(self.description or "", self.supplier or "cj"),
             "image_url": img,
             "category": cat_meta["category"],
             "category_slug": cat_meta["category_slug"],
@@ -171,6 +172,7 @@ class Order(Base):
     shipping_zip: Mapped[str] = mapped_column(String(40), default="")
     shipping_country: Mapped[str] = mapped_column(String(80), default="")
     shipping_country_code: Mapped[str] = mapped_column(String(8), default="")
+    shipping_tax_id: Mapped[str] = mapped_column(String(80), default="")
 
     product_total: Mapped[float] = mapped_column(Float, default=0.0)
     shipping_total: Mapped[float] = mapped_column(Float, default=0.0)

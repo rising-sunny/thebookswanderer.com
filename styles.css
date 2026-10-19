@@ -1973,6 +1973,10 @@ a.add-to-cart {
     padding-inline: var(--sp-2);
 }
 
+.checkout-form .field[hidden] {
+    display: none;
+}
+
 .field {
     display: flex;
     flex-direction: column;

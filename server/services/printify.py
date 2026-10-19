@@ -20,9 +20,9 @@ import httpx
 
 BASE = "https://api.printify.com/v1"
 
-# Printify ships these products from US print providers; selling them abroad
-# would cost 2-3x in freight, so the site only offers them in the US.
-SHIP_COUNTRIES = {"US"}
+# These are destination choices; the shipping API confirms each basket/address.
+from services.countries import COUNTRY_CODES
+SHIP_COUNTRIES = COUNTRY_CODES
 ETA_DAYS = "5-10"  # 2-5 days production + 3-5 days US ground
 
 US_STATES = {
@@ -89,14 +89,23 @@ async def _request(method: str, path: str, json_body: dict | None = None) -> Any
     return data
 
 
-async def shipping_cost(lines: list[dict], country_code: str) -> float:
+async def shipping_cost(lines: list[dict], country_code: str, address: dict | None = None) -> float:
     """Standard shipping in USD for [{product_id, variant_id, quantity}]."""
     data = await _request(
         "POST",
         f"/shops/{shop_id()}/orders/shipping.json",
-        {"line_items": lines, "address_to": {"country": country_code.upper()}},
+        {"line_items": lines, "address_to": {**(address or {}), "country": country_code.upper()}},
     )
-    return round(float(data.get("standard") or 0) / 100, 2)
+    import math
+    if "standard" not in data:
+        raise PrintifyError("No standard delivery quote returned", data)
+    try:
+        value = float(data["standard"]) / 100
+    except (TypeError, ValueError):
+        raise PrintifyError("Invalid delivery quote", {}) from None
+    if not math.isfinite(value) or value < 0:
+        raise PrintifyError("Invalid delivery quote", {})
+    return round(value, 2)
 
 
 async def create_order(*, external_id: str, label: str, lines: list[dict], address: dict) -> dict:

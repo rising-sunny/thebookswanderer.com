@@ -440,13 +440,8 @@ def shipping_copy(detail: dict[str, Any]) -> str:
     supplier = detail.get("supplier") or "cj"
     if supplier == "digital":
         return "Instant PDF download; no physical shipping."
-    if supplier == "printify":
-        return "Printed to order. US delivery only." + (" Standard US shipping included." if free_shipping() else "")
-    if supplier == "lulu":
-        from services import lulu
-        countries = ", ".join(sorted(lulu.ship_countries()))
-        return f"Printed to order. Shipping included to: {countries}."
-    return ("Standard US shipping included. " if free_shipping() else "") + "Check the product page for delivery availability."
+    included = supplier == "lulu" or free_shipping()
+    return ("Standard US shipping included. " if included else "") + "Select your destination on the product page to confirm delivery availability and the total including shipping."
 
 
 def product_pin_payload(detail: dict[str, Any]) -> dict[str, Any]:

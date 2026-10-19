@@ -72,7 +72,7 @@ class HomepageTests(unittest.TestCase):
                 self.assertIn('id="featured"', page)
                 self.assertIn('href="/assets/products/home-atelier/home.css?v=2"', page)
                 self.assertIn('src="/track.js?v=6"', page)
-                self.assertIn('src="/cart.js?v=3"', page)
+                self.assertIn('src="/cart.js?v=4"', page)
                 self.assertIn('id="newsletterForm"', page)
                 self.assertIn('hreflang="en"', page)
                 self.assertIn('hreflang="es"', page)
