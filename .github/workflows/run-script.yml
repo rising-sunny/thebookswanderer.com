@@ -34,45 +34,52 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Inspect existing pixel grants and managed assets using read-only requests
+      - name: Validate Meta account eligibility and test-only CAPI readiness without spend
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only discovery of existing pixel/account grants with existing tokens."""
-          import json,re
-          import httpx
+          """Non-spending validation and one explicitly TEST-only CAPI PageView check."""
+          import hashlib,json,re,time
+          from pathlib import Path
           from dotenv import dotenv_values
+          import httpx
           cfg=dotenv_values('/root/vps_x_bot/.env');env=dotenv_values('/var/www/thebookswanderer.com/server/.env')
-          tokens={'user':cfg['FACEBOOK_USER_ACCESS_TOKEN'],'existing_capi':env['META_CAPI_TOKEN']}
+          user=cfg['FACEBOOK_USER_ACCESS_TOKEN'];capi=env['META_CAPI_TOKEN'];pixel=env['META_PIXEL_ID']
           v=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip();BASE='https://graph.facebook.com/'+(v+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',v) else '')
-          pixel=env['META_PIXEL_ID'];out={'pixel_access_discovery':True,'write_requests':0,'credential_values_disclosed':False}
-          def get(c,path,params=None):
+          out={'meta_final_readiness':True,'new_ads_created':0,'production_conversion_events_sent':0,'purchase_events_sent':0,'payments_made':0,'credential_values_disclosed':False}
+          def clean(j):
+           if not isinstance(j,dict):return {'response_type':type(j).__name__}
+           e=j.get('error')
+           if e:
+            safe={k:e[k] for k in ['code','error_subcode','type','message','error_user_title','error_user_msg','is_transient'] if k in e}
+            for k,value in list(safe.items()):
+             if isinstance(value,str):
+              for t in [user,capi]:value=value.replace(t,'[redacted]')
+              safe[k]=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',value)[:1200]
+            return {'error':safe}
+           return {k:j[k] for k in ['success','events_received','messages','id','name'] if k in j}
+          with httpx.Client(timeout=30,headers={'Authorization':'Bearer '+user}) as c:
+           # validate_only is documented in Meta's Campaign update SDK: no status change.
+           r=c.post(BASE+'120248615067130765',data={'status':'PAUSED','execution_options':json.dumps(['validate_only'])})
+           out['pause_validation']=clean(r.json())
+           r=c.get(BASE+pixel+'/shared_accounts',params={'business':'614062214558484','fields':'id,name','limit':100})
+           j=r.json();out['pixel_accounts_for_known_business']=clean(j) if j.get('error') else {'data':j.get('data',[])}
+          
+          backup=Path('/var/backups/thebookswanderer-meta-ads/20261019T081707Z/server.env')
+          test=(dotenv_values(backup).get('META_CAPI_TEST_CODE') or '').strip()
+          if re.fullmatch(r'TEST[A-Za-z0-9_]+',test):
+           # Never send a fake Purchase or an event into production. The configured test
+           # code is used only on this isolated validation payload, not restored to env.
+           event={'event_name':'PageView','event_time':int(time.time()),'event_id':'tbw-test-readiness-'+str(int(time.time())),
+                  'action_source':'website','event_source_url':'https://thebookswanderer.com/?tbw_test=1',
+                  'user_data':{'external_id':[hashlib.sha256(b'tbw-integration-preflight-not-a-customer').hexdigest()],
+                               'client_user_agent':'TBW-integration-preflight/1.0'}}
+           payload={'data':[event],'test_event_code':test}
            try:
-            r=c.get(BASE+path,params=params or {});j=r.json()
-            if not r.is_success or j.get('error'):
-             e=j.get('error') or {};msg=str(e.get('message',''))
-             for t in tokens.values():msg=msg.replace(t,'[redacted]')
-             msg=re.sub(r'https?://\S+|EAA[A-Za-z0-9]{20,}','[redacted]',msg)
-             return {'error':{'code':e.get('code'),'subcode':e.get('error_subcode'),'message':msg[:250]}}
-            if 'paging' in j:return {'data':j.get('data',[]),'has_more':bool(j['paging'].get('next'))}
-            return j
-           except Exception as e:return {'error_type':type(e).__name__}
-          for label,token in tokens.items():
-           with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=25) as c:
-            part={}
-            part['pixel_identity']=get(c,pixel,{'fields':'id,name,is_created_by_business'})
-            part['pixel_owner_reference']=get(c,pixel,{'fields':'owner_ad_account'})
-            part['selected_account_pixel_list']=get(c,'act_2206299143461363/adspixels',{'fields':'id,name','limit':100})
-            if label=='user':
-             part['managed_accounts']=get(c,'me/adaccounts',{'fields':'id,name,currency,account_status,business{id,name}','limit':100})
-             businesses=get(c,'me/businesses',{'fields':'id,name','limit':100});part['businesses']=businesses
-             matches=[]
-             for b in businesses.get('data',[])[:8]:
-              for edge in ['owned_pixels','client_pixels']:
-               pixels=get(c,b['id']+'/'+edge,{'fields':'id,name','limit':100})
-               matching=[p for p in pixels.get('data',[]) if p.get('id')==pixel]
-               if matching:matches.append({'business':b,'edge':edge,'matching_pixels':matching})
-             part['pixel_business_matches']=matches
-            else:part['permissions']=get(c,'me/permissions')
-            out[label]=part
+            with httpx.Client(timeout=30,headers={'Authorization':'Bearer '+capi}) as c:
+             r=c.post('https://graph.facebook.com/v21.0/'+pixel+'/events',json=payload)
+             out['capi_test_pageview_result']=clean(r.json());out['test_only_pageview_requests']=1
+           except Exception as e:out['capi_test_pageview_result']={'error_type':type(e).__name__}
+          else:out['capi_test_pageview_result']={'skipped':'Saved configuration does not contain a recognizable test-event code.'}
+          out['production_capi_test_mode_remains_disabled']=not (dotenv_values('/var/www/thebookswanderer.com/server/.env').get('META_CAPI_TEST_CODE') or '').strip()
           print(json.dumps(out,sort_keys=True))
           PYCODE
