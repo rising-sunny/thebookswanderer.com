@@ -8,10 +8,13 @@ import os
 import sqlite3
 import time
 from contextlib import closing
+from io import BytesIO
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 import httpx
+from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SANDBOX_BASE = "https://sandbox.qikink.com"
@@ -41,7 +44,7 @@ class ShippingAddress(BaseModel):
     city: str = Field(min_length=1, max_length=40)
     zip: str = Field(pattern=r"^[0-9]{6}$")
     province: str = Field(min_length=1, max_length=40)
-    # Only the India plain-product flow has been tested so far.
+    # Current Sandbox test fixtures are limited to India.
     country_code: Literal["IN"] = "IN"
 
 
@@ -85,6 +88,37 @@ class PlainOrder(BaseModel):
         }
 
 
+class PrintDesign(BaseModel):
+    """Fully specified DTG design; blank fields for reused codes are not supported."""
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    design_code: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,20}$")
+    width_inches: float = Field(default=2, gt=0, le=16, allow_inf_nan=False)
+    height_inches: float = Field(default=2, gt=0, le=20, allow_inf_nan=False)
+    placement_sku: Literal["fr", "bk", "lp", "rp", "rs", "ls"] = "fr"
+    design_link: str = Field(min_length=1, max_length=512)
+    mockup_link: str = Field(min_length=1, max_length=512)
+
+    @field_validator("design_link", "mockup_link")
+    @classmethod
+    def public_https(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
+                or parsed.password is not None or parsed.query or parsed.fragment):
+            raise ValueError("Use a public HTTPS image URL without credentials, query or fragment")
+        if parsed.hostname not in {"thebookswanderer.com", "www.thebookswanderer.com"} or parsed.port not in (None, 443):
+            raise ValueError("Sandbox artwork must be hosted on the store domain")
+        return value
+
+
+class PrintedOrder(PlainOrder):
+    design: PrintDesign
+
+    def payload(self) -> dict:
+        payload = super().payload()
+        payload["line_items"][0]["designs"] = [self.design.model_dump()]
+        return payload
+
+
 def _digest(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -115,7 +149,7 @@ class SandboxJournal:
     def _connect(self):
         return sqlite3.connect(self.path, timeout=10)
 
-    def reserve(self, account: str, order: PlainOrder, known_id: str | None = None) -> dict:
+    def reserve(self, account: str, order: PlainOrder | PrintedOrder, known_id: str | None = None) -> dict:
         fingerprint = _digest(order.payload())
         with closing(self._connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
@@ -204,13 +238,43 @@ class SandboxClient:
     async def create_plain_order(self, order: PlainOrder) -> dict:
         # Revalidate/copy so callers cannot change nested fields across awaits.
         order = PlainOrder.model_validate(order.model_dump())
+        return await self._create_order(order)
+
+    async def create_printed_order(self, order: PrintedOrder) -> dict:
+        order = PrintedOrder.model_validate(order.model_dump())
+        return await self._create_order(order)
+
+    async def check_artwork(self, design: PrintDesign) -> None:
+        """Read only store-hosted PNG/JPEG files; never forward Qikink headers."""
+        try:
+            for url in dict.fromkeys((design.design_link, design.mockup_link)):
+                async with self._http.stream("GET", url, headers={"Accept-Encoding": "identity"}) as response:
+                    if response.status_code != 200:
+                        raise ValueError
+                    if response.headers.get("content-type", "").split(";")[0].strip().lower() not in {"image/png", "image/jpeg"}:
+                        raise ValueError
+                    image_bytes = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        image_bytes.extend(chunk)
+                        if len(image_bytes) > 4 * 1024 * 1024:
+                            raise ValueError
+                with Image.open(BytesIO(image_bytes)) as image:
+                    if image.format not in {"PNG", "JPEG"} or image.width * image.height > 40_000_000:
+                        raise ValueError
+                    image.verify()
+        except Exception:
+            raise QikinkError("Artwork preflight failed; use accessible store-hosted PNG/JPEG files up to 4 MiB") from None
+
+    async def _create_order(self, order: PlainOrder | PrintedOrder) -> dict:
         result = self.journal.reserve(self.account, order)
         if result["state"] == "created":
             return {**result, "reference": order.reference}
         try:
+            if isinstance(order, PrintedOrder):
+                await self.check_artwork(order.design)
             await self.authenticate()
         except BaseException:
-            # No order request has been attempted: retrying this reference is safe.
+            # Artwork/auth failed before any order request: retrying is safe.
             self.journal.finish(self.account, order.reference, "not_sent")
             raise
         try:
