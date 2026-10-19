@@ -1,5 +1,6 @@
 """Qikink Sandbox contract and duplicate protection; all HTTP calls are mocked."""
 import asyncio
+from io import BytesIO
 import json
 import os
 import sys
@@ -10,10 +11,11 @@ from unittest.mock import patch
 
 import httpx
 from pydantic import ValidationError
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services.qikink import (DuplicateBlocked, OutcomeUnknown, PlainOrder, QikinkError,
-                              SandboxClient, SandboxJournal)
+                              SandboxClient, SandboxJournal, PrintedOrder, PrintDesign)
 
 ADDRESS = {
     "first_name": "Sandbox", "last_name": "Test", "address1": "Sandbox test address",
@@ -40,7 +42,7 @@ class QikinkTests(unittest.IsolatedAsyncioTestCase):
     def client(self, handler=None):
         async def respond(request):
             self.assertEqual(request.url.scheme, "https")
-            self.assertEqual(request.url.host, "sandbox.qikink.com")
+            self.assertIn(request.url.host, {"sandbox.qikink.com", "thebookswanderer.com"})
             self.calls.append(request.url.path)
             if handler:
                 reply = handler(request)
@@ -233,6 +235,115 @@ class QikinkTests(unittest.IsolatedAsyncioTestCase):
                 PlainOrder.model_validate(data)
         self.assertEqual(self.calls, [])
 
+
+    def printed_order(self, reference="tbw_print001", **design_changes):
+        values = {
+            "design_code": "tbw_logo_test01",
+            "design_link": "https://thebookswanderer.com/assets/logo.png",
+            "mockup_link": "https://thebookswanderer.com/assets/logo.png",
+        } | design_changes
+        return PrintedOrder(**order(reference).model_dump(), design=PrintDesign(**values))
+
+    def image_response(self):
+        buffer = BytesIO()
+        Image.new("RGB", (2, 2), "white").save(buffer, format="PNG")
+        return httpx.Response(200, headers={"Content-Type": "image/png"}, content=buffer.getvalue())
+
+    def printed_response(self, request):
+        if request.url.host == "thebookswanderer.com":
+            self.assertEqual(request.method, "GET")
+            self.assertNotIn("ClientId", request.headers)
+            self.assertNotIn("Accesstoken", request.headers)
+            return self.image_response()
+        if request.url.path == "/api/token":
+            return httpx.Response(200, json={"Accesstoken": "private-token"})
+        payload = json.loads(request.content)
+        line = payload["line_items"][0]
+        self.assertEqual(line["print_type_id"], "1")
+        self.assertEqual(line["search_from_my_products"], 0)
+        self.assertEqual(line["designs"][0]["width_inches"], 2)
+        self.assertEqual(line["designs"][0]["height_inches"], 2)
+        self.assertEqual(line["designs"][0]["placement_sku"], "fr")
+        self.assertIn("design_link", line["designs"][0])
+        self.assertNotIn("design_url", line["designs"][0])
+        self.assertNotIn("add_ons", payload)
+        return httpx.Response(200, json={"status_code": "200", "order_id": 24616033})
+
+    async def test_printed_preflight_then_create_and_cached_retry(self):
+        async with self.client(self.printed_response) as client:
+            result = await client.create_printed_order(self.printed_order())
+            self.assertEqual(result["order_id"], "24616033")
+            self.assertEqual(self.calls, ["/assets/logo.png", "/api/token", "/api/order/create"])
+            cached = await client.create_printed_order(self.printed_order())
+            self.assertTrue(cached["cached"])
+            self.assertEqual(len(self.calls), 3)
+            with self.assertRaises(DuplicateBlocked):
+                await client.create_printed_order(self.printed_order(width_inches=3))
+        saved = self.path.read_bytes()
+        self.assertNotIn(b"https://thebookswanderer.com/assets/logo.png", saved)
+
+    async def test_printed_payload_cannot_reuse_plain_reference(self):
+        async with self.client(self.printed_response) as client:
+            client.remember_existing(order(), "24616032")
+            with self.assertRaises(DuplicateBlocked):
+                await client.create_printed_order(self.printed_order("tbw_test"))
+        self.assertEqual(self.calls, [])
+
+    async def test_bad_artwork_blocks_auth_and_creation_but_can_be_fixed(self):
+        bad_responses = [
+            httpx.Response(404),
+            httpx.Response(302, headers={"Location": "https://api.qikink.com"}),
+            httpx.Response(200, headers={"Content-Type": "text/html"}, text="<html>error</html>"),
+            httpx.Response(200, headers={"Content-Type": "image/png"}, content=b"not an image"),
+        ]
+        for index, bad_response in enumerate(bad_responses):
+            def respond(request):
+                return bad_response
+            candidate = self.printed_order(f"bad_image_{index}")
+            async with self.client(respond) as client:
+                with self.assertRaises(QikinkError):
+                    await client.create_printed_order(candidate)
+                self.assertEqual(self.journal.get(client.account, candidate.reference)["state"], "not_sent")
+        self.assertNotIn("/api/token", self.calls)
+        self.assertNotIn("/api/order/create", self.calls)
+        async with self.client(self.printed_response) as client:
+            self.assertEqual((await client.create_printed_order(candidate))["state"], "created")
+
+    async def test_large_artwork_is_not_submitted(self):
+        def respond(request):
+            return httpx.Response(200, headers={"Content-Type": "image/png"}, content=b"x" * (4 * 1024 * 1024 + 1))
+        async with self.client(respond) as client:
+            with self.assertRaises(QikinkError):
+                await client.create_printed_order(self.printed_order())
+        self.assertNotIn("/api/token", self.calls)
+
+    async def test_distinct_mockup_url_is_checked_without_credentials(self):
+        async with self.client(self.printed_response) as client:
+            await client.create_printed_order(self.printed_order(mockup_link="https://thebookswanderer.com/assets/og-default.jpg"))
+        self.assertEqual(self.calls[:2], ["/assets/logo.png", "/assets/og-default.jpg"])
+
+    async def test_printed_timeout_is_not_retried(self):
+        def respond(request):
+            if request.url.path == "/api/order/create":
+                raise httpx.ReadTimeout("private-token")
+            return self.printed_response(request)
+        async with self.client(respond) as client:
+            with self.assertRaises(OutcomeUnknown):
+                await client.create_printed_order(self.printed_order())
+            with self.assertRaises(DuplicateBlocked):
+                await client.create_printed_order(self.printed_order())
+        self.assertEqual(self.calls.count("/api/order/create"), 1)
+
+    def test_invalid_printed_designs_are_refused_locally(self):
+        for change in ({"design_code": ""}, {"design_code": "x" * 21}, {"width_inches": 0},
+                       {"width_inches": 17}, {"height_inches": 21}, {"height_inches": float("nan")},
+                       {"placement_sku": "bad"}, {"design_link": "http://thebookswanderer.com/a.png"},
+                       {"mockup_link": "https://127.0.0.1/a.png"},
+                       {"design_link": "https://thebookswanderer.com/a.png?token=secret"},
+                       {"design_link": "https://user:pass@thebookswanderer.com/a.png"}):
+            with self.assertRaises(ValidationError):
+                self.printed_order(**change)
+        self.assertEqual(self.calls, [])
 
 if __name__ == "__main__":
     unittest.main()
