@@ -34,7 +34,7 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Audit India supplier shipping without orders
+      - name: Quote Lulu India shipping without print jobs
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
           """Inventory and shipping quotations only: never creates orders or payments."""
@@ -51,12 +51,12 @@ jobs:
           products=[dict(r) for r in c.execute('SELECT id,slug,title,supplier,price_usd,from_country,cj_vid,printify_product_id,lulu_package,digital_file FROM products WHERE active=1 ORDER BY id DESC')]
           for p in products:p['variants']=[dict(v) for v in c.execute('SELECT id,name,cj_vid,printify_variant_id,digital_file FROM product_variants WHERE product_id=? AND active=1 ORDER BY sort_order,id',(p['id'],))]
           c.close()
-          out={'india_shipping_audit':True,'checked_at_utc':datetime.now(timezone.utc).isoformat(),'orders_created':0,'payments_made':0,'product_changes':0,'lulu_store_countries':sorted(lulu.ship_countries()),'printify_store_countries':sorted(printify.SHIP_COUNTRIES),'results':[]}
+          out={'india_lulu_quotes':True,'checked_at_utc':datetime.now(timezone.utc).isoformat(),'orders_created':0,'payments_made':0,'product_changes':0,'lulu_store_countries':sorted(lulu.ship_countries()),'printify_store_countries':sorted(printify.SHIP_COUNTRIES),'results':[]}
           def err(e):
            payload=getattr(e,'payload',None)
            return {'error_type':type(e).__name__,'supplier_error_code':payload.get('code') if isinstance(payload,dict) else None}
           async def main():
-           for p in products:
+           for p in [x for x in products if x['supplier']=='lulu']:
             s=p['supplier'] or 'cj';vs=p['variants'];v=vs[0] if vs else None
             r={'id':p['id'],'slug':p['slug'],'title':p['title'],'supplier':s,'retail_usd':p['price_usd'],'active_variants':len(vs),'quoted_variant_id':v['id'] if v else None,'variant_scope':'first active variant only'}
             try:
@@ -68,10 +68,7 @@ jobs:
               r['shipping_quote_usd']=await asyncio.wait_for(printify.shipping_cost([{'product_id':p['printify_product_id'],'variant_id':v['printify_variant_id'],'quantity':1}],'IN'),timeout=50)
               r['supplier_returned_quote']=True
              elif s=='lulu':
-              import fitz
-              fp=digital.file_path((v['digital_file'] if v else '') or p['digital_file'])
-              if not fp:raise ValueError('Missing print file')
-              with fitz.open(fp) as doc:pages=len(doc)
+              pages={'commonplace-book':160,'book-club-companion':100,'the-lost-manuscript':96,'reading-passport-printed':40,'reading-passport-hardcover':40,'color-the-classics-printed':60}[p['slug']]
               address={'name':'Rate estimate','street1':'India Gate','city':'New Delhi','state_code':'DL','postcode':'110001','country_code':'IN','phone_number':'+919000000000'}
               quote=await asyncio.wait_for(lulu.cost(p['lulu_package'],pages,1,address),timeout=65)
               r.update(page_count=pages,shipping_option='MAIL',supplier_returned_quote=True,currency=quote.get('currency'),total_cost_incl_tax=quote.get('total_cost_incl_tax'),total_shipping_cost=quote.get('total_shipping_cost'))
