@@ -1,0 +1,14 @@
+{
+  "duration_s": 20.0,
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "video": "h264/yuv420p",
+  "audio": "AAC stereo 48kHz",
+  "faststart": true,
+  "full_decode": "passed",
+  "music_unchanged": true,
+  "logo_exterior_transparent": true,
+  "bytes": 5114897,
+  "sha256": "076563370a85672de95395e2767c3b0501ca2df94f3677b1e147685bb4d194d1"
+}
