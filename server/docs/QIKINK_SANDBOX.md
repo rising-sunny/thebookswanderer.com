@@ -1,9 +1,9 @@
 # Qikink Sandbox backend
 
-This client implements the confirmed India plain-product test flow only. It has
-no checkout hooks, production host selector, wallet endpoint, payment capture,
-artwork upload, or automatic retry of order creation. Existing store behavior is
-unchanged. New printed products and live fulfillment need a separate integration.
+This client implements India plain-product and fully specified DTG printed
+Sandbox test flows. It has no checkout hooks, production host selector, wallet
+endpoint, payment capture, artwork upload, or automatic retry of order creation.
+Existing store behavior is unchanged. Live fulfillment needs a separate integration.
 
 Reference: https://documenter.getpostman.com/view/26157218/2sBYAysUHS
 The supplied PDF documents plain products with print_type_id=1 and no designs.
@@ -60,6 +60,40 @@ accepts only this CLI's plain test payload (including --sku if specified), and
 refuses to replace a pending/uncertain record or an existing different ID. Do not
 use it for a different payload or account. It does not reserve a remote reference.
 
+## Printed Sandbox test (DTG)
+
+```bash
+.venv/bin/python scripts/qikink_sandbox.py printed --reference tbw_print001
+# Above: dry run, no network. Explicitly submit ONE test when wanted:
+.venv/bin/python scripts/qikink_sandbox.py printed --reference tbw_print001 --submit-sandbox
+.venv/bin/python scripts/qikink_sandbox.py status tbw_print001
+```
+
+Uses the same catalog SKU MVnHs-Wh-S, print_type_id=1 (DTG), quantity/value 1,
+Prepaid and the synthetic India address. Adds one front design, 2 x 2 inches,
+using https://thebookswanderer.com/assets/logo.png. This existing store logo
+is 512 x 512 pixels (256 pixels/inch at 2 inches). The mockup URL deliberately
+uses the SAME logo as a Sandbox technical placeholder: it is not a product mockup,
+product listing or evidence that Qikink printed anything. No image is published
+or changed by this command. SKU/DTG compatibility still needs remote validation.
+
+The design code defaults to the reference plus _d (tbw_print001_d). Keep it
+stable for retries of that order; use a new code for different artwork, since
+Qikink may reuse an existing design code. No fields are left blank. Supports
+--sku, --design-code, --design-url, --mockup-url, --width and --height.
+
+Before authentication or creation, new printed submissions fetch each distinct
+image URL WITHOUT Qikink credentials. Only HTTPS store-domain URLs with no query,
+fragment, credentials or custom port are accepted. Responses must be HTTP 200,
+no redirect, image/png or image/jpeg, at most 4 MiB, and verifiable PNG/JPEG
+content up to 40 million pixels. A preflight failure records not_sent, permitting
+a retry with the same payload after the hosting problem is fixed. It does not
+prove Qikink can fetch the file from its own network.
+
+Widths/heights must be positive and at most 16 x 20 inches (DTG); new design codes
+are limited to 20 characters. Printed payloads share the same journal as plain
+orders, so a plain reference cannot accidentally be reused for a printed order.
+
 ## Duplicate protection and recovery
 
 The independent SQLite file server/data/qikink_sandbox.db stores account hashes,
@@ -98,5 +132,6 @@ server/.venv/bin/python -m unittest discover -s server/tests -p 'test_qikink*.py
 
 Live evidence supplied by the operator, not rerun by these tests:
 authentication HTTP 200; plain creation HTTP 200, ID 24616032;
-lookup /api/order/list HTTP 404 and /api/order HTTP 500. Printed fulfillment,
+lookup /api/order/list HTTP 404 and /api/order HTTP 500. Physical printed fulfillment,
 shipping quotes, tracking, payments, and production readiness remain unverified.
+The DTG client is covered by offline tests; remote printed creation is not yet confirmed.
