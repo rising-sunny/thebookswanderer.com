@@ -34,88 +34,57 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Locate Meta credential variable names without emitting values
+      - name: Verify existing Meta user token permissions using read-only requests
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Authorized read-only credential location inventory; never emits values."""
-          import json, os, re, stat, time
+          """Read-only Meta permission/account check; no secret values in output."""
+          import json,re
           from pathlib import Path
-          from datetime import datetime, timezone
+          from dotenv import dotenv_values
+          import httpx
           
-          ROOTS=['/root','/opt','/srv','/var/www','/home']
-          SKIP={'.git','.venv','venv','env','node_modules','__pycache__','.cache','.npm',
-                '.local','.rustup','.cargo','site-packages','dist-packages','backups',
-                'generated_media','auto_videos','long_form','project_media','models',
-                'output','outputs','logs','.mypy_cache','.pytest_cache','.next'}
-          ASSIGN=re.compile(r'^\s*(?:export\s+)?[\"\']?([A-Za-z_][A-Za-z0-9_]*)[\"\']?\s*[:=]\s*(.*)$')
-          PREFIX=re.compile(r'^(?:FB_|FACEBOOK_|META_|IG_|INSTAGRAM_|ADS_|AD_ACCOUNT|PIXEL_|BUSINESS_MANAGER|SYSTEM_USER)',re.I)
-          GENERIC={'access_token','user_access_token','page_access_token','app_secret','app_id',
-                   'ad_account_id','account_id','pixel_id','business_id','system_user_token'}
-          PLACEHOLDERS={'','none','null','false','changeme','your_token','your_access_token','xxx','...'}
-          hits=[];errors=[];scanned=0;visited=0;start=time.monotonic()
+          PATH='/root/vps_x_bot/.env'
+          config=dotenv_values(PATH)
+          token=(config.get('FACEBOOK_USER_ACCESS_TOKEN') or '').strip()
+          version=(config.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
+          base='https://graph.facebook.com/'
+          if re.fullmatch(r'v[0-9]+\.[0-9]+',version):base+=version+'/'
+          out={'meta_ads_credential_check':True,'path':PATH,'variable':'FACEBOOK_USER_ACCESS_TOKEN',
+               'configured':bool(token),'credential_values_disclosed':False,'write_requests_made':0}
           
-          def nonempty(value):
-              if not isinstance(value,(str,int,float)):return False
-              v=str(value).strip().strip('\"\'').rstrip(',').strip().strip('\"\'')
-              if v.lower() in PLACEHOLDERS:return False
-              if v.startswith('${') or v.startswith('os.getenv('):return False
-              return bool(v)
+          def safeget(client,endpoint,params=None):
+              try:
+                  r=client.get(base+endpoint,params=params)
+                  try:j=r.json()
+                  except ValueError:return None,{'http_status':r.status_code,'json_response':False}
+                  if r.status_code>=400 or j.get('error'):
+                      e=j.get('error') or {}
+                      return None,{'http_status':r.status_code,'type':str(e.get('type') or ''),
+                                   'code':e.get('code'),'subcode':e.get('error_subcode')}
+                  return j,None
+              except httpx.HTTPError as e:
+                  return None,{'transport_error_type':type(e).__name__}
           
-          def classify(name):
-              n=name.upper()
-              if 'CAPI' in n:return 'conversions_api'
-              if 'PIXEL' in n:return 'pixel'
-              if ('USER' in n or 'AD' in n or 'SYSTEM' in n) and 'TOKEN' in n:return 'possible_ads_or_user_token'
-              if 'PAGE' in n and 'TOKEN' in n:return 'page_token'
-              if 'TOKEN' in n:return 'token_scope_not_verified'
-              if 'SECRET' in n:return 'app_secret'
-              return 'identifier_or_setting'
+          if token:
+              with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=25,follow_redirects=False) as c:
+                  perms,error=safeget(c,'me/permissions')
+                  out['permission_query_error']=error
+                  if perms is not None:
+                      valid=[{'permission':str(p.get('permission','')),'status':str(p.get('status',''))}
+                             for p in perms.get('data',[]) if isinstance(p,dict)]
+                      out['permissions']=valid
+                      granted={p['permission'] for p in valid if p['status']=='granted'}
+                      out['ads_management_granted']='ads_management' in granted
+                      out['ads_read_granted']='ads_read' in granted
+                  if error and error.get('code')==190:
+                      out['token_rejected_by_meta']=True
+                      out['selected_account_check_skipped']='Token rejected; no further requests made.'
+                  else:
+                      account,error=safeget(c,'act_2206299143461363',{'fields':'id,name,account_status,currency,timezone_name'})
+                      out['selected_account_query_error']=error
+                      out['selected_account_accessible']=bool(account and account.get('id')=='act_2206299143461363')
+                      if out['selected_account_accessible']:
+                          out['account']={k:account.get(k) for k in ('id','name','account_status','currency','timezone_name')}
           
-          for root in ROOTS:
-              if not Path(root).is_dir():continue
-              for folder,dirs,files in os.walk(root,followlinks=False):
-                  visited+=1
-                  dirs[:]=[d for d in dirs if d not in SKIP and not d.endswith(('.dist-info','.egg-info'))]
-                  if time.monotonic()-start>90:dirs[:]=[];continue
-                  for name in files:
-                      path=Path(folder)/name;low=name.lower()
-                      candidate=(low.startswith('.env') or path.suffix.lower() in {'.json','.yaml','.yml','.ini','.toml','.conf','.service'})
-                      if not candidate:continue
-                      try:
-                          if path.is_symlink() or not path.is_file() or path.stat().st_size>2_000_000:continue
-                          text=path.read_text(errors='replace');scanned+=1
-                          context=bool(re.search(r'facebook|meta[_ -]?ads|graph\.facebook|instagram|fb[_-]',str(path)+' '+text,re.I))
-                          found={}
-                          if path.suffix.lower()=='.json':
-                              try:
-                                  obj=json.loads(text)
-                                  def walk(o,prefix=''):
-                                      if isinstance(o,dict):
-                                          for k,v in o.items():
-                                              k=str(k);label=(prefix+'.'+k).strip('.')
-                                              if PREFIX.search(k) or (context and k.lower() in GENERIC):
-                                                  if not isinstance(v,(dict,list)):found[label]={'name':label,'configured':nonempty(v),'kind':classify(k)}
-                                              if isinstance(v,(dict,list)):walk(v,label)
-                                      elif isinstance(o,list):
-                                          for v in o[:50]:walk(v,prefix+'[]')
-                                  walk(obj)
-                              except (ValueError,RecursionError):pass
-                          for line in text.splitlines():
-                              m=ASSIGN.match(line)
-                              if not m:continue
-                              key,value=m.groups()
-                              if PREFIX.search(key) or (context and key.lower() in GENERIC):
-                                  found.setdefault(key,{'name':key,'configured':nonempty(value),'kind':classify(key)})
-                          if found:
-                              info=path.stat()
-                              hits.append({'path':str(path),'example_or_backup':any(s in low for s in ('example','sample','.bak','backup')),
-                                           'mode':oct(stat.S_IMODE(info.st_mode)),
-                                           'variables':sorted(found.values(),key=lambda r:r['name'])})
-                      except (OSError,PermissionError) as exc:
-                          errors.append({'path':str(path),'error_type':type(exc).__name__})
-          
-          print(json.dumps({'meta_credential_inventory':True,'checked_at_utc':datetime.now(timezone.utc).isoformat(),
-              'roots':ROOTS,'folders_visited':visited,'configuration_files_scanned':scanned,
-              'locations':sorted(hits,key=lambda r:r['path']),'errors':errors[:20],
-              'credential_values_disclosed':False,'files_modified_on_vps':False,'api_calls_made':False},sort_keys=True))
+          print(json.dumps(out,sort_keys=True))
           PYCODE
