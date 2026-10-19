@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sandbox-only Qikink CLI. Plain orders default to a dry run."""
+"""Sandbox-only Qikink CLI. Plain and DTG printed orders default to a dry run."""
 from __future__ import annotations
 
 import argparse
@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
-from services.qikink import PlainOrder, QikinkError, SandboxClient, SandboxJournal, DEFAULT_JOURNAL
+from services.qikink import PlainOrder, PrintedOrder, PrintDesign, QikinkError, SandboxClient, SandboxJournal, DEFAULT_JOURNAL
 
 
 # Matches the synthetic address of the manually confirmed Sandbox order.
@@ -32,22 +32,35 @@ def parser() -> argparse.ArgumentParser:
     lookup.add_argument("order_id")
     history = commands.add_parser("status", help="Read the local journal, with no network call")
     history.add_argument("reference")
-    for name in ("plain", "remember"):
+    for name in ("plain", "printed", "remember"):
         sub = commands.add_parser(name)
         sub.add_argument("--reference", required=True, help="Reuse the same reference for the same logical order")
         sub.add_argument("--sku", default="MVnHs-Wh-S")
-        if name == "plain":
-            sub.add_argument("--submit-sandbox", action="store_true", help="Actually create one plain Sandbox order")
+        if name in {"plain", "printed"}:
+            sub.add_argument("--submit-sandbox", action="store_true", help="Actually create one Sandbox order")
         else:
             sub.add_argument("--order-id", required=True, help="Manually confirmed ID of an existing plain Sandbox test")
+        if name == "printed":
+            sub.add_argument("--design-code", help="Defaults to reference + _d; reuse the same code for the same artwork")
+            sub.add_argument("--design-url", default="https://thebookswanderer.com/assets/logo.png")
+            sub.add_argument("--mockup-url", default="https://thebookswanderer.com/assets/logo.png",
+                             help="Sandbox placeholder by default; not a product mockup for sale")
+            sub.add_argument("--width", type=float, default=2)
+            sub.add_argument("--height", type=float, default=2)
     return cli
 
 
 async def run(args) -> dict:
     order = None
-    if args.command in {"plain", "remember"}:
-        order = PlainOrder(reference=args.reference, sku=args.sku, shipping_address=TEST_ADDRESS)
-        if args.command == "plain" and not args.submit_sandbox:
+    if args.command in {"plain", "printed", "remember"}:
+        values = dict(reference=args.reference, sku=args.sku, shipping_address=TEST_ADDRESS)
+        if args.command == "printed":
+            order = PrintedOrder(**values, design=PrintDesign(
+                design_code=args.design_code or args.reference + "_d", width_inches=args.width, height_inches=args.height,
+                design_link=args.design_url, mockup_link=args.mockup_url))
+        else:
+            order = PlainOrder(**values)
+        if args.command in {"plain", "printed"} and not args.submit_sandbox:
             return {"environment": "sandbox", "dry_run": True, "payload": order.payload()}
     journal = SandboxJournal(args.journal)
     async with SandboxClient.from_env(journal) as client:
@@ -56,6 +69,8 @@ async def run(args) -> dict:
             return {"environment": "sandbox", "authenticated": True}
         if args.command == "plain":
             return {"environment": "sandbox", **await client.create_plain_order(order)}
+        if args.command == "printed":
+            return {"environment": "sandbox", **await client.create_printed_order(order)}
         if args.command == "remember":
             return {"environment": "sandbox", "source": "operator_confirmed",
                     "reference": order.reference, **client.remember_existing(order, args.order_id)}
