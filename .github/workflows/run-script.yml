@@ -34,29 +34,96 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: bash deploy/ci-ssh-setup.sh
 
-      - name: Read ad account status and delivery diagnostics without changing billing
+      - name: Analyze Meta campaign history targeting and aggregate store conversion readiness
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" 'cd /var/www/thebookswanderer.com/server && .venv/bin/python -' <<'PYCODE'
-          """Read-only explanation of the unexpected ad-account status; no payments."""
-          import json,re
-          from dotenv import dotenv_values
+          """Meta campaign research: GET requests and aggregate read-only SQLite queries.
+          
+          No ad creation, spend changes, test conversion sends, customer rows, or tokens
+          are emitted. Existing credentials remain on the VPS.
+          """
+          import concurrent.futures,json,re,sqlite3,time
+          from datetime import datetime,timedelta,timezone
+          from pathlib import Path
           import httpx
-          cfg=dotenv_values('/root/vps_x_bot/.env')
-          version=(cfg.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
+          from dotenv import dotenv_values
+          
+          ROOT=Path('/var/www/thebookswanderer.com/server')
+          bot=dotenv_values('/root/vps_x_bot/.env');env=dotenv_values(ROOT/'.env')
+          token=bot['FACEBOOK_USER_ACCESS_TOKEN'];version=(bot.get('FACEBOOK_GRAPH_API_VERSION') or '').strip()
           prefix=version+'/' if re.fullmatch(r'v[0-9]+\.[0-9]+',version) else ''
-          out={'meta_account_status_check':True,'credential_values_disclosed':False,'write_requests_made':0}
-          try:
-              with httpx.Client(timeout=25,headers={'Authorization':'Bearer '+cfg['FACEBOOK_USER_ACCESS_TOKEN']}) as c:
-                  r=c.get('https://graph.facebook.com/'+prefix+'act_2206299143461363',params={'fields':'account_status,disable_reason,failed_delivery_checks,balance,currency'})
-                  j=r.json()
-                  if r.is_success and not j.get('error'):
-                      out['account_status']=j.get('account_status');out['disable_reason']=j.get('disable_reason')
-                      out['currency']=j.get('currency')
-                      try:out['positive_outstanding_balance']=int(j.get('balance') or '0')>0
-                      except (ValueError,TypeError):out['positive_outstanding_balance']=None
-                      checks=j.get('failed_delivery_checks') or []
-                      out['failed_delivery_checks']=[{k:x[k] for k in ('check_name','summary','description','error_code') if k in x} for x in checks if isinstance(x,dict)]
-                  else:out['error']={'http_status':r.status_code,'code':j.get('error',{}).get('code')}
-          except Exception as e:out['error_type']=type(e).__name__
+          BASE='https://graph.facebook.com/'+prefix
+          ACCOUNT='act_2206299143461363';TBW_CAMPAIGN='120248615067130765'
+          now=datetime.now(timezone.utc)
+          out={'meta_research_audit':True,'checked_at_utc':now.isoformat(),'http_methods_used':['GET'],
+               'ad_changes':0,'conversion_events_sent':0,'credential_values_disclosed':False}
+          
+          def get(client,path,params=None):
+              try:
+                  r=client.get(BASE+path,params=params or {});j=r.json()
+                  if not r.is_success or j.get('error'):
+                      e=j.get('error') or {}
+                      return {'error':{'http_status':r.status_code,'code':e.get('code'),'subcode':e.get('error_subcode'),'type':e.get('type')}}
+                  if isinstance(j,dict) and 'paging' in j:
+                      return {'data':j.get('data',[]),'has_more':bool(j.get('paging',{}).get('next'))}
+                  return j
+              except Exception as e:return {'error':{'type':type(e).__name__}}
+          
+          METRICS='spend,impressions,reach,frequency,cpm,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,actions,action_values'
+          queries={
+           'account':(ACCOUNT,{'fields':'id,name,account_status,disable_reason,currency,timezone_name,balance,min_daily_budget,user_tasks'}),
+           'campaigns':(ACCOUNT+'/campaigns',{'fields':'id,name,objective,status,effective_status,daily_budget,lifetime_budget,spend_cap,created_time,updated_time','limit':100}),
+           'adsets':(ACCOUNT+'/adsets',{'fields':'id,name,campaign_id,status,effective_status,optimization_goal,billing_event,daily_budget,lifetime_budget,targeting,promoted_object,destination_type,start_time,end_time','limit':100}),
+           'ads':(ACCOUNT+'/ads',{'fields':'id,name,status,effective_status,campaign_id,adset_id,creative{id,name,object_story_spec,effective_object_story_id,object_type,call_to_action_type,video_id},issues_info','limit':100}),
+           'account_7d':(ACCOUNT+'/insights',{'date_preset':'last_7d','fields':METRICS,'limit':100}),
+           'campaigns_30d':(ACCOUNT+'/insights',{'date_preset':'last_30d','level':'campaign','fields':'campaign_id,campaign_name,'+METRICS,'limit':100}),
+           'tbw_30d':(TBW_CAMPAIGN+'/insights',{'date_preset':'last_30d','fields':METRICS,'limit':100}),
+           'tbw_age_gender_30d':(TBW_CAMPAIGN+'/insights',{'date_preset':'last_30d','fields':METRICS,'breakdowns':'age,gender','limit':100}),
+           'tbw_country_30d':(TBW_CAMPAIGN+'/insights',{'date_preset':'last_30d','fields':METRICS,'breakdowns':'country','limit':100}),
+           'tbw_platform_30d':(TBW_CAMPAIGN+'/insights',{'date_preset':'last_30d','fields':METRICS,'breakdowns':'publisher_platform','limit':100}),
+           'pixels':(ACCOUNT+'/adspixels',{'fields':'id,name,last_fired_time','limit':100}),
+           'pages':('me/accounts',{'fields':'id,name,tasks,instagram_business_account{id,username}','limit':100}),
+           'custom_audiences':(ACCOUNT+'/customaudiences',{'fields':'id,name,subtype,approximate_count_lower_bound,approximate_count_upper_bound','limit':100}),
+          }
+          pixel=str(env.get('META_PIXEL_ID') or '').strip()
+          if pixel:
+              queries['store_pixel']=(pixel,{'fields':'id,name,last_fired_time'})
+              queries['store_pixel_events_7d']=(pixel+'/stats',{'aggregation':'event','start_time':int((now-timedelta(days=7)).timestamp()),'end_time':int(now.timestamp())})
+          for q in ['Reading','Literature','Book club','Journaling','Stationery','Kindle']:
+              queries['interest_'+q]=(ACCOUNT+'/targetingsearch',{'type':'adinterest','q':q,'limit':8})
+          
+          with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=35,follow_redirects=False) as c:
+              with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                  futures={pool.submit(get,c,path,params):name for name,(path,params) in queries.items()}
+                  for f in concurrent.futures.as_completed(futures):out[futures[f]]=f.result()
+          
+          out['tracking']={'pixel_configured':bool(pixel),'capi_configured':bool(env.get('META_CAPI_TOKEN')),
+                           'capi_test_code_enabled':bool((env.get('META_CAPI_TEST_CODE') or '').strip()),
+                           'facebook_page_id':str(env.get('FB_PAGE_ID') or ''),
+                           'pixel_id':pixel,'page_token_configured':bool(env.get('FB_PAGE_TOKEN'))}
+          track=(ROOT.parent/'track.js').read_text()
+          browser=re.search(r'var\s+META_PIXEL_ID\s*=\s*[\"\']([0-9]+)',track)
+          out['tracking']['browser_pixel_matches_server']=bool(browser and browser.group(1)==pixel)
+          out['tracking']['browser_events']=[x for x in ['PageView','ViewContent','AddToCart','InitiateCheckout','Purchase'] if '"'+x+'"' in track]
+          out['tracking']['capi_has_shared_purchase_event_id']='purchase-' in (ROOT/'services/meta_capi.py').read_text()
+          
+          url=env.get('DATABASE_URL') or 'sqlite:///'+str(ROOT/'data/store.db')
+          if not url.startswith('sqlite:///'):raise RuntimeError('Unexpected database backend')
+          dbpath=Path(url[len('sqlite:///'):]);dbpath=dbpath if dbpath.is_absolute() else ROOT/dbpath
+          db=sqlite3.connect('file:'+str(dbpath)+'?mode=ro',uri=True);db.row_factory=sqlite3.Row
+          def rows(sql,args=()):return [dict(r) for r in db.execute(sql,args).fetchall()]
+          out['orders_by_status']=rows('SELECT status,count(*) AS count,round(sum(grand_total),2) AS total_usd FROM orders GROUP BY status')
+          out['last_30d_orders_by_status']=rows('SELECT status,count(*) AS count,round(sum(grand_total),2) AS total_usd FROM orders WHERE created_at>=? GROUP BY status',((now-timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S'),))
+          slugs=('commonplace-book','bedside-book-rest','reading-society-tote')
+          out['featured_products']=rows('SELECT id,slug,title,supplier,active,price_usd,cost_usd,from_country FROM products WHERE slug IN (?,?,?)',slugs)
+          out['featured_variants']=rows('SELECT p.slug,v.name,v.active,v.price_usd,v.cost_usd FROM products p JOIN product_variants v ON p.id=v.product_id WHERE p.slug IN (?,?,?)',slugs)
+          since=(now-timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+          human="COALESCE(ua_class,'') NOT IN ('server','datacenter','bot')"
+          out['web_30d_funnel']=rows('SELECT event_type,count(*) AS events,count(DISTINCT session_id) AS sessions FROM live_events WHERE ts>=? AND '+human+' GROUP BY event_type',(since,))
+          out['web_30d_sources']=rows('SELECT COALESCE(source,referrer_domain,\'direct\') AS source,COALESCE(medium,\'\') AS medium,COALESCE(campaign,\'\') AS campaign,count(DISTINCT session_id) AS sessions,sum(CASE WHEN event_type=\'add_to_cart\' THEN 1 ELSE 0 END) AS add_to_cart,sum(CASE WHEN event_type=\'checkout_start\' THEN 1 ELSE 0 END) AS checkout_start FROM live_events WHERE ts>=? AND '+human+' GROUP BY 1,2,3 ORDER BY sessions DESC LIMIT 20',(since,))
+          out['web_30d_countries']=rows('SELECT country,count(DISTINCT session_id) AS sessions FROM live_events WHERE ts>=? AND '+human+' GROUP BY country ORDER BY sessions DESC LIMIT 15',(since,))
+          out['web_featured_30d']=rows('SELECT product_slug,event_type,count(DISTINCT session_id) AS sessions FROM live_events WHERE ts>=? AND product_slug IN (?,?,?) AND '+human+' GROUP BY product_slug,event_type',(since,*slugs))
+          out['recent_visitor_classification']=rows('SELECT ua_class,count(DISTINCT session_id) AS sessions FROM live_events WHERE ts>=? GROUP BY ua_class',(since,))
+          db.close()
           print(json.dumps(out,sort_keys=True))
           PYCODE
