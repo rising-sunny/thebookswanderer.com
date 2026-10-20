@@ -43,3 +43,5 @@ The installer tests local and public HTTPS authentication, product reads, draft 
 It uses systemd LoadCredential and a restricted service on 127.0.0.1:8878.
 Failures trigger removal of the new Nginx inclusion and service configuration; credentials, state and backups are retained for diagnosis.
 Do not rerun over an existing installation or rotate its key implicitly.
+
+After a rolled-back installation, --resume may reuse the retained key and identical application code. It refuses existing service or Nginx configuration and checks key ownership and permissions. HTTPS readiness is retried for a bounded period after the Nginx reload.

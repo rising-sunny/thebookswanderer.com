@@ -16,6 +16,7 @@ import httpx
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--check", action="store_true")
+parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
 service = "tbw-admin-api.service"
@@ -36,7 +37,14 @@ def command(*values):
 
 if os.geteuid() != 0:
     raise SystemExit("Ejecutar como root.")
-for path in (code, key.parent, unit, snippet):
+if args.resume:
+    if not key.is_file() or not (code / "app.py").is_file():
+        raise SystemExit("Falta la instalación parcial o su clave.")
+    if key.stat().st_uid != 0 or key.stat().st_mode & 0o077:
+        raise SystemExit("La clave no tiene propietario o permisos seguros.")
+    if source.read_bytes() != (code / "app.py").read_bytes():
+        raise SystemExit("El código parcial no coincide; revisar antes.")
+for path in ((unit, snippet) if args.resume else (code, key.parent, unit, snippet)):
     if path.exists():
         raise SystemExit("Ya existe " + str(path) + "; no se sobrescribirá.")
 if not source.is_file() or not python.is_file():
@@ -56,8 +64,12 @@ if args.check:
     print("Precomprobación correcta: archivos nuevos, puerto libre y Nginx válido.")
     raise SystemExit(0)
 
-secret = getpass.getpass("Nueva clave administrativa (mínimo 32 caracteres): ")
-confirmation = getpass.getpass("Repítela: ")
+if args.resume:
+    secret = key.read_text().strip()
+    confirmation = secret
+else:
+    secret = getpass.getpass("Nueva clave administrativa (mínimo 32 caracteres): ")
+    confirmation = getpass.getpass("Repítela: ")
 if (
     len(secret) < 32 or secret != confirmation
     or secret != secret.strip() or not secret.isascii()
@@ -81,13 +93,14 @@ service_created = False
 nginx_changed = False
 
 try:
-    code.mkdir(mode=0o755)
+    code.mkdir(mode=0o755, exist_ok=args.resume)
     shutil.copyfile(source, code / "app.py")
     os.chmod(code / "app.py", 0o644)
-    key.parent.mkdir(mode=0o700)
-    fd = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w") as file:
-        file.write(secret + "\n")
+    key.parent.mkdir(mode=0o700, exist_ok=args.resume)
+    if not args.resume:
+        fd = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as file:
+            file.write(secret + "\n")
 
     unit.write_text(
         "[Unit]\n"
@@ -181,7 +194,34 @@ try:
 
     with httpx.Client(timeout=20, follow_redirects=False) as client:
         url = "https://thebookswanderer.com/api/ops/health"
-        response = client.get(url, headers=headers)
+        response = None
+        for attempt in range(12):
+            try:
+                response = client.get(url, headers=headers)
+                try:
+                    body = response.json()
+                except ValueError:
+                    body = None
+                valid = (
+                    response.status_code == 200
+                    and isinstance(body, dict)
+                    and body.get("service") == "tbw-admin-api"
+                    and body.get("order_submission_enabled") is False
+                )
+                if valid:
+                    break
+            except httpx.RequestError:
+                pass
+            time.sleep(2)
+        if response is None:
+            raise RuntimeError("No se obtuvo respuesta HTTPS durante la espera.")
+        try:
+            diagnostic = response.json()
+        except ValueError:
+            diagnostic = None
+        print("HTTPS administrativo: HTTP", response.status_code)
+        print("Tipo de contenido:", response.headers.get("content-type", "").split(";")[0])
+        print("Servicio esperado:", isinstance(diagnostic, dict) and diagnostic.get("service") == "tbw-admin-api")
         if (
             response.status_code != 200
             or response.json().get("service") != "tbw-admin-api"
