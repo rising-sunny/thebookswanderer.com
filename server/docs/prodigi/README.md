@@ -65,7 +65,7 @@ No automatic retries of 429 responses are performed.
 python -m unittest discover -s server/tests -p test_prodigi.py -v
 ```
 
-Six offline tests cover the two allowed operations, US/USD payloads, retained
+Seven offline tests cover the two allowed operations, US/USD payloads, retained
 warnings, rejected order paths and injected order fields, invalid quantities,
 missing credentials, malformed responses, timeouts and safe authentication errors.
 No tests require supplier credentials or send network requests.
@@ -75,3 +75,16 @@ and no Live validation completed. Next step after secret/network setup: product
 lookup, then quotes for the verified variants, with no order submission.
 
 Reference: https://www.prodigi.com/print-api/docs/reference/
+
+## VPS credential file (preferred for this evaluation)
+
+Set `PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key` for the CLI process. The
+client reads this file instead of the key environment variable and fails closed
+if it is unreadable. Store it root-owned with mode 0600 in a root-only 0700
+directory outside the web root and repository. Run evaluation as an authorized
+operator. No storefront service restart is required to save the key or run the
+CLI. A later service deployment should use systemd LoadCredential rather than
+widening this file's permissions.
+
+Deploying this PR and saving the key are separate steps. Until the code is
+installed, saving the key alone will not expose Prodigi through TBW's MCP.

@@ -1,5 +1,8 @@
 import importlib.util
 import json
+import os
+import tempfile
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -101,6 +104,22 @@ class ProdigiTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(module.ProdigiError) as error:
                     await client.product_details("SKU")
                 self.assertNotIn("offline-key", str(error.exception))
+
+    async def test_vps_credential_file_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            key_file = Path(directory) / "api_key"
+            key_file.write_text("offline-file-key\n")
+            with patch.dict(os.environ, {
+                "PRODIGI_API_KEY_FILE": str(key_file),
+                "PRODIGI_API_KEY": "must-not-fall-back",
+            }):
+                async with module.Client.from_env() as client:
+                    self.assertEqual(client._key, "offline-file-key")
+                key_file.unlink()
+                with self.assertRaises(module.ProdigiError) as error:
+                    module.Client.from_env()
+                self.assertNotIn(str(key_file), str(error.exception))
+                self.assertNotIn("must-not-fall-back", str(error.exception))
 
     async def test_missing_key(self):
         for key in (None, "", " "):

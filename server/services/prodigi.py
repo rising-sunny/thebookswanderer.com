@@ -1,6 +1,7 @@
 """Prodigi Live product details and US/USD quotes only; no order transport."""
 import os
 import re
+from pathlib import Path
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
@@ -38,6 +39,13 @@ class Client:
 
     @classmethod
     def from_env(cls):
+        key_file = os.getenv("PRODIGI_API_KEY_FILE", "")
+        if key_file:
+            try:
+                key = Path(key_file).read_text().strip()
+            except OSError:
+                raise ProdigiError("Prodigi credential file unavailable") from None
+            return cls(key)
         return cls(os.getenv("PRODIGI_API_KEY", ""))
 
     async def __aenter__(self):
