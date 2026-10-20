@@ -154,6 +154,105 @@
           "sha256": "2453865e1ba97f0df44703b546f67903434cd2b60efd407e1b699d87f10fc439"
         }
       ]
+    },
+    {
+      "slug": "erasable-highlighters",
+      "images": [
+        {
+          "url": "/assets/products/erasable-highlighters/ambient-ai-20261020.jpg",
+          "sha256": "1e64db0c0ea7cee1df5221510d1853fdc28739fcfa8b2dc54f727dd838db9545"
+        }
+      ]
+    },
+    {
+      "slug": "reading-log-bookmarks",
+      "images": [
+        {
+          "url": "/assets/products/reading-log-bookmarks/ambient-ai-20261020.jpg",
+          "sha256": "e81db988cf93d872b09e789a908e194db9a498c3c718374758dcca141880fcf9"
+        }
+      ]
+    },
+    {
+      "slug": "book-tree-christmas-ornament",
+      "images": [
+        {
+          "url": "/assets/products/book-tree-christmas-ornament/ambient-ai-20261020.jpg",
+          "sha256": "ff417947c5f8171402123e4727dbccb3714fd2bb148da05e1feee48cdf4d9d18"
+        }
+      ]
+    },
+    {
+      "slug": "bookshelf-lantern-light",
+      "images": [
+        {
+          "url": "/assets/products/bookshelf-lantern-light/ambient-ai-20261020.jpg",
+          "sha256": "00c6f435c891488c7a9cca7cea3cb90ee1c36581ffd99d74774fee9aea454811"
+        }
+      ]
+    },
+    {
+      "slug": "book-lovers-advent-calendar",
+      "images": [
+        {
+          "url": "/assets/products/book-lovers-advent-calendar/ambient-ai-20261020.jpg",
+          "sha256": "f04ea5a265d93a72b607215e0f8c9601010dc635facf9a0f87a731bb1cb9944f"
+        }
+      ]
+    },
+    {
+      "slug": "modern-bookends-pair",
+      "images": [
+        {
+          "url": "/assets/products/modern-bookends-pair/ambient-ai-20261020.jpg",
+          "sha256": "70b4a7eea2180ad19978f250edb28f73e617b2653ed1bff7829e139d58fdbfbb"
+        }
+      ]
+    },
+    {
+      "slug": "antique-animal-bookends",
+      "images": [
+        {
+          "url": "/assets/products/antique-animal-bookends/ambient-ai-20261020.jpg",
+          "sha256": "bc0ddacc8e704a046e8facad8cb25e770531dfa9b5cd78739d8dc8c8815deb91"
+        }
+      ]
+    },
+    {
+      "slug": "paper-butterfly-bookmark-set",
+      "images": [
+        {
+          "url": "/assets/products/paper-butterfly-bookmark-set/ambient-ai-20261020.jpg",
+          "sha256": "42ceaf1578bb81782324ae1a07789d9eed39fe3485ce3f0650f6604e1fbc9793"
+        }
+      ]
+    },
+    {
+      "slug": "hollow-kitten-bookmark",
+      "images": [
+        {
+          "url": "/assets/products/hollow-kitten-bookmark/ambient-ai-20261020.jpg",
+          "sha256": "1a85233fc0c292c5595606ea462eefb8077816ec89281658d6f690ddf80a864e"
+        }
+      ]
+    },
+    {
+      "slug": "adjustable-reading-stand",
+      "images": [
+        {
+          "url": "/assets/products/adjustable-reading-stand/ambient-ai-20261020.jpg",
+          "sha256": "9240a64824f14af503074c301ff758ab378fbcd1e5a5df1a2f1c53285ba77752"
+        }
+      ]
+    },
+    {
+      "slug": "baker-street-book-nook-kit",
+      "images": [
+        {
+          "url": "/assets/products/baker-street-book-nook-kit/ambient-ai-20261020.jpg",
+          "sha256": "8e9e79081adcae8b6975d2f766db66201551fda45996563a3e1eea2f7fd26e6c"
+        }
+      ]
     }
   ]
 }
