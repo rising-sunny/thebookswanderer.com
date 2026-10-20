@@ -132,6 +132,61 @@ def products(limit: int = Query(default=50, ge=1, le=100),
         """, (limit, offset)).fetchall()
     return {"products": [dict(row) for row in rows], "limit": limit, "offset": offset}
 
+
+class CatalogVariant(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=200)
+    qikink_sku: str = Field(min_length=1, max_length=50)
+    sku_kind: Literal["product", "store"]
+    product_title: str = Field(min_length=1, max_length=300)
+
+class CatalogSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    schema_version: Literal[1]
+    source: str = Field(min_length=1, max_length=500)
+    retrieved_at: datetime
+    variants: list[CatalogVariant] = Field(max_length=10000)
+
+@app.get("/qikink/catalog")
+def qikink_catalog(
+    query: str = Query(default="", max_length=200),
+    sku: str | None = Query(default=None, min_length=1, max_length=50),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """Read an operator-provided snapshot; never contact the supplier."""
+    path = Path(os.getenv(
+        "TBW_QIKINK_CATALOG_FILE", "/etc/tbw-admin-api/qikink-catalog.json"
+    ))
+    try:
+        # Bound memory and reject incomplete, ambiguous or future-dated snapshots.
+        with path.open("rb") as handle:
+            raw = handle.read(5_000_001)
+        if len(raw) > 5_000_000:
+            raise ValueError
+        snapshot = CatalogSnapshot.model_validate_json(raw)
+        if (snapshot.retrieved_at.tzinfo is None
+            or snapshot.retrieved_at > datetime.now(timezone.utc)
+            or len({v.qikink_sku for v in snapshot.variants}) != len(snapshot.variants)):
+            raise ValueError
+    except (OSError, ValueError):
+        raise HTTPException(503, "Qikink catalog snapshot unavailable or invalid") from None
+    terms = query.casefold().split()
+    matches = [v for v in snapshot.variants if
+        (sku is None or v.qikink_sku == sku)
+        and all(term in f"{v.product_title} {v.name} {v.qikink_sku}".casefold()
+                for term in terms)]
+    return {
+        "source_mode": "operator_snapshot",
+        "source": snapshot.source,
+        "retrieved_at": snapshot.retrieved_at.isoformat(),
+        "live_verified": False,
+        "variants": [v.model_dump() for v in matches[offset:offset + limit]],
+        "total": len(matches), "limit": limit, "offset": offset,
+        "order_submission_enabled": False,
+        "product_publication_enabled": False,
+    }
+
 @app.post("/drafts")
 def create_draft(draft: Draft):
     if len({v.qikink_sku for v in draft.variants}) != len(draft.variants):
