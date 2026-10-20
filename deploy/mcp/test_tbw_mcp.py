@@ -67,6 +67,32 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(key, str(error.exception))
         self.assertNotIn("private", str(error.exception))
 
+    async def test_catalog_tool_is_read_only_and_forwards_filters(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx2.Response(200, json={"variants": [], "live_verified": False})
+        with tempfile.TemporaryDirectory() as temporary:
+            server = create_server(config(), "a" * 40, temporary,
+                                   httpx2.MockTransport(handler))
+            async with Client(server) as client:
+                tools = {tool.name: tool for tool in await client.list_tools()}
+                self.assertTrue(tools["tbw_search_qikink_catalog"].annotations.readOnlyHint)
+                await client.call_tool("tbw_search_qikink_catalog", {
+                    "query": "bookmark", "sku": "FIXTURE-Classic", "limit": 5,
+                })
+                with self.assertRaises(ToolError):
+                    await client.call_tool("tbw_search_qikink_catalog", {"limit": 101})
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].method, "GET")
+        self.assertEqual(calls[0].url.path, "/qikink/catalog")
+        self.assertEqual(calls[0].url.params["sku"], "FIXTURE-Classic")
+        self.assertEqual(calls[0].url.params["query"], "bookmark")
+        bridge = AdminBridge("a" * 40, httpx2.MockTransport(handler))
+        with self.assertRaises(ToolError):
+            await bridge.request("POST", "/qikink/catalog")
+        self.assertEqual(len(calls), 1)
+
     async def test_encrypted_persistent_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
@@ -132,7 +158,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({tool.name for tool in tools}, {
                 "tbw_health", "tbw_list_products",
                 "tbw_list_qikink_drafts", "tbw_get_qikink_draft",
-                "tbw_create_qikink_draft",
+                "tbw_create_qikink_draft", "tbw_search_qikink_catalog",
             })
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]

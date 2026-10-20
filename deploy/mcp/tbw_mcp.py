@@ -91,7 +91,7 @@ class AdminBridge:
         allowed = (
             method == "GET"
             and (
-                path in {"/health", "/products", "/drafts"}
+                path in {"/health", "/products", "/drafts", "/qikink/catalog"}
                 or re.fullmatch(r"/drafts/[a-z0-9][a-z0-9_-]{0,79}", path)
             )
         ) or (method == "POST" and path == "/drafts")
@@ -113,9 +113,9 @@ class AdminBridge:
                 "Reference already used with different content; consult the saved draft"
             )
         if response.status_code == 404:
-            raise ToolError("Draft not found")
+            raise ToolError("Requested resource not found")
         if response.status_code == 422:
-            raise ToolError("Draft validation failed; check the provided fields")
+            raise ToolError("Request validation failed; check the provided fields")
         if response.status_code not in {200, 201}:
             raise ToolError(
                 f"Administrative request failed: HTTP {response.status_code}"
@@ -179,6 +179,25 @@ def create_server(config, admin_key, state_directory, transport=None):
         return await bridge.request(
             "GET", "/products", params={"limit": limit, "offset": offset}
         )
+
+    @server.tool(annotations=READ)
+    async def tbw_search_qikink_catalog(
+        query: Annotated[str, Field(max_length=200)] = "",
+        sku: Annotated[str | None, Field(min_length=1, max_length=50)] = None,
+        limit: Annotated[int, Field(ge=1, le=100)] = 20,
+        offset: Annotated[int, Field(ge=0)] = 0,
+    ) -> dict:
+        """Search an operator-provided Qikink catalog snapshot by name or exact SKU.
+
+        Read-only, not a live supplier API. Check source and retrieved_at.
+        Product SKUs and Store SKUs are distinguished by sku_kind.
+        An unavailable catalog is an error, not an empty result.
+        Never publishes products, creates supplier products or submits orders.
+        """
+        params = {"query": query, "limit": limit, "offset": offset}
+        if sku is not None:
+            params["sku"] = sku
+        return await bridge.request("GET", "/qikink/catalog", params=params)
 
     @server.tool(annotations=READ)
     async def tbw_list_qikink_drafts(
