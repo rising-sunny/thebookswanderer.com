@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "generated_with": "image_gen",
+  "products": [
+    {
+      "slug": "letters-from-the-library",
+      "images": [
+        {
+          "url": "/assets/products/letters-from-the-library/ambient-ai-20261020.jpg",
+          "sha256": "a209abec4fefe883c40b26d89ea1e0b8f593551dc9bd37d7a95e4f001dd9d35c"
+        }
+      ]
+    },
+    {
+      "slug": "reading-society-pouch",
+      "images": [
+        {
+          "url": "/assets/products/reading-society-pouch/ambient-ai-20261020.jpg",
+          "sha256": "f6d8c742ea9613cd446999318c8069e2f4730e43e62f88b510a60d6132529e87"
+        }
+      ]
+    },
+    {
+      "slug": "commonplace-book",
+      "images": [
+        {
+          "url": "/assets/products/commonplace-book/ambient-ai-20261020.jpg",
+          "sha256": "0db27ddff397c36de7db9870ffa85cd8baa6a89925f0c1a805f16faabc4f856d"
+        }
+      ]
+    },
+    {
+      "slug": "usb-clip-reading-light",
+      "images": [
+        {
+          "url": "/assets/products/usb-clip-reading-light/ambient-ai-20261020.jpg",
+          "sha256": "50001d7cbdfe53e116461ccdb363348a3b028287b5092d0ba287a7ca9a798d6d"
+        }
+      ]
+    },
+    {
+      "slug": "reading-society-tote",
+      "images": [
+        {
+          "url": "/assets/products/reading-society-tote/ambient-ai-20261020.jpg",
+          "sha256": "47f4c5595a325c561adf6ae4b9f05f540ea9815ae420056f09c5809468845158"
+        }
+      ]
+    },
+    {
+      "slug": "book-club-companion",
+      "images": [
+        {
+          "url": "/assets/products/book-club-companion/ambient-ai-20261020.jpg",
+          "sha256": "a34bc8c2046e7905a9df5b46f333c292d1026eb3c1ae39e75a9bfd846b49cd16"
+        }
+      ]
+    },
+    {
+      "slug": "the-lost-manuscript",
+      "images": [
+        {
+          "url": "/assets/products/the-lost-manuscript/ambient-ai-20261020.jpg",
+          "sha256": "8a8e8cd475f6399fa4905b3d71bed3cbc77956f96b1d8d625ef5edbe4ad769b1"
+        }
+      ]
+    },
+    {
+      "slug": "color-the-classics-printed",
+      "images": [
+        {
+          "url": "/assets/products/color-the-classics-printed/ambient-ai-20261020.jpg",
+          "sha256": "692318aae3e576d55a014594ec85cf753537bbaac8ba8d147818bb6c3823dd5d"
+        }
+      ]
+    },
+    {
+      "slug": "reading-passport-hardcover",
+      "images": [
+        {
+          "url": "/assets/products/reading-passport-hardcover/ambient-ai-20261020.jpg",
+          "sha256": "a27e0d54894e78132aaeb134dba4575167c513229fbd39230e8ee74f6f4ba7ee"
+        }
+      ]
+    },
+    {
+      "slug": "reading-passport",
+      "images": [
+        {
+          "url": "/assets/products/reading-passport/ambient-ai-20261020.jpg",
+          "sha256": "b534407387f6c9ff5ff61bf0f2c2c67cdcce0e995859eeb9a3514362869bf586"
+        }
+      ]
+    },
+    {
+      "slug": "color-the-classics",
+      "images": [
+        {
+          "url": "/assets/products/color-the-classics/ambient-ai-20261020.jpg",
+          "sha256": "3ca657683d02490ecdb662c408860db006fdde564bb83e22d145568ebb8cb548"
+        }
+      ]
+    },
+    {
+      "slug": "library-ephemera-sticker-sheet",
+      "images": [
+        {
+          "url": "/assets/products/library-ephemera-sticker-sheet/ambient-ai-20261020.jpg",
+          "sha256": "af343d27e0cbefb212a38f2207cabd77216d824ca0055c81420b7552a577893a"
+        }
+      ]
+    },
+    {
+      "slug": "a-literary-year-2027-wall-calendar",
+      "images": [
+        {
+          "url": "/assets/products/a-literary-year-2027-wall-calendar/ambient-ai-20261020.jpg",
+          "sha256": "1d42008876c53e1d01f954ac9863254b8771c1f6816e953ff2991fd39dd7f3a6"
+        }
+      ]
+    },
+    {
+      "slug": "readers-2027-desk-calendar",
+      "images": [
+        {
+          "url": "/assets/products/readers-2027-desk-calendar/ambient-ai-20261020.jpg",
+          "sha256": "44cbf5bcbc80f1da924fdb611ba6800067c5302a3ea62ec7e6bed1842006e151"
+        }
+      ]
+    },
+    {
+      "slug": "kindle-magnetic-sleeve",
+      "images": [
+        {
+          "url": "/assets/products/kindle-magnetic-sleeve/ambient-ai-20261020.jpg",
+          "sha256": "90d3cf2d8f58b9a98f473e0e380d7c060d8611c5d827f9fde19801a898516b0a"
+        }
+      ]
+    },
+    {
+      "slug": "heart-book-page-holder",
+      "images": [
+        {
+          "url": "/assets/products/heart-book-page-holder/ambient-ai-20261020.jpg",
+          "sha256": "c31a06aea8d205df4db6283fe32e805ab5747d9a0a96b97313ac95d1762d92aa"
+        }
+      ]
+    },
+    {
+      "slug": "reading-society-notebook",
+      "images": [
+        {
+          "url": "/assets/products/reading-society-notebook/ambient-ai-20261020.jpg",
+          "sha256": "2453865e1ba97f0df44703b546f67903434cd2b60efd407e1b699d87f10fc439"
+        }
+      ]
+    }
+  ]
+}
