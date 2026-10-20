@@ -44,6 +44,12 @@ app = FastAPI(
     dependencies=[Depends(authorize)],
 )
 
+@app.middleware("http")
+async def private_responses(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 StoreImage = Annotated[str, StringConstraints(
     max_length=500,
     pattern=r"^https://(?:www\.)?thebookswanderer\.com/assets/[A-Za-z0-9_./%-]+\.(?:jpg|jpeg|png)$",

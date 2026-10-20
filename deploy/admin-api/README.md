@@ -34,3 +34,12 @@ Run test_admin_api.py with the shop virtualenv; tests use temporary databases,
 a fake key and TestClient. They make no external API calls.
 Operational access from a chat still requires an authenticated HTTP tool
 or a working executor; deploying this service does not repair Codex.
+
+## Installer
+
+Run install.py --check as root using the shop virtualenv before installation.
+Run install.py without arguments to supply a new dedicated administrative key.
+The installer tests local and public HTTPS authentication, product reads, draft storage access, and storefront health. It creates no draft or order.
+It uses systemd LoadCredential and a restricted service on 127.0.0.1:8878.
+Failures trigger removal of the new Nginx inclusion and service configuration; credentials, state and backups are retained for diagnosis.
+Do not rerun over an existing installation or rotate its key implicitly.
