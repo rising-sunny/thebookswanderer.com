@@ -18,14 +18,22 @@
     <meta property="og:url" content="https://thebookswanderer.com/reto-de-lectura-2027/">
     <meta property="og:image" content="https://thebookswanderer.com/assets/downloads/reto-de-lectura-2027-preview.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="icon" href="assets/logo.png" type="image/png">
+    <link rel="icon" href="/assets/logo.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=31">
+    <link rel="stylesheet" href="/styles.css?v=31">
 <script src="/i18n.js?v=2"></script>
+    <style>
+        .challenge-nav {display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin-block:1rem 1.5rem}
+        .page-reading-challenge ol {padding-inline-start:1.5rem}
+        .page-reading-challenge .newsletter {padding:1.5rem}
+        .page-reading-challenge .newsletter input {min-width:0;width:100%}
+        .page-reading-challenge .newsletter .btn {max-width:100%;white-space:normal}
+        .page-reading-challenge .newsletter .form-status {color:var(--gold-300)}
+    </style>
 </head>
-<body class="page-product">
+<body class="page-product page-reading-challenge">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -55,11 +63,17 @@
     <div class="container legal__inner">
         <p class="pdp__crumb"><a href="/es/">Inicio</a> · Reto de lectura 2027</p>
         <h1>El reto de lectura 2027</h1>
-        <p class="legal__updated">52 retos, uno por semana · imprimible gratis</p>
+        <p class="legal__updated">52 retos, uno por semana · imprimible gratis · <a href="/reading-challenge-2027/" lang="en" hreflang="en">Read in English</a></p>
         <p>Cincuenta y dos retos para 2027, uno por cada semana del año. Ninguno te dice qué leer: cada uno te empuja hacia un libro que quizá no habrías elegido — un clásico que fingiste haber leído, un libro con un mapa dentro, el que llevas tiempo guardando.</p>
+        <nav class="challenge-nav" aria-label="En esta página">
+            <a href="#prompts">Los 52 retos</a>
+            <a href="#how-to">Cómo usarlos</a>
+            <a href="#track-progress">Registra tus lecturas</a>
+            <a href="#questions">Preguntas</a>
+        </nav>
         <p><img src="/assets/downloads/reto-de-lectura-2027-preview.jpg" alt="Vista previa del reto de lectura 2027 imprimible: 52 retos y registro anual" width="1250" height="810" style="width:100%;height:auto;border-radius:10px;border:1px solid rgba(43,82,64,.18)"></p>
         <p>La lista completa está abajo. Si lo quieres en PDF para imprimir (los 52 retos con líneas para los títulos y una página para registrar el año mes a mes), déjanos tu correo y te lo enviamos al momento.</p>
-        <section class="newsletter" style="border-radius:14px;margin:1.5rem 0">
+        <section id="printable" class="newsletter" style="border-radius:14px;margin:1.5rem 0">
             <div class="newsletter__inner">
                 <div><h2>Recibe el PDF imprimible</h2></div>
                 <form id="challengeForm" novalidate>
@@ -71,8 +85,8 @@
                 <small>Después, una carta al mes como mucho. Darse de baja es un clic.</small>
             </div>
         </section>
-        <h2>Los 52 retos</h2>
-        <ol>
+        <h2 id="prompts">Los 52 retos</h2>
+        <ol id="challenge-prompts">
             <li>Publicado el año en que naciste</li>
             <li>Un clásico que fingiste haber leído</li>
             <li>Ambientado en un país que no conoces</li>
@@ -126,12 +140,32 @@
             <li>Uno que luego regalarás</li>
             <li>El que llevas tiempo guardando</li>
         </ol>
-        <h2>Cómo hacerlo</h2>
-        <ul>
-            <li>Elige los retos en el orden que quieras; cada libro marca una sola casilla.</li>
-            <li>¿Poco tiempo? Apunta a 12, uno al mes, y guarda el resto para 2028.</li>
-            <li>Anota cada libro terminado con la fecha; la segunda página del PDF suma el año.</li>
-        </ul>
+        <section aria-labelledby="how-to">
+            <h2 id="how-to">Cómo usar el reto de lectura 2027</h2>
+            <ol>
+                <li><strong>Elige tu ritmo.</strong> Puedes proponerte 52 libros, uno por semana; 26, aproximadamente uno cada dos semanas; o 12, uno al mes. Escoge esa cantidad de retos de la lista y guarda los demás para otro año.</li>
+                <li><strong>Escoge tus próximos tres retos.</strong> Empieza por libros que ya tengas, préstamos de biblioteca o recomendaciones. Sigue los retos en el orden que quieras. Si un libro encaja en varios, asígnalo a una sola casilla para que cada reto completado corresponda a un libro distinto.</li>
+                <li><strong>Registra cada lectura y vuelve a elegir.</strong> Anota el título y la fecha en que lo terminaste junto al reto. Escoge el siguiente libro cuando estés listo, sin necesidad de planificar los 52 desde el principio.</li>
+            </ol>
+            <p>Por ejemplo, empieza por «Uno que tienes y nunca abriste» y después prueba «Traducido de otro idioma». Para «Con un mapa dentro», comprueba la edición que vas a leer. El reto te da un punto de partida; tú eliges el libro.</p>
+        </section>
+        <section aria-labelledby="track-progress">
+            <h2 id="track-progress">Una forma sencilla de registrar tus lecturas</h2>
+            <p>Usa un cuaderno, una hoja de cálculo o el imprimible. Guarda cuatro datos por cada libro terminado: reto, título, autor y fecha de finalización. Una nota breve sobre lo que te dejó la lectura hará que la lista resulte útil al volver a ella.</p>
+            <p>El imprimible tiene líneas para los títulos junto a los 52 retos y una segunda página para los totales mensuales. Cuenta cada libro en el mes en que lo terminaste. Si quieres guardar autores o comentarios, anótalos en tu propio diario.</p>
+            <p>Al terminar cada mes, cuenta tus lecturas y elige algunas posibilidades para el siguiente. Ajusta tu objetivo si cambia el tiempo del que dispones; no hace falta apresurar un libro largo para cumplir un calendario semanal.</p>
+        </section>
+        <section aria-labelledby="questions">
+            <h2 id="questions">Preguntas sobre el reto lector</h2>
+            <h3>¿Tengo que leer 52 libros?</h3>
+            <p>No. Cincuenta y dos es la lista completa, no un requisito para participar. También puedes hacer una versión de 12 o 26 libros: elige los retos que quieras seguir y cuenta un libro por cada reto completado.</p>
+            <h3>¿Puedo empezar después de enero?</h3>
+            <p>Sí. Empieza con tu próximo libro y fija un objetivo para los meses que te queden. Puedes incluir libros que ya hayas terminado en 2027 si encajan en algún reto; anota sus fechas de finalización originales.</p>
+            <h3>¿Cuentan los libros electrónicos y los audiolibros?</h3>
+            <p>Sí. Elige el formato que prefieras: libro impreso, electrónico o audiolibro. También cuentan los préstamos de biblioteca y los libros que ya tengas.</p>
+            <h3>¿Tengo que registrarme o comprar algo?</h3>
+            <p>Puedes leer los 52 retos completos en esta página sin registrarte ni comprar nada. Si quieres el imprimible, <a href="#printable">solicita el PDF gratuito por correo</a>. También te suscribirás a nuestras cartas de lectura, como mucho una al mes; puedes darte de baja con un clic.</p>
+        </section>
         <h2>Para llevar la cuenta con estilo</h2>
         <p>¿Quieres un diario para todo el año? El <a href="/es/products/reading-passport-printed">Pasaporte del lector</a> le da a cada libro terminado su tarjeta de embarque y su sello de visado.</p>
     </div>
@@ -170,7 +204,7 @@
     </div>
 </footer>
 
-<script src="track.js?v=6" defer></script>
-<script src="cart.js?v=3" defer></script>
+<script src="/track.js?v=6" defer></script>
+<script src="/cart.js?v=3" defer></script>
 </body>
 </html>
