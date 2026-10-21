@@ -357,8 +357,12 @@ def render_product_page(
         imgs = []
         for i, src in enumerate(lifestyle[:6]):
             s = src if not str(src).startswith("/") else PUBLIC_BASE + str(src)
+            image_label = f"{title} lifestyle photo {i + 1}"
+            if slug == "moonlit-botanicals-phyllotaxis-art-print":
+                image_label = (f"{title} — AI-generated room styling mockup" if "-mockup.jpg" in str(src)
+                               else f"{title} — detail of code-generated artwork")
             imgs.append(
-                f'<img {_cj_img_attrs(s, widths=(400, 600), sizes=SIZES_THUMB)} alt="{_esc(title)} lifestyle photo {i + 1}" '
+                f'<img {_cj_img_attrs(s, widths=(400, 600), sizes=SIZES_THUMB)} alt="{_esc(image_label)}" '
                 f'width="400" height="400" loading="lazy" '
                 f'style="max-width:48%;height:auto;margin:0.25rem;border-radius:8px">'
             )
@@ -500,7 +504,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=4" defer></script>
-<script src="/product.js?v=34-prodigi" defer></script>
+<script src="/product.js?v=35-mockups" defer></script>
 </body>
 </html>
 """

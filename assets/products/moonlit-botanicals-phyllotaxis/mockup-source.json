@@ -1,0 +1,22 @@
+{
+  "purpose": "Environmental styling mockups only; separate from the code-generated product artwork",
+  "method": "AI-generated room scenes using the mathematical artwork preview as a visual reference",
+  "not_physical_sample_photography": true,
+  "artwork_master_modified": false,
+  "exact_design_reference": "main.jpg",
+  "limitations": "Mockup colour, scale and details are illustrative. Print is sold unframed; frames, furniture and props are excluded.",
+  "images": [
+    {
+      "file": "reading-nook-mockup.jpg",
+      "source_generation": "exec-f8361c2d-e538-482a-9234-36d5859d9867.png"
+    },
+    {
+      "file": "home-office-mockup.jpg",
+      "source_generation": "exec-f89fa19f-e31b-46c8-aa8a-917ac34dabdb.png"
+    },
+    {
+      "file": "bedroom-mockup.jpg",
+      "source_generation": "exec-7b653842-cf24-42eb-913f-0a95077ed9a3.png"
+    }
+  ]
+}
