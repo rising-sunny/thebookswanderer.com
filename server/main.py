@@ -2087,7 +2087,7 @@ def prodigi_artwork(name: str, sig: str = Query("")):
     if not prodigi_store.check_asset_signature(name, sig):
         raise HTTPException(404, "File not found")
     try:
-        path = prodigi_store.asset_path(name)
+        path = prodigi_store.asset_path()
     except prodigi_store.ProdigiError:
         raise HTTPException(404, "File not found") from None
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})

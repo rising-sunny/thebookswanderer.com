@@ -23,7 +23,9 @@ There are no new administrator/MCP order-creation tools.
 
 The print JPEG is deployed outside the web root to
 `/var/lib/tbw-prodigi/artwork`. SHA-256, RGB dimensions and ICC are checked.
-Only a signed GET/HEAD URL can return the reviewed master to Prodigi. No
+Only a signed GET/HEAD URL can return the reviewed master to Prodigi. Its
+path is an extensionless SHA-256 identifier so nginx static-image regex rules
+cannot intercept it; the response declares image/jpeg. No
 credentials, signing tokens or buyer addresses belong in application logs.
 
 ## Payment and duplicate protection
