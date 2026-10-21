@@ -18,14 +18,22 @@
     <meta property="og:url" content="https://thebookswanderer.com/reading-challenge-2027/">
     <meta property="og:image" content="https://thebookswanderer.com/assets/downloads/2027-reading-challenge-preview.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="icon" href="assets/logo.png" type="image/png">
+    <link rel="icon" href="/assets/logo.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=31">
+    <link rel="stylesheet" href="/styles.css?v=31">
 <script src="/i18n.js?v=2"></script>
+    <style>
+        .challenge-nav {display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin-block:1rem 1.5rem}
+        .page-reading-challenge ol {padding-inline-start:1.5rem}
+        .page-reading-challenge .newsletter {padding:1.5rem}
+        .page-reading-challenge .newsletter input {min-width:0;width:100%}
+        .page-reading-challenge .newsletter .btn {max-width:100%;white-space:normal}
+        .page-reading-challenge .newsletter .form-status {color:var(--gold-300)}
+    </style>
 </head>
-<body class="page-product">
+<body class="page-product page-reading-challenge">
 
 <a class="skip-link" href="#main">Skip to content</a>
 
@@ -55,11 +63,17 @@
     <div class="container legal__inner">
         <p class="pdp__crumb"><a href="/">Home</a> · Reading challenge 2027</p>
         <h1>The 2027 Reading Challenge</h1>
-        <p class="legal__updated">52 prompts, one a week · free printable</p>
+        <p class="legal__updated">52 prompts, one a week · free printable · <a href="/reto-de-lectura-2027/" lang="es" hreflang="es">Leer en español</a></p>
         <p>Fifty-two prompts for 2027, one for every week of the year. None of them tells you what to read: each one just nudges you toward a book you might not have picked up otherwise — a classic you pretended to have read, a book with a map inside, the one you&#x27;ve been saving.</p>
+        <nav class="challenge-nav" aria-label="On this page">
+            <a href="#prompts">The 52 prompts</a>
+            <a href="#how-to">How to use them</a>
+            <a href="#track-progress">Track your reading</a>
+            <a href="#questions">Questions</a>
+        </nav>
         <p><img src="/assets/downloads/2027-reading-challenge-preview.jpg" alt="Preview of the 2027 Reading Challenge printable: 52 prompts and a yearly log" width="1250" height="810" style="width:100%;height:auto;border-radius:10px;border:1px solid rgba(43,82,64,.18)"></p>
         <p>The whole list is below. If you&#x27;d like it as a printable PDF (the 52 prompts with lines for the titles, plus a page to log the year month by month), leave your email and we&#x27;ll send it straight away.</p>
-        <section class="newsletter" style="border-radius:14px;margin:1.5rem 0">
+        <section id="printable" class="newsletter" style="border-radius:14px;margin:1.5rem 0">
             <div class="newsletter__inner">
                 <div><h2>Get the printable PDF</h2></div>
                 <form id="challengeForm" novalidate>
@@ -71,8 +85,8 @@
                 <small>One letter a month afterwards, at most. One click to leave.</small>
             </div>
         </section>
-        <h2>The 52 prompts</h2>
-        <ol>
+        <h2 id="prompts">The 52 prompts</h2>
+        <ol id="challenge-prompts">
             <li>Published the year you were born</li>
             <li>A classic you pretended to have read</li>
             <li>Set in a country you&#x27;ve never visited</li>
@@ -126,12 +140,32 @@
             <li>A book you&#x27;ll gift to someone afterwards</li>
             <li>The one you&#x27;ve been saving</li>
         </ol>
-        <h2>How to do it</h2>
-        <ul>
-            <li>Pick prompts in any order; a book can tick only one box.</li>
-            <li>Short on time? Aim for 12 — one a month — and keep the rest for 2028.</li>
-            <li>Log each finished book with the date; the PDF&#x27;s second page tallies the year.</li>
-        </ul>
+        <section aria-labelledby="how-to">
+            <h2 id="how-to">How to use the 2027 reading challenge</h2>
+            <ol>
+                <li><strong>Choose your pace.</strong> Try 52 books for a weekly challenge, 26 for roughly one every two weeks, or 12 for one a month. Select that many prompts from the list; you can leave the others for another year.</li>
+                <li><strong>Pick your next three prompts.</strong> Start with books you already own, library finds or recommendations. Read the prompts in any order. If a book fits several, choose one box for it so each completed prompt represents a different book.</li>
+                <li><strong>Record each finish, then choose again.</strong> Write down the title and finishing date beside its prompt. Pick the next book when you are ready rather than planning all 52 in advance.</li>
+            </ol>
+            <p>For example, start with “A book you own but never opened,” then try “Translated from another language.” When choosing “Has a map inside,” check the edition you will actually read. The prompt is a starting point; the book is your choice.</p>
+        </section>
+        <section aria-labelledby="track-progress">
+            <h2 id="track-progress">A simple way to track your reading</h2>
+            <p>Use a notebook, a spreadsheet or the printable. Keep four details for each finished book: the prompt, title, author and finishing date. A short note about what stayed with you makes the list useful when you look back.</p>
+            <p>The printable has lines for titles alongside the 52 prompts, plus a second page for your monthly totals. Add each book to the month you finished it. If you keep author names or notes, record those in your own journal.</p>
+            <p>At the end of each month, count your finishes and choose a few possibilities for the next one. Adjust your goal if your time changes; there is no need to rush a long book to keep up with a weekly schedule.</p>
+        </section>
+        <section aria-labelledby="questions">
+            <h2 id="questions">Reading challenge questions</h2>
+            <h3>Do I have to read 52 books?</h3>
+            <p>No. Fifty-two is the full list, not a requirement for taking part. A 12-book or 26-book version works too: choose the prompts you want to follow and keep one book per completed prompt.</p>
+            <h3>Can I start after January?</h3>
+            <p>Yes. Start with your next book and set a goal for the months you have left. You can use books already finished in 2027 if they fit a prompt; write down their original finishing dates.</p>
+            <h3>Do ebooks and audiobooks count?</h3>
+            <p>Yes. Choose the format that suits you: a printed book, ebook or audiobook. Library books and books you already own count too.</p>
+            <h3>Do I need to sign up or buy something?</h3>
+            <p>You can read all 52 prompts on this page without registering or buying anything. If you want the printable, <a href="#printable">request the free PDF by email</a>. That also signs you up for our reading letters, at most once a month; you can unsubscribe with one click.</p>
+        </section>
         <h2>Keep track in style</h2>
         <p>Want a whole journal for the year? <a href="/products/reading-passport-printed">The Wanderer's Reading Passport</a> gives every finished book a boarding pass and a visa stamp.</p>
     </div>
@@ -170,7 +204,7 @@
     </div>
 </footer>
 
-<script src="track.js?v=6" defer></script>
-<script src="cart.js?v=3" defer></script>
+<script src="/track.js?v=6" defer></script>
+<script src="/cart.js?v=3" defer></script>
 </body>
 </html>
