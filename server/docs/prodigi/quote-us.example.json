@@ -1,0 +1,14 @@
+[
+  {
+    "sku": "GLOBAL-CAN-10X10",
+    "copies": 1,
+    "attributes": {"wrap": "ImageWrap"},
+    "assets": [{"printArea": "default"}]
+  },
+  {
+    "sku": "GLOBAL-FAP-10X10",
+    "copies": 1,
+    "attributes": {},
+    "assets": [{"printArea": "default"}]
+  }
+]
