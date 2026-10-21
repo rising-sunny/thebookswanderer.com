@@ -430,14 +430,14 @@
             lifestyle.length > 0
                 ? `
 <div class="pdp__variants pdp__lifestyle">
-  <h2 class="pdp__variants-title">In the reading nook</h2>
-  <p class="pdp__variants-label">How it looks in real spaces — tap a photo to enlarge</p>
+  <h2 class="pdp__variants-title">${product.supplier === "prodigi" ? "Artwork details" : "In the reading nook"}</h2>
+  <p class="pdp__variants-label">${product.supplier === "prodigi" ? "A closer look at the artwork — tap to enlarge" : "How it looks in real spaces — tap a photo to enlarge"}</p>
   <div class="pdp__variant-grid pdp__lifestyle-grid" role="list">
     ${lifestyle
         .map(
             (src, i) => `
 <button type="button" class="pdp__variant pdp__life-shot" data-life-src="${escapeHtml(src)}" aria-label="View lifestyle photo ${i + 1}">
-  <img ${cjImgAttrs(escapeHtml(src), "(max-width: 780px) 45vw, 380px", [400, 600])} alt="Product in use, photo ${i + 1}" loading="lazy" decoding="async">
+  <img ${cjImgAttrs(escapeHtml(src), "(max-width: 780px) 45vw, 380px", [400, 600])} alt="${product.supplier === "prodigi" ? "Artwork detail" : "Product in use, photo"} ${i + 1}" loading="lazy" decoding="async">
 </button>`
         )
         .join("")}
@@ -477,8 +477,8 @@
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
   <p class="pdp__shipnote">${isDigital()
         ? "Instant download — PDF, no shipping"
-        : "Standard US shipping included · other destinations quoted below"}</p>
-  ${desc ? `<p class="pdp__lead">${desc}</p>` : ""}
+        : product.supplier === "prodigi" ? "Printed to order · unframed · standard US shipping included" : "Standard US shipping included · other destinations quoted below"}</p>
+  ${desc ? `<p class="pdp__lead"${product.supplier === "prodigi" ? ' style="white-space:pre-line"' : ""}>${desc}</p>` : ""}
   ${variantPicker}
   ${cartPanelHtml()}
   ${addBarHtml()}

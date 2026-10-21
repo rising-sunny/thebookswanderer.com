@@ -32,6 +32,7 @@ def init_db() -> None:
     from models import (  # noqa: F401
         DownloadToken,
         LuluSubmission,
+        ProdigiSubmission,
         EmailOptOut,
         LiveEvent,
         NewsletterSubscriber,
@@ -112,6 +113,9 @@ def init_db() -> None:
         if "printify_order_id" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN printify_order_id VARCHAR(80) DEFAULT ''"))
+        if "prodigi_order_id" not in rcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN prodigi_order_id VARCHAR(120) DEFAULT ''"))
         if "lulu_job_id" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN lulu_job_id VARCHAR(80) DEFAULT ''"))

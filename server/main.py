@@ -36,6 +36,7 @@ from services import paypal_recovery  # noqa: E402
 from services import printify as printify_service  # noqa: E402
 from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
+from services import prodigi_store, prodigi_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
 from services.countries import DESTINATIONS  # noqa: E402
@@ -1082,6 +1083,8 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         if digital_service.is_digital(p) and not digital_service.file_path(digital_service.file_for(p, v)):
             log.error("checkout blocked: no file for digital product %s", p.slug)
             raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
+        if p.supplier == "prodigi" and not prodigi_store.ready():
+            raise HTTPException(503, "This print is temporarily unavailable. Please try again later.")
         if p.supplier == lulu_service.SUPPLIER and not (lulu_service.configured() and _lulu_files(p, v)):
             log.error("checkout blocked: print files or Lulu keys missing for %s", p.slug)
             raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
@@ -1168,6 +1171,16 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         )
     db.commit()
     db.refresh(order)
+
+    if any(p.supplier == "prodigi" for p, _, _ in cart):
+        try:
+            prodigi_submission.prepare(db, order, PUBLIC_BASE)
+            db.commit()
+        except prodigi_store.ProdigiError:
+            db.rollback()
+            order.status = "failed"
+            db.commit()
+            raise HTTPException(503, "This print could not be prepared for checkout. Please try again later.") from None
 
     desc = f"TBW order #{order.id}"
     try:
@@ -1403,19 +1416,26 @@ async def _fulfil(order: Order, db: Session) -> None:
     digital = [i for i in items if digital_service.is_digital(products_db.get(i.product_id))]
     pod = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") == "printify"]
     books = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == lulu_service.SUPPLIER]
-    cj_items = [i for i in items if i not in pod and i not in digital and i not in books]
+    art = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == "prodigi"]
+    unknown = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") not in {"cj", "digital", "printify", "lulu", "prodigi"}]
+    if unknown:
+        raise RuntimeError("Unsupported supplier; order held")
+    cj_items = [i for i in items if i not in pod and i not in digital and i not in books and i not in art]
     # Downloads first: they need no supplier, so a CJ hiccup never holds
     # back a file the buyer has already paid for.
     if digital:
         await _deliver_digital(order, db, digital, products_db)
     if cj_items:
-        await _submit_to_cj(order, db, cj_items, mixed=bool(pod or books))
+        await _submit_to_cj(order, db, cj_items, mixed=bool(pod or books or art))
     if pod:
         await _submit_to_printify(order, db, pod, products_db)
     if books:
         await _submit_to_lulu(order, db, books, products_db)
 
-    shipped = cj_items or pod or books
+    if art:
+        await prodigi_submission.submit(db, order)
+
+    shipped = cj_items or pod or books or art
     order.status = "cj_submitted" if shipped else "delivered"
     db.commit()
     if shipped:
@@ -2060,3 +2080,14 @@ def download_file(token: str, request: Request, db: Session = Depends(get_db)):
 @app.get("/api/", response_class=HTMLResponse)
 def api_root():
     return "<p>The Books Wanderer API. See <a href='/api/health'>/api/health</a></p>"
+
+
+@app.api_route("/api/prodigi/artwork/{name}", methods=["GET", "HEAD"])
+def prodigi_artwork(name: str, sig: str = Query("")):
+    if not prodigi_store.check_asset_signature(name, sig):
+        raise HTTPException(404, "File not found")
+    try:
+        path = prodigi_store.asset_path(name)
+    except prodigi_store.ProdigiError:
+        raise HTTPException(404, "File not found") from None
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})

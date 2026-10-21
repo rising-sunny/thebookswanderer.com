@@ -30,7 +30,7 @@ load_dotenv(ROOT / ".env")
 
 from database import SessionLocal  # noqa: E402
 from models import Order, OrderItem, Product  # noqa: E402
-from services import cj, digital, lulu, printify  # noqa: E402
+from services import cj, digital, lulu, printify, prodigi_store  # noqa: E402
 from services import email as email_service  # noqa: E402
 
 # A CJ order is created unpaid (CJ_PAY_TYPE=3) and a Printify one on hold
@@ -81,12 +81,17 @@ def legs_for(order: Order, items: list[OrderItem], products: dict[int, Product])
         legs.append(Leg("printify", order.printify_order_id, [i for i in items if sup(i) == "printify"]))
     if order.lulu_job_id:
         legs.append(Leg("lulu", order.lulu_job_id, [i for i in items if sup(i) == lulu.SUPPLIER]))
+    art_items = [i for i in items if sup(i) == "prodigi"]
+    if art_items:
+        legs.append(Leg("prodigi", order.prodigi_order_id or "unsubmitted", art_items))
     return legs
 
 
 def all_legs_submitted(order, items, products) -> bool:
     """A shipped leg cannot hide another supplier that never accepted its lines."""
     suppliers = {getattr(products.get(i.product_id), 'supplier', '') or 'cj' for i in items}
+    if 'prodigi' in suppliers and not order.prodigi_order_id:
+        return False
     if 'lulu' in suppliers and not order.lulu_job_id:
         return False
     if 'printify' in suppliers and not order.printify_order_id:
@@ -157,8 +162,41 @@ async def check_lulu(leg: Leg) -> None:
         leg.status = "OTHER"
 
 
+async def check_prodigi(leg: Leg) -> None:
+    if leg.ref == "unsubmitted":
+        leg.raw, leg.status = "UNSUBMITTED", "PROBLEM"
+        leg.help = "Check the frozen Prodigi submission and reconcile any uncertain result. Do not create a duplicate order."
+        return
+    data = await prodigi_store.request("GET", "/orders/" + leg.ref)
+    if str(data.get("outcome", "")).lower() != "ok":
+        raise prodigi_store.ProdigiError("Prodigi tracking unavailable")
+    order = data.get("order", {})
+    status = order.get("status") or {}
+    leg.raw = str(status.get("stage") or "OnHold")
+    shipments = [s for s in order.get("shipments", []) if s.get("status") != "Cancelled"]
+    shipped = [s for s in shipments if s.get("status") == "Shipped"]
+    if shipped:
+        shipment = shipped[0]
+        tracking = shipment.get("tracking") or {}
+        carrier = shipment.get("carrier") or {}
+        leg.carrier = str(carrier.get("name") or "")
+        leg.number = str(tracking.get("number") or "")
+        url = str(tracking.get("url") or "")
+        leg.url = url if url.startswith("https://") else track_url(leg.number)
+    if leg.raw == "Cancelled" or status.get("issues"):
+        leg.status = "PROBLEM"
+        leg.help = "Review this order in the Prodigi dashboard. Resolve payment, artwork or delivery issues without creating a duplicate."
+    elif leg.raw == "Complete" and shipments and len(shipped) == len(shipments):
+        leg.status = "SHIPPED"
+    elif not status:
+        leg.status, leg.help = "WAITING", "Review the paused order in the Prodigi dashboard."
+    else:
+        leg.status = "OTHER"
+
+
 CHECK = {"cj": (check_cj, cj.is_configured), "printify": (check_printify, printify.configured),
-         "lulu": (check_lulu, lulu.configured)}
+         "lulu": (check_lulu, lulu.configured),
+         "prodigi": (check_prodigi, prodigi_store.configured)}
 
 
 def noted(order: Order, text: str) -> bool:

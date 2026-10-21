@@ -8,6 +8,10 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/thebookswanderer.com/server
 EnvironmentFile=/var/www/thebookswanderer.com/server/.env
+# systemd copies the root-only key into the service's private credentials directory.
+LoadCredential=prodigi_api_key:/etc/tbw-prodigi/api_key
+Environment=PRODIGI_API_KEY_FILE=%d/prodigi_api_key
+Environment=PRODIGI_ORDERS_ENABLED=1
 # --timeout-graceful-shutdown 0: /admin/live/stream is a Server-Sent Events
 # endpoint that holds its connection open by design, so uvicorn's default
 # graceful shutdown waits for a client that never disconnects. That left the
