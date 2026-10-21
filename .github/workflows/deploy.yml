@@ -111,6 +111,10 @@ jobs:
       - name: Health
         run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://thebookswanderer.com/api/health
 
+      - name: Update reviewed Color the Classics copy
+        run: |
+          ssh -o BatchMode=yes "$VPS_HOST" "cd $REMOTE/server && .venv/bin/python scripts/update_color_classics_copy.py --apply"
+
       - name: Publish reviewed Prodigi print
         run: |
           ssh -o BatchMode=yes "$VPS_HOST" "cd $REMOTE/server && PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key PRODIGI_ORDERS_ENABLED=1 .venv/bin/python scripts/publish_prodigi_phyllotaxis.py --publish"
