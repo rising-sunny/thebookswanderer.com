@@ -18,3 +18,5 @@ Approved botanical homepage, promoted from `../home-atelier-preview/`.
 Validation: isolated homepage rendering/data tests plus the storefront regression
 suite; browser checks in both languages at 320, 390, 768 and 1440 px. Subscription
 success/failure is checked with intercepted responses, never a real mailing.
+
+Homepage cover images use responsive WebP exports at 240, 400, 600 and 800 pixels wide, shared by the hero and nature section. The original PNG crops in `../home-atelier-preview/` remain unchanged. Regenerate with `python server/scripts/optimize_home_cover_images.py` (Pillow with WebP support). The `sizes` hints follow the existing CSS cover dimensions and breakpoints; the hero loads eagerly and the nature section stays lazy-loaded.
