@@ -63,11 +63,30 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         with Image.open(p.asset_path()) as im:self.assertEqual(im.size,(3600,4800));self.assertTrue(im.info['icc_profile'])
         url=p.asset_url('https://thebookswanderer.com')
         token=url.split('?sig=')[1]
-        self.assertTrue(p.check_asset_signature(p.spec()['artwork_file'],token))
-        self.assertFalse(p.check_asset_signature('../.env',token));self.assertFalse(p.check_asset_signature(p.spec()['artwork_file'],'bad'))
+        self.assertTrue(p.check_asset_signature(p.spec()['artwork_sha256'],token))
+        self.assertFalse(p.check_asset_signature('../.env',token));self.assertFalse(p.check_asset_signature(p.spec()['artwork_sha256'],'bad'))
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp)/p.spec()['artwork_file']).write_bytes(b'changed')
             with patch.dict(os.environ,{'PRODIGI_ARTWORK_DIR':tmp}):self.assertFalse(p.ready())
+    async def test_extensionless_signed_download_serves_exact_jpeg_and_rejects_unsigned_access(self):
+        import hashlib,re
+        from urllib.parse import urlsplit
+        from fastapi.testclient import TestClient
+        import main
+        url=p.asset_url('https://thebookswanderer.com')
+        parsed=urlsplit(url)
+        static_regex=r'\.(css|js|png|jpe?g|gif|ico|svg|webp|woff2?)$'
+        self.assertIsNone(re.search(static_regex,parsed.path,re.I))
+        self.assertEqual(parsed.path.rsplit('/',1)[1],p.spec()['artwork_sha256'])
+        client=TestClient(main.app)
+        try:
+            response=client.get(parsed.path+'?'+parsed.query)
+            self.assertEqual(response.status_code,200)
+            self.assertEqual(response.headers['content-type'],'image/jpeg')
+            self.assertEqual(hashlib.sha256(response.content).hexdigest(),p.spec()['artwork_sha256'])
+            self.assertEqual(client.get(parsed.path).status_code,404)
+        finally:client.close()
+
     async def test_missing_credential_file_never_falls_back(self):
         with patch.dict(os.environ,{'PRODIGI_API_KEY_FILE':'/missing/prodigi-file'}):
             self.assertFalse(p.configured())

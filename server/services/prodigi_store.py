@@ -74,12 +74,14 @@ def _asset_sig(name):
 def asset_url(base):
     name = spec()['artwork_file']
     asset_path(name)
-    return base.rstrip('/') + '/api/prodigi/artwork/' + quote(name) + '?sig=' + _asset_sig(name)
+    artwork_id = spec()['artwork_sha256']
+    # Extensionless API paths cannot be intercepted by nginx's static-image regex.
+    return base.rstrip('/') + '/api/prodigi/artwork/' + artwork_id + '?sig=' + _asset_sig(artwork_id)
 
 
 def check_asset_signature(name, signature):
     try:
-        return name == spec()['artwork_file'] and bool(signature) and hmac.compare_digest(_asset_sig(name), signature)
+        return name == spec()['artwork_sha256'] and bool(signature) and hmac.compare_digest(_asset_sig(name), signature)
     except ProdigiError:
         return False
 
