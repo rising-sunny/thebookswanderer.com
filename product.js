@@ -426,22 +426,33 @@
                   ? `<p class="pdp__variant-single">Option: <strong>${escapeHtml(variants[0].name)}</strong></p>`
                   : "";
 
+        const hasBotanicalMockups = product.slug === "moonlit-botanicals-phyllotaxis-art-print";
+        const lifestyleLabel = (src, i) => {
+            if (hasBotanicalMockups) {
+                if (src.includes("reading-nook-mockup")) return "Reading nook — AI-generated styling mockup";
+                if (src.includes("home-office-mockup")) return "Home office — AI-generated styling mockup";
+                if (src.includes("bedroom-mockup")) return "Bedroom — AI-generated styling mockup";
+                return "Detail of the code-generated artwork";
+            }
+            return `${product.supplier === "prodigi" ? "Artwork detail" : "Product in use, photo"} ${i + 1}`;
+        };
         const lifestyleBox =
             lifestyle.length > 0
                 ? `
 <div class="pdp__variants pdp__lifestyle">
-  <h2 class="pdp__variants-title">${product.supplier === "prodigi" ? "Artwork details" : "In the reading nook"}</h2>
-  <p class="pdp__variants-label">${product.supplier === "prodigi" ? "A closer look at the artwork — tap to enlarge" : "How it looks in real spaces — tap a photo to enlarge"}</p>
+  <h2 class="pdp__variants-title">${hasBotanicalMockups ? "Artwork & styling" : product.supplier === "prodigi" ? "Artwork details" : "In the reading nook"}</h2>
+  <p class="pdp__variants-label">${hasBotanicalMockups ? "Explore the artwork and room mockups — tap to enlarge" : product.supplier === "prodigi" ? "A closer look at the artwork — tap to enlarge" : "How it looks in real spaces — tap a photo to enlarge"}</p>
   <div class="pdp__variant-grid pdp__lifestyle-grid" role="list">
     ${lifestyle
         .map(
             (src, i) => `
-<button type="button" class="pdp__variant pdp__life-shot" data-life-src="${escapeHtml(src)}" aria-label="View lifestyle photo ${i + 1}">
-  <img ${cjImgAttrs(escapeHtml(src), "(max-width: 780px) 45vw, 380px", [400, 600])} alt="${product.supplier === "prodigi" ? "Artwork detail" : "Product in use, photo"} ${i + 1}" loading="lazy" decoding="async">
+<button type="button" class="pdp__variant pdp__life-shot" data-life-src="${escapeHtml(src)}" aria-label="View ${escapeHtml(lifestyleLabel(src, i))}">
+  <img ${cjImgAttrs(escapeHtml(src), "(max-width: 780px) 45vw, 380px", [400, 600])} alt="${escapeHtml(lifestyleLabel(src, i))}" loading="lazy" decoding="async">
 </button>`
         )
         .join("")}
   </div>
+  ${hasBotanicalMockups ? '<p class="pdp__variants-label">Room scenes are AI-generated styling mockups, not sample photographs. Colour, scale and details are illustrative; the flat artwork shows the exact design. Unframed print only; frames and props are not included.</p>' : ""}
 </div>`
                 : "";
 
