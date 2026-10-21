@@ -122,8 +122,8 @@ def _ship_countries() -> list[str]:
 
 
 def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
-    """No country whitelist: providers confirm each product/address via quotes."""
-    return None
+    """Prodigi art launches in the US; other suppliers confirm coverage via quotes."""
+    return {"US"} if supplier == "prodigi" else None
 
 
 def _merchant_return_policy(only: set[str] | None = None) -> dict[str, Any]:
@@ -161,7 +161,7 @@ def _shipping_details(
     International rates and availability require a live quote; do not advertise
     free shipping or guaranteed country coverage in structured data.
     """
-    if supplier == "digital" or (supplier != "lulu" and not _free_shipping()):
+    if supplier == "digital" or (supplier not in {"lulu", "prodigi"} and not _free_shipping()):
         return []
     return [{"@type": "OfferShippingDetails",
              "shippingDestination": {"@type": "DefinedRegion", "addressCountry": "US"},
@@ -395,7 +395,7 @@ def render_product_page(
     </p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
-      {"<li>Digital download (PDF) — the link arrives by email right after payment</li>" if digital else "<li>Ships from partner warehouses (typically China origin unless noted)</li>"}
+      {"<li>Digital download (PDF) — the link arrives by email right after payment</li>" if digital else "<li>Printed to order, unframed · standard US shipping included</li>" if detail.get("supplier") == "prodigi" else "<li>Ships from partner warehouses (typically China origin unless noted)</li>"}
       <li>Faulty or wrong items refunded in full within 30 days</li>
       <li>Secure checkout{"" if digital else " · shipping calculated by destination at cart"}</li>
     </ul>
@@ -500,7 +500,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=6" defer></script>
 <script src="/cart.js?v=4" defer></script>
-<script src="/product.js?v=33" defer></script>
+<script src="/product.js?v=34-prodigi" defer></script>
 </body>
 </html>
 """

@@ -1,0 +1,12 @@
+{
+  "title": "Moonlit Botanicals \u2014 Phyllotaxis I",
+  "artwork_method": "Original mathematical code rendered as vector geometry",
+  "image_generator_used": false,
+  "code_written_with_ai_assistance": true,
+  "construction": [
+    "Vogel golden-angle seed spirals",
+    "Fibonacci petal and seed counts",
+    "Cubic Bezier leaves"
+  ],
+  "master_sha256": "037d9af4c001d10a426ddcf288054a94f4c334907ce0dbc2ee80705044ddd0d9"
+}

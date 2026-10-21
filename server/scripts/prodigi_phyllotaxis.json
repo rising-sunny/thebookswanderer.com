@@ -1,0 +1,28 @@
+{
+  "slug": "moonlit-botanicals-phyllotaxis-art-print",
+  "title": "Moonlit Botanicals — Phyllotaxis Art Print",
+  "description": "Created with mathematical code, not an AI image generator.\n\nBotanical geometry beneath a crescent moon. Three stylised flowers follow golden-angle seed spirals and Fibonacci counts, framed by sage-green leaves traced with Bézier curves. Fine cream and ochre lines on midnight blue bring the precision of a botanical diagram to a quiet, celestial composition.\n\nAn unframed 12 × 16 inch art print on 200gsm enhanced matte paper, printed to order. Standard US shipping is included.",
+  "details_html": "<h2>About the artwork</h2><p>This artwork is constructed from mathematical code, using golden-angle spirals, Fibonacci counts and Bézier curves. No AI image generator was used to create this design.</p><h2>Print details</h2><ul><li>12 × 16 inches</li><li>200gsm enhanced matte art paper</li><li>Unframed print; frame not included</li><li>Ochre is printed colour, not metallic foil</li></ul>",
+  "category": "decor",
+  "supplier": "prodigi",
+  "supplier_sku": "GLOBAL-FAP-12X16",
+  "attributes": {
+    "paperType": "EMA",
+    "substrateWeight": "200gsm"
+  },
+  "print_area": "default",
+  "variant_name": "12 × 16 in · unframed · enhanced matte paper",
+  "price_usd": 44.95,
+  "cost_usd": 14.0,
+  "from_country": "US",
+  "image_url": "/assets/products/moonlit-botanicals-phyllotaxis/main.jpg",
+  "gallery": [
+    "/assets/products/moonlit-botanicals-phyllotaxis/detail.jpg"
+  ],
+  "artwork_sha256": "037d9af4c001d10a426ddcf288054a94f4c334907ce0dbc2ee80705044ddd0d9",
+  "artwork_pixels": [
+    3600,
+    4800
+  ],
+  "artwork_file": "moonlit-botanicals-12x16-300dpi.jpg"
+}

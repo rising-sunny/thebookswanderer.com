@@ -21,6 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify checkout and supplier integration
+        run: |
+          python -m pip install -q -r server/requirements.txt
+          python - <<'PYTEST'
+          import sys, unittest
+          sys.path.insert(0, 'server/tests')
+          suite = unittest.TestSuite()
+          for name in ['test_prodigi_store', 'test_worldwide_shipping', 'test_paypal_recovery', 'test_lulu_submission', 'test_product_schema']:
+              suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
+          result = unittest.TextTestRunner(verbosity=1).run(suite)
+          raise SystemExit(not result.wasSuccessful())
+          PYTEST
+
       - name: SSH key
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -70,7 +87,7 @@ jobs:
             services/categories.py services/email.py services/meta_capi.py services/health.py \
             services/pinterest.py services/pinterest_jobs.py services/geo.py services/live_events.py \
             services/printify.py services/digital.py services/lulu.py services/lulu_submission.py \
-            services/shipping.py services/countries.py \
+            services/shipping.py services/countries.py services/prodigi_store.py services/prodigi_submission.py \
             services/collaborators.py services/collaborators_store.py \
             services/invitation.py services/outreach.py services/monthly_newsletter.py \
             "$VPS_HOST:$REMOTE/server/services/"
@@ -79,11 +96,25 @@ jobs:
           scp -o BatchMode=yes scripts/*.py scripts/*.json "$VPS_HOST:$REMOTE/server/scripts/"
           scp -o BatchMode=yes -r social "$VPS_HOST:$REMOTE/server/"
 
+      - name: Prodigi print asset and read-only readiness check
+        run: |
+          ssh -o BatchMode=yes "$VPS_HOST" "test -s /etc/tbw-prodigi/api_key && install -d -o www-data -g www-data -m 750 /var/lib/tbw-prodigi/artwork"
+          scp -o BatchMode=yes server/artwork/prodigi/moonlit-botanicals-12x16-300dpi.jpg "$VPS_HOST:/var/lib/tbw-prodigi/artwork/"
+          ssh -o BatchMode=yes "$VPS_HOST" "chown www-data:www-data /var/lib/tbw-prodigi/artwork/*.jpg && chmod 640 /var/lib/tbw-prodigi/artwork/*.jpg && cd $REMOTE/server && PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key PRODIGI_ORDERS_ENABLED=1 .venv/bin/python scripts/publish_prodigi_phyllotaxis.py"
+
       - name: Setup on VPS
         run: |
-          scp -o BatchMode=yes deploy/thebookswanderer.service "$VPS_HOST:/etc/systemd/system/thebookswanderer.service"
+          scp -o BatchMode=yes deploy/thebookswanderer.service deploy/tbw-order-tracking.service "$VPS_HOST:/etc/systemd/system/"
           scp -o BatchMode=yes deploy/remote-setup.sh "$VPS_HOST:$REMOTE/deploy/remote-setup.sh"
           ssh -o BatchMode=yes "$VPS_HOST" "sed -i 's/\r\$//' $REMOTE/deploy/remote-setup.sh; bash $REMOTE/deploy/remote-setup.sh"
 
       - name: Health
         run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://thebookswanderer.com/api/health
+
+      - name: Publish reviewed Prodigi print
+        run: |
+          ssh -o BatchMode=yes "$VPS_HOST" "cd $REMOTE/server && PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key PRODIGI_ORDERS_ENABLED=1 .venv/bin/python scripts/publish_prodigi_phyllotaxis.py --publish"
+
+      - name: Verify published print
+        run: |
+          curl -fsS https://thebookswanderer.com/api/products/by-slug/moonlit-botanicals-phyllotaxis-art-print | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["supplier"]=="prodigi" and p["price_usd"]==44.95 and "mathematical code" in p["description"] and "AI image generator" in p["description"]'

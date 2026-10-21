@@ -15,7 +15,7 @@ import time
 import httpx
 from functools import lru_cache
 
-from services import cj, digital, lulu, printify
+from services import cj, digital, lulu, printify, prodigi_store
 from services.countries import COUNTRY_CODES
 
 IMPORT_NOTE = "Import duties or taxes collected by your country on arrival are not included in this total."
@@ -175,6 +175,18 @@ async def _quote(cart, country, address=None, *, free_us=True):
             retail = surcharge(actual, baseline, country, free_us)
             leg = {"supplier": supplier, "from": "US", "logistic_name": "Printify Standard", "shipping_total": retail,
                    "eta_days": printify.ETA_DAYS if country == "US" else None}
+        elif supplier == "prodigi":
+            if country != "US":
+                raise unavailable(names)
+            try:
+                leg = await prodigi_store.shipping(items, country)
+            except prodigi_store.ProdigiError:
+                raise QuoteError("Delivery could not be confirmed for this print. Please try again later.", products=names) from None
+            # Standard US shipping is included in the reviewed retail price.
+            # Prodigi's quote is country-level, so require complete address fields at checkout.
+            if not all(address.get(k) for k in ("street1", "city", "state", "postcode")):
+                is_estimate = True
+            retail = leg["shipping_total"]
         elif supplier == "lulu":
             lines = [lulu_line(p, v, q) for p, v, q in items]
             addr = {"country": country, **{k: val for k, val in address.items() if val}}

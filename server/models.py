@@ -186,6 +186,7 @@ class Order(Base):
     cj_order_number: Mapped[str] = mapped_column(String(80), default="")
     printify_order_id: Mapped[str] = mapped_column(String(80), default="")
     lulu_job_id: Mapped[str] = mapped_column(String(80), default="")
+    prodigi_order_id: Mapped[str] = mapped_column(String(120), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
     # Abandoned-checkout reminder: set once so nobody is emailed twice.
@@ -213,6 +214,17 @@ class LuluSubmission(Base):
     error_kind: Mapped[str] = mapped_column(String(80), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class ProdigiSubmission(Base):
+    """Immutable checkout manifest and durable claim before any Live POST."""
+    __tablename__ = "prodigi_submissions"
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), primary_key=True)
+    state: Mapped[str] = mapped_column(String(24), default="prepared")
+    payload_json: Mapped[str] = mapped_column(Text, default="")
+    order_ref: Mapped[str] = mapped_column(String(120), default="")
+    error_kind: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class OrderItem(Base):
