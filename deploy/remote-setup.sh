@@ -172,13 +172,13 @@ cat > /etc/cron.d/tbw-social-post <<CRON
 CRON
 chmod 644 /etc/cron.d/tbw-social-post
 
-# Supplier legs (CJ, Printify, Lulu): tracking email to the buyer when a leg
+# Supplier legs (CJ, Printify, Lulu, Prodigi): tracking email to the buyer when a leg
 # ships, one inbox alert when a leg is stuck (server/scripts/sync_order_tracking.py).
 rm -f /etc/cron.d/tbw-lulu-tracking
 touch /var/log/tbw-tracking.log
 chown www-data:www-data /var/log/tbw-tracking.log
 cat > /etc/cron.d/tbw-order-tracking <<CRON
-17 */2 * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/sync_order_tracking.py >> /var/log/tbw-tracking.log 2>&1
+17 */2 * * * root /bin/systemctl start tbw-order-tracking.service >> /var/log/tbw-tracking.log 2>&1
 CRON
 chmod 644 /etc/cron.d/tbw-order-tracking
 

@@ -1,0 +1,17 @@
+[Unit]
+Description=The Books Wanderer supplier tracking and payment recovery
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/thebookswanderer.com/server
+EnvironmentFile=/var/www/thebookswanderer.com/server/.env
+LoadCredential=prodigi_api_key:/etc/tbw-prodigi/api_key
+Environment=PRODIGI_API_KEY_FILE=%d/prodigi_api_key
+Environment=PRODIGI_ORDERS_ENABLED=1
+ExecStart=/var/www/thebookswanderer.com/server/.venv/bin/python scripts/sync_order_tracking.py
+StandardOutput=append:/var/log/tbw-tracking.log
+StandardError=append:/var/log/tbw-tracking.log
+TimeoutStartSec=30min

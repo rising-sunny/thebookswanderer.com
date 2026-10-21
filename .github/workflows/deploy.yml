@@ -104,7 +104,7 @@ jobs:
 
       - name: Setup on VPS
         run: |
-          scp -o BatchMode=yes deploy/thebookswanderer.service "$VPS_HOST:/etc/systemd/system/thebookswanderer.service"
+          scp -o BatchMode=yes deploy/thebookswanderer.service deploy/tbw-order-tracking.service "$VPS_HOST:/etc/systemd/system/"
           scp -o BatchMode=yes deploy/remote-setup.sh "$VPS_HOST:$REMOTE/deploy/remote-setup.sh"
           ssh -o BatchMode=yes "$VPS_HOST" "sed -i 's/\r\$//' $REMOTE/deploy/remote-setup.sh; bash $REMOTE/deploy/remote-setup.sh"
 

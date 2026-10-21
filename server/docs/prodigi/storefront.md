@@ -47,7 +47,8 @@ python scripts/reconcile_prodigi_submission.py --order-id LOCAL_ID --supplier-or
 ```
 
 Run with the protected runtime credential available. Do not create another
-supplier order to recover a timeout. The existing tracking worker polls accepted
+supplier order to recover a timeout. The existing two-hour tracking cron starts a www-data oneshot systemd unit
+with the same private credential mechanism. The tracking worker polls accepted
 Prodigi orders, requires every shipment to be shipped before marking the leg
 complete, and alerts the shop about unsubmitted or problematic legs.
 
