@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "environment": "sandbox",
+  "requested_countries": [],
+  "variants": [
+    {
+      "key": "tbw-logo-dtg-sandbox",
+      "title": "The Books Wanderer — logo DTG (Sandbox)",
+      "store_product_id": null,
+      "store_variant_id": null,
+      "sku": "MVnHs-Wh-S",
+      "design": {
+        "design_code": "tbw_print001_d",
+        "width_inches": 2,
+        "height_inches": 2,
+        "placement_sku": "fr",
+        "design_link": "https://thebookswanderer.com/assets/logo.png",
+        "mockup_link": "https://thebookswanderer.com/assets/logo.png"
+      },
+      "mockup_is_placeholder": true,
+      "sandbox_order_id": "24620736",
+      "sandbox_reference": "tbw_print001",
+      "cost_quotes": []
+    }
+  ],
+  "fx": null
+}

@@ -23,3 +23,6 @@ server/scripts/_tmp_*.py
 # Research notes and reports (not part of the site)
 research_notes/
 reports/
+
+# Private operator-supplied Qikink catalog quotes (not the committed template)
+server/data/qikink_catalog.local.json
