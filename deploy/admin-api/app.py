@@ -349,7 +349,8 @@ class SupplierCall(BaseModel):
 
 @app.post("/suppliers/{supplier}/api")
 async def supplier_call(call: SupplierCall,
-                        supplier: str = PathParam(pattern=r"^(cj|printify|lulu|prodigi)$"),
+                        supplier: str = PathParam(
+                            pattern=r"^(cj|printify|lulu|prodigi|etsy|meta|pinterest)$"),
                         preview: bool = Query(default=False)):
     """Any supplier API call, made by the storefront with its own key."""
     return await store_call(

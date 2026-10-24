@@ -63,7 +63,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             ("POST", "/products/7/delete"), ("POST", "/products/0/unpublish"),
             ("GET", "/suppliers/printify/products/a..b"), ("POST", "/products/7/shipping"),
             ("GET", "/suppliers/lulu/products"), ("GET", "/products/0/shipping"),
-            ("GET", "/suppliers/cj/api"), ("POST", "/suppliers/etsy/api"),
+            ("GET", "/suppliers/cj/api"), ("POST", "/suppliers/amazon/api"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -213,7 +213,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 })
                 with self.assertRaises(Exception):
                     await client.call_tool(
-                        "tbw_supplier_get", {"supplier": "etsy", "path": "/x"}
+                        "tbw_supplier_get", {"supplier": "amazon", "path": "/x"}
                     )
                 with self.assertRaises(Exception):
                     await client.call_tool(
