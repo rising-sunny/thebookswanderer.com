@@ -1,5 +1,12 @@
 # Deploy — thebookswanderer.com
 
+Read [the current continuity guide](../docs/CONTINUITY.md) first. Provider
+credentials stay exclusively on the VPS. The commands in this document that
+need credentials are VPS operations, not instructions to populate Codex secrets.
+The current GitHub Actions deployment uses a separate SSH secret and runs
+catalog publication steps; pushing to `main` triggers deployment. Migrating that
+deployment to a VPS-initiated model is pending, not accomplished by these docs.
+
 Same VPS pattern as **mathrelaxing.store** (Hetzner + nginx + Certbot + systemd).
 
 | | |
@@ -86,4 +93,7 @@ Client + offline cheatsheet ship with the repo (no network required to read):
 
 Official online docs: https://developers.cjdropshipping.com/
 
-On a new PC: clone → `pip install -r server/requirements.txt` → copy `server/.env.example` to `server/.env` → set `CJ_API_KEY`.
+On a new development machine: clone, create a virtualenv, install
+`server/requirements.txt`, and run isolated tests with fake data. Leave provider
+credentials empty. Authenticated supplier checks run on the VPS through an
+authorized connection; never copy production credentials to Codex.
