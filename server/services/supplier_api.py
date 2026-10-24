@@ -14,19 +14,28 @@ from typing import Any
 
 import httpx
 
-from services import cj, lulu, printify, prodigi_store
+from fastapi import HTTPException
 
-SUPPLIERS = ("cj", "printify", "lulu", "prodigi")
+from services import cj, etsy, lulu, pinterest, printify, prodigi_store
+
+SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "etsy", "meta", "pinterest")
+META_GRAPH = "https://graph.facebook.com/v21.0"
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 LIMIT = 60_000
 
 _PATH = re.compile(r"/[A-Za-z0-9._~/-]{0,300}(\?[A-Za-z0-9._~=&%,+:-]{0,500})?")
-# Paths that create orders or move money (CJ shopping/pay, Printify orders,
-# Lulu print jobs, Prodigi orders).
-_MONEY = re.compile(r"order|pay|wallet|balance|checkout|print-jobs|send_to_production", re.I)
+# Paths that create orders, touch sales or spend money: CJ shopping/pay,
+# Printify orders, Lulu print jobs, Prodigi orders, Etsy receipts, and Meta
+# or Pinterest ads.
+_MONEY = re.compile(
+    r"order|pay|wallet|balance|checkout|print-jobs|send_to_production|receipts|transactions"
+    r"|/act_|ad_?accounts|adsets|adcreatives|campaigns|/ads(/|$|\?)",
+    re.I,
+)
 _PRIVATE = re.compile(
     r"(e_?mail\w*|phone\w*|tel|mobile|address\w*|street\w*|zip\w*|post_?code|postal_?code"
-    r"|(first|last|full|given|family)_?name|recipient\w*|customer\w*|consignee\w*|buyer\w*)",
+    r"|(first|last|full|given|family)_?name|recipient\w*|customer\w*|consignee\w*|buyer\w*"
+    r"|\w*token|\w*secret|password|api_?key)",
     re.I,
 )
 
@@ -76,6 +85,18 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
     elif supplier == "prodigi":
         url = prodigi_store.BASE + path
         headers = {"X-API-Key": prodigi_store.key()}
+    elif supplier == "etsy":
+        url = etsy.BASE + path
+        headers = {"x-api-key": etsy.api_key(), "Authorization": "Bearer " + await etsy.access_token(client)}
+    elif supplier == "meta":
+        token = (os.getenv("FB_PAGE_TOKEN") or "").strip()
+        if not token:
+            raise SupplierAPIError("Meta is not configured")
+        url = META_GRAPH + path
+        headers = {"Authorization": "Bearer " + token}
+    elif supplier == "pinterest":
+        url = pinterest.api_base() + path
+        headers = {"Authorization": "Bearer " + await pinterest.access_token()}
     else:
         url = cj.BASE + path
         headers = {"CJ-Access-Token": await cj.get_access_token()}
@@ -89,8 +110,8 @@ async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[
             response = await _send(client, supplier, method, path, body)
     except httpx.HTTPError:
         raise SupplierAPIError(f"{supplier} unavailable") from None
-    except (cj.CJError, lulu.LuluError, prodigi_store.ProdigiError):
-        raise SupplierAPIError(f"{supplier} authentication failed") from None
+    except (cj.CJError, lulu.LuluError, prodigi_store.ProdigiError, etsy.EtsyError, HTTPException):
+        raise SupplierAPIError(f"{supplier} authentication failed or not connected") from None
     try:
         data = redact(response.json())
     except ValueError:

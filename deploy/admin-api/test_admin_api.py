@@ -280,7 +280,7 @@ class AdminApiTests(unittest.TestCase):
         with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
                 patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
             self.assertEqual(self.client.post("/suppliers/prodigi/api", json=body).status_code, 401)
-            self.assertEqual(self.client.post("/suppliers/etsy/api", headers=self.headers,
+            self.assertEqual(self.client.post("/suppliers/amazon/api", headers=self.headers,
                                               json=body).status_code, 422)
             preview = self.client.post("/suppliers/prodigi/api?preview=true",
                                        headers=self.headers, json=body)
