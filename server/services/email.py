@@ -823,8 +823,8 @@ _WELCOME = {
                 "and a visa gets stamped when a book really earns it. There's an atlas, too, to mark every "
                 "country your books took you to.",
                 "It comes three ways: a printable PDF with 24 visa stamps ($8.99), an A5 paperback ($19.99) "
-                "and a hardcover deluxe edition ($34.99). The printed ones ship free to the US, UK, Canada, "
-                "Australia and much of Europe.",
+                "and a hardcover deluxe edition ($34.99). The printed ones include standard US shipping; "
+                "other destinations are quoted before payment.",
             ],
             "cta": ("See the Reading Passport", "/products/reading-passport-printed"),
             "after": "No pressure: the challenge works on any scrap of paper. We just think it looks better stamped.",
@@ -872,8 +872,8 @@ _WELCOME = {
                 "la aduana y se sella un visado cuando un libro se lo gana. Trae también un atlas para marcar "
                 "los países a los que te llevaron tus libros.",
                 "Hay tres ediciones: PDF imprimible con 24 sellos de visado (8,99 USD), tapa blanda A5 "
-                "(19,99 USD) y edición de lujo en tapa dura (34,99 USD). Las impresas tienen envío gratis a "
-                "EE. UU., Reino Unido, Canadá, Australia y buena parte de Europa.",
+                "(19,99 USD) y edición de lujo en tapa dura (34,99 USD). Las impresas incluyen el envío estándar a "
+                "EE. UU.; otros destinos se cotizan antes del pago.",
             ],
             "cta": ("Ver el Pasaporte del lector", "/es/products/reading-passport-printed"),
             "after": "Sin presión: el reto funciona en cualquier papel. Solo creemos que se ve mejor sellado.",
@@ -925,7 +925,7 @@ _WELCOME_COLORING = {
                 "paired with the words it illustrates.",
                 "The Tin Woodman, the Jabberwock, Humpty Dumpty, Elizabeth and Darcy, Cinderella fleeing the "
                 "ball and more. It comes as a printable PDF ($6.99) or as a printed paperback ($19.99) with "
-                "every picture on its own page, shipped free to the US, UK, Canada, Australia and much of Europe.",
+                "every picture on its own page. Standard US shipping is included; other destinations are quoted before payment.",
             ],
             "cta": ("See Color the Classics", "/products/color-the-classics-printed"),
             "after": "No pressure: the three free pages are yours to keep either way.",
@@ -957,8 +957,8 @@ _WELCOME_COLORING = {
                 "de las palabras que ilustran.",
                 "El Leñador de Hojalata, el Jabberwock, Humpty Dumpty, Elizabeth y Darcy, Cenicienta huyendo "
                 "del baile y más. Viene en PDF imprimible (6,99 USD) o en tapa blanda impresa (19,99 USD), cada "
-                "ilustración en su propia página, con envío gratis a EE. UU., Reino Unido, Canadá, Australia y "
-                "buena parte de Europa.",
+                "ilustración en su propia página, con envío estándar a EE. UU. incluido; otros destinos se "
+                "cotizan antes del pago.",
             ],
             "cta": ("Ver Colorea los clásicos", "/es/products/color-the-classics-printed"),
             "after": "Sin presión: las tres láminas son tuyas de todos modos.",
