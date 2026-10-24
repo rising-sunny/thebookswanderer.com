@@ -239,5 +239,33 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[2].content), {"code": "ABC123", "pin": False})
         self.assertEqual(calls[0].content, b'{"description":"Hand-written copy."}')
 
+    def test_supplier_reads_go_through_the_store(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={"ok": True})
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            for route in ("/suppliers/printify/products?page=2&limit=5",
+                          "/suppliers/printify/products/abc123",
+                          "/suppliers/prodigi/products/GLOBAL-FAP-12X16",
+                          "/products/7/shipping?country_code=MX"):
+                self.assertEqual(self.client.get(route).status_code, 401)
+                self.assertEqual(self.client.get(route, headers=self.headers).status_code, 200)
+            for route in ("/suppliers/printify/products/a..b",
+                          "/products/7/shipping?country_code=MEX"):
+                self.assertEqual(self.client.get(route, headers=self.headers).status_code, 422)
+        self.assertEqual([r.url.path for r in calls], [
+            "/api/internal/suppliers/printify/products",
+            "/api/internal/suppliers/printify/products/abc123",
+            "/api/internal/suppliers/prodigi/products/GLOBAL-FAP-12X16",
+            "/api/internal/shipping/7",
+        ])
+        self.assertEqual(json.loads(calls[0].content), {"page": 2, "limit": 5})
+        self.assertEqual(json.loads(calls[3].content),
+                         {"country_code": "MX", "variant_id": None, "quantity": 1})
+
 if __name__ == "__main__":
     unittest.main()

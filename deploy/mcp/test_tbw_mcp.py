@@ -61,6 +61,8 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             ("PUT", "/drafts"), ("POST", "/drafts/0/publish"), ("GET", "/drafts/7/update"),
             ("POST", "/drafts/7/remove"), ("POST", "/drafts/7/publish/x"),
             ("POST", "/products/7/delete"), ("POST", "/products/0/unpublish"),
+            ("GET", "/suppliers/printify/products/a..b"), ("POST", "/products/7/shipping"),
+            ("GET", "/suppliers/lulu/products"), ("GET", "/products/0/shipping"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -138,6 +140,8 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 "tbw_preview_draft", "tbw_create_draft", "tbw_update_draft",
                 "tbw_preview_publish", "tbw_publish_draft", "tbw_delete_draft",
                 "tbw_preview_unpublish", "tbw_unpublish_product",
+                "tbw_list_printify_products", "tbw_get_printify_product",
+                "tbw_get_prodigi_product", "tbw_quote_shipping",
             })
             writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft",
                        "tbw_delete_draft", "tbw_unpublish_product"}
@@ -182,6 +186,16 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 await client.call_tool(
                     "tbw_unpublish_product", {"product_id": 7, "code": "A1B2C3"}
                 )
+                await client.call_tool("tbw_list_printify_products", {})
+                await client.call_tool(
+                    "tbw_get_printify_product", {"printify_id": "abc123"}
+                )
+                await client.call_tool(
+                    "tbw_get_prodigi_product", {"sku": "GLOBAL-FAP-12X16"}
+                )
+                await client.call_tool(
+                    "tbw_quote_shipping", {"product_id": 7, "country_code": "MX"}
+                )
                 with self.assertRaises(Exception):
                     await client.call_tool(
                         "tbw_publish_draft", {"product_id": 7, "code": "nope"}
@@ -192,8 +206,14 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
              ("POST", "/drafts/7/update"), ("POST", "/drafts/7/publish/preview"),
              ("POST", "/drafts/7/publish"), ("POST", "/drafts/7/delete"),
              ("POST", "/products/7/unpublish/preview"),
-             ("POST", "/products/7/unpublish")],
+             ("POST", "/products/7/unpublish"),
+             ("GET", "/suppliers/printify/products"),
+             ("GET", "/suppliers/printify/products/abc123"),
+             ("GET", "/suppliers/prodigi/products/GLOBAL-FAP-12X16"),
+             ("GET", "/products/7/shipping")],
         )
+        self.assertEqual(dict(requests[-1].url.params),
+                         {"country_code": "MX", "quantity": "1"})
         self.assertEqual(json.loads(requests[2].content), {"description": "Copy."})
         self.assertEqual(
             json.loads(requests[4].content), {"code": "A1B2C3", "pin": False}

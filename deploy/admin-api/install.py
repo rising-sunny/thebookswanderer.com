@@ -84,7 +84,8 @@ def store_has_drafts():
             httpx.post("http://127.0.0.1:8010/api/internal" + path,
                        json=[], timeout=10).status_code == 422
             for path in ("/drafts", "/drafts/1/update", "/drafts/1/publish",
-                         "/products/1/unpublish")
+                         "/products/1/unpublish", "/shipping/1",
+                         "/suppliers/printify/products")
         )
     except httpx.HTTPError:
         return False

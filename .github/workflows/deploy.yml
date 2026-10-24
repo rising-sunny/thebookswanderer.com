@@ -38,7 +38,7 @@ jobs:
           import sys, unittest
           sys.path.insert(0, 'server/tests')
           suite = unittest.TestSuite()
-          for name in ['test_prodigi_store', 'test_worldwide_shipping', 'test_paypal_recovery', 'test_lulu_submission', 'test_product_schema', 'test_internal_drafts']:
+          for name in ['test_prodigi_store', 'test_worldwide_shipping', 'test_paypal_recovery', 'test_lulu_submission', 'test_product_schema', 'test_internal_drafts', 'test_internal_suppliers']:
               suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
           result = unittest.TextTestRunner(verbosity=1).run(suite)
           raise SystemExit(not result.wasSuccessful())

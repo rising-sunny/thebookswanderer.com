@@ -8,6 +8,9 @@ GET /suppliers/cj/products/{pid}, POST /drafts/preview, POST /drafts,
 POST /drafts/{id}/update, POST /drafts/{id}/publish/preview,
 POST /drafts/{id}/publish, POST /drafts/{id}/delete,
 POST /products/{id}/unpublish/preview, POST /products/{id}/unpublish.
+GET /suppliers/printify/products, GET /suppliers/printify/products/{id},
+GET /suppliers/prodigi/products/{sku}, GET /products/{id}/shipping
+(read through the storefront, which keeps the Printify/Prodigi/Lulu keys).
 All implemented routes require Authorization: Bearer with a dedicated key.
 OpenAPI and interactive documentation are disabled.
 

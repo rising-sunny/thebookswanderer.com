@@ -15,6 +15,7 @@ import sqlite3
 from pathlib import Path
 from urllib.parse import quote as url_quote
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -223,6 +224,19 @@ class ConfirmIn(BaseModel):
     """Internal: the code shown by an unpublish preview."""
 
     code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+
+
+class InternalQuoteIn(BaseModel):
+    """Internal: shipping quote for a live product or a draft."""
+
+    country_code: str = Field(pattern=r"^[A-Za-z]{2}$")
+    variant_id: int | None = Field(default=None, ge=1)
+    quantity: int = Field(default=1, ge=1, le=20)
+
+
+class PageIn(BaseModel):
+    page: int = Field(default=1, ge=1, le=100)
+    limit: int = Field(default=20, ge=1, le=50)
 
 
 class ShipOrderIn(BaseModel):
@@ -2107,6 +2121,136 @@ async def internal_unpublish_product(
     db.commit()
     log.info("product unpublished: %s", product.slug)
     return {"ok": True, "unpublished": True, "product": {"id": product.id, "slug": product.slug}}
+
+
+# ── Internal: supplier reads for the restricted admin API ─────────────
+
+
+def _cents(value) -> float | None:
+    try:
+        return round(float(value) / 100, 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _printify_summary(row: dict, owned: set[str]) -> dict:
+    variants = [v for v in row.get("variants") or [] if isinstance(v, dict) and v.get("is_enabled")]
+    costs = [c for c in (_cents(v.get("cost")) for v in variants) if c is not None]
+    prices = [c for c in (_cents(v.get("price")) for v in variants) if c is not None]
+    return {
+        "id": str(row.get("id") or ""),
+        "title": str(row.get("title") or ""),
+        "visible": bool(row.get("visible")),
+        "enabled_variants": len(variants),
+        "cost_usd_min": min(costs) if costs else None,
+        "price_usd_min": min(prices) if prices else None,
+        "in_store": str(row.get("id") or "") in owned,
+    }
+
+
+async def _printify_get(path: str):
+    try:
+        return await printify_service._request("GET", f"/shops/{printify_service.shop_id()}{path}")
+    except printify_service.PrintifyError as exc:
+        log.warning("internal Printify read failed: %s", exc)
+        raise HTTPException(502, "Printify request failed") from None
+    except httpx.HTTPError:
+        raise HTTPException(502, "Printify unavailable") from None
+
+
+def _printify_owned(db: Session) -> set[str]:
+    rows = db.query(Product.printify_product_id).filter(Product.printify_product_id != "").all()
+    return {r[0] for r in rows}
+
+
+@app.post("/api/internal/suppliers/printify/products")
+async def internal_printify_products(
+    request: Request, body: PageIn | None = None, db: Session = Depends(get_db)
+):
+    """Products in the store's Printify shop (read-only)."""
+    _internal_ok(request)
+    body = body or PageIn()
+    data = await _printify_get(f"/products.json?page={body.page}&limit={body.limit}")
+    owned = _printify_owned(db)
+    rows = data.get("data") if isinstance(data, dict) else None
+    return {
+        "page": body.page,
+        "last_page": data.get("last_page") if isinstance(data, dict) else None,
+        "products": [_printify_summary(r, owned) for r in rows or [] if isinstance(r, dict)],
+    }
+
+
+@app.post("/api/internal/suppliers/printify/products/{printify_id}")
+async def internal_printify_product(
+    printify_id: str, request: Request, db: Session = Depends(get_db)
+):
+    """One Printify shop product with its enabled variants (read-only)."""
+    _internal_ok(request)
+    if not re.fullmatch(r"[A-Za-z0-9]{1,64}", printify_id):
+        raise HTTPException(422, "Invalid Printify product id")
+    row = await _printify_get(f"/products/{printify_id}.json")
+    if not isinstance(row, dict) or not row.get("id"):
+        raise HTTPException(404, "Printify product not found")
+    return {
+        **_printify_summary(row, _printify_owned(db)),
+        "variants": [
+            {"id": v.get("id"), "title": str(v.get("title") or ""),
+             "cost_usd": _cents(v.get("cost")), "price_usd": _cents(v.get("price"))}
+            for v in row.get("variants") or [] if isinstance(v, dict) and v.get("is_enabled")
+        ][:100],
+        "images": len(row.get("images") or []),
+    }
+
+
+@app.post("/api/internal/suppliers/prodigi/products/{sku}")
+async def internal_prodigi_product(sku: str, request: Request):
+    """Prodigi catalogue entry for a SKU (read-only)."""
+    _internal_ok(request)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", sku):
+        raise HTTPException(422, "Invalid Prodigi SKU")
+    try:
+        data = await prodigi_store.request("GET", "/products/" + sku)
+    except prodigi_store.ProdigiError:
+        raise HTTPException(502, "Prodigi request failed") from None
+    product = data.get("product") if isinstance(data.get("product"), dict) else {}
+    if not product:
+        raise HTTPException(404, "Prodigi product not found")
+    variants = [v for v in product.get("variants") or [] if isinstance(v, dict)]
+    ships_to = sorted({c for v in variants for c in v.get("shipsTo") or [] if isinstance(c, str)})
+    return {
+        "sku": str(product.get("sku") or sku),
+        "description": str(product.get("description") or ""),
+        "dimensions": product.get("productDimensions") or {},
+        "attributes": product.get("attributes") or {},
+        "print_areas": sorted((product.get("printAreas") or {}).keys()),
+        "variants": [
+            {"attributes": v.get("attributes") or {}, "ships_to_count": len(v.get("shipsTo") or [])}
+            for v in variants
+        ][:50],
+        "ships_to": ships_to,
+    }
+
+
+@app.post("/api/internal/shipping/{product_id}")
+async def internal_shipping_quote(
+    product_id: int, body: InternalQuoteIn, request: Request, db: Session = Depends(get_db)
+):
+    """Customer shipping for a live product or a draft, any supplier (CJ, Printify, Lulu, Prodigi)."""
+    _internal_ok(request)
+    product = db.get(Product, product_id)
+    if not product or not (product.active or product.draft):
+        raise HTTPException(404, "Product not found")
+    variant = _resolve_variant(db, product, body.variant_id)
+    try:
+        result = await shipping_service.quote(
+            [(product, variant, body.quantity)], body.country_code, free_us=FREE_SHIPPING
+        )
+    except shipping_service.QuoteError as exc:
+        return {"available": False, "reason": exc.reason, "message": str(exc),
+                "country_code": body.country_code.upper(), "product_id": product_id}
+    return {**result, "available": True, "product_id": product_id,
+            "supplier": product.supplier or "cj",
+            "variant_id": variant.id if variant else None, "quantity": body.quantity}
 
 
 @app.post("/api/admin/orders/ship")

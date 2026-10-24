@@ -137,7 +137,10 @@ def health():
     return {
         "service": "tbw-admin-api",
         "ready": True,
-        "capabilities": ["products:read", "cj:read", "products:draft", "products:publish"],
+        "capabilities": [
+            "products:read", "cj:read", "products:draft", "products:publish",
+            "printify:read", "prodigi:read", "shipping:quote",
+        ],
         "order_submission_enabled": False,
         # Drafts only, each with the code from its publication preview.
         "product_publication_enabled": True,
@@ -311,3 +314,29 @@ async def unpublish(confirmation: Confirmation, product_id: int = PathParam(ge=1
     return await store_call(
         f"/products/{product_id}/unpublish", {"code": confirmation.code}
     )
+
+# Other suppliers: the storefront reads them with its own keys.
+
+@app.get("/suppliers/printify/products")
+async def printify_products(page: int = Query(default=1, ge=1, le=100),
+                            limit: int = Query(default=20, ge=1, le=50)):
+    return await store_call(
+        "/suppliers/printify/products", {"page": page, "limit": limit}
+    )
+
+@app.get("/suppliers/printify/products/{printify_id}")
+async def printify_product(printify_id: str = PathParam(pattern=r"^[A-Za-z0-9]{1,64}$")):
+    return await store_call(f"/suppliers/printify/products/{printify_id}", None)
+
+@app.get("/suppliers/prodigi/products/{sku}")
+async def prodigi_product(sku: str = PathParam(pattern=r"^[A-Za-z0-9_-]{1,100}$")):
+    return await store_call(f"/suppliers/prodigi/products/{sku}", None)
+
+@app.get("/products/{product_id}/shipping")
+async def shipping_quote(product_id: int = PathParam(ge=1),
+                         country_code: str = Query(pattern=r"^[A-Za-z]{2}$"),
+                         variant_id: int | None = Query(default=None, ge=1),
+                         quantity: int = Query(default=1, ge=1, le=20)):
+    return await store_call(f"/shipping/{product_id}", {
+        "country_code": country_code, "variant_id": variant_id, "quantity": quantity,
+    })
