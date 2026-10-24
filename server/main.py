@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 from pathlib import Path
 from urllib.parse import quote as url_quote
 
@@ -41,6 +42,7 @@ from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
 from services import prodigi_store, prodigi_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
+from services import supplier_api  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
 from services.countries import DESTINATIONS  # noqa: E402
 from ssr import (  # noqa: E402
@@ -232,6 +234,15 @@ class InternalQuoteIn(BaseModel):
     country_code: str = Field(pattern=r"^[A-Za-z]{2}$")
     variant_id: int | None = Field(default=None, ge=1)
     quantity: int = Field(default=1, ge=1, le=20)
+
+
+class SupplierCallIn(BaseModel):
+    """Internal: one supplier API call; writes need the preview's code."""
+
+    method: str = Field(pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
+    path: str = Field(min_length=1, max_length=800)
+    body: dict | list | None = None
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
 
 
 class PageIn(BaseModel):
@@ -2252,6 +2263,46 @@ async def internal_shipping_quote(
     return {**result, "available": True, "product_id": product_id,
             "supplier": product.supplier or "cj",
             "variant_id": variant.id if variant else None, "quantity": body.quantity}
+
+
+_USED_SUPPLIER_CODES: set[str] = set()
+
+
+def _supplier_code(supplier: str, body: SupplierCallIn, window: int) -> str:
+    """Bound to the exact request and a 10-minute window."""
+    state = json.dumps(["supplier-api", supplier, body.method, body.path, body.body, window], sort_keys=True)
+    return hmac.new(_draft_key().encode(), state.encode(), hashlib.sha256).hexdigest()[:6].upper()
+
+
+@app.post("/api/internal/suppliers/{supplier}/api")
+async def internal_supplier_api(
+    supplier: str, body: SupplierCallIn, request: Request, preview: bool = Query(False)
+):
+    """Any supplier API call with the store's key. Writes run once, with the preview's code."""
+    _internal_ok(request)
+    try:
+        supplier_api.check(supplier, body.method, body.path)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from None
+    request_info = {"supplier": supplier, "method": body.method, "path": body.path}
+    if body.method != "GET":
+        window = int(time.time() // 600)
+        if preview:
+            return {"ok": True, "executed": False, **request_info, "body": body.body,
+                    "code": _supplier_code(supplier, body, window)}
+        valid = {_supplier_code(supplier, body, w) for w in (window, window - 1)}
+        supplied = (body.code or "").upper()
+        if not supplied or supplied not in valid or supplied in _USED_SUPPLIER_CODES:
+            raise HTTPException(409, "Confirmation code does not match this exact request, has expired or was used")
+        _USED_SUPPLIER_CODES.add(supplied)
+    try:
+        result = await supplier_api.call(supplier, body.method, body.path, body.body)
+    except supplier_api.SupplierAPIError as exc:
+        raise HTTPException(502, str(exc)) from None
+    log.info("supplier api: %s %s %s -> %s", supplier, body.method, body.path.split("?")[0], result["status"])
+    return {"ok": True, "executed": True, **request_info, **result}
 
 
 @app.post("/api/admin/orders/ship")

@@ -139,7 +139,7 @@ def health():
         "ready": True,
         "capabilities": [
             "products:read", "cj:read", "products:draft", "products:publish",
-            "printify:read", "prodigi:read", "shipping:quote",
+            "printify:read", "prodigi:read", "shipping:quote", "suppliers:api",
         ],
         "order_submission_enabled": False,
         # Drafts only, each with the code from its publication preview.
@@ -255,7 +255,7 @@ async def store_call(path, payload, preview=False):
             )
     except httpx.HTTPError:
         raise HTTPException(503, "Store unavailable") from None
-    if response.status_code in {400, 404, 409, 422}:
+    if response.status_code in {400, 403, 404, 409, 422}:
         # The store's own messages (unknown draft, what blocks publication).
         try:
             detail = str(response.json().get("detail"))[:500]
@@ -340,3 +340,18 @@ async def shipping_quote(product_id: int = PathParam(ge=1),
     return await store_call(f"/shipping/{product_id}", {
         "country_code": country_code, "variant_id": variant_id, "quantity": quantity,
     })
+
+class SupplierCall(BaseModel):
+    method: str = Field(pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
+    path: str = Field(min_length=1, max_length=800)
+    body: dict | list | None = None
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+
+@app.post("/suppliers/{supplier}/api")
+async def supplier_call(call: SupplierCall,
+                        supplier: str = PathParam(pattern=r"^(cj|printify|lulu|prodigi)$"),
+                        preview: bool = Query(default=False)):
+    """Any supplier API call, made by the storefront with its own key."""
+    return await store_call(
+        f"/suppliers/{supplier}/api", call.model_dump(), preview=preview
+    )

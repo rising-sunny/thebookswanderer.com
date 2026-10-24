@@ -63,6 +63,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             ("POST", "/products/7/delete"), ("POST", "/products/0/unpublish"),
             ("GET", "/suppliers/printify/products/a..b"), ("POST", "/products/7/shipping"),
             ("GET", "/suppliers/lulu/products"), ("GET", "/products/0/shipping"),
+            ("GET", "/suppliers/cj/api"), ("POST", "/suppliers/etsy/api"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -142,15 +143,17 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 "tbw_preview_unpublish", "tbw_unpublish_product",
                 "tbw_list_printify_products", "tbw_get_printify_product",
                 "tbw_get_prodigi_product", "tbw_quote_shipping",
+                "tbw_supplier_get", "tbw_supplier_write",
             })
             writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft",
-                       "tbw_delete_draft", "tbw_unpublish_product"}
+                       "tbw_delete_draft", "tbw_unpublish_product", "tbw_supplier_write"}
             for tool in tools:
                 self.assertEqual(
                     tool.annotations.read_only_hint, tool.name not in writers
                 )
                 self.assertEqual(
-                    tool.annotations.destructive_hint, tool.name == "tbw_delete_draft"
+                    tool.annotations.destructive_hint,
+                    tool.name in {"tbw_delete_draft", "tbw_supplier_write"},
                 )
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]
@@ -196,6 +199,22 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 await client.call_tool(
                     "tbw_quote_shipping", {"product_id": 7, "country_code": "MX"}
                 )
+                await client.call_tool(
+                    "tbw_supplier_get", {"supplier": "lulu", "path": "/print-jobs/"}
+                )
+                await client.call_tool("tbw_supplier_write", {
+                    "supplier": "printify", "method": "PUT",
+                    "path": "/shops/1/products/a.json", "body": {"title": "T"},
+                })
+                await client.call_tool("tbw_supplier_write", {
+                    "supplier": "printify", "method": "PUT",
+                    "path": "/shops/1/products/a.json", "body": {"title": "T"},
+                    "code": "A1B2C3",
+                })
+                with self.assertRaises(Exception):
+                    await client.call_tool(
+                        "tbw_supplier_get", {"supplier": "etsy", "path": "/x"}
+                    )
                 with self.assertRaises(Exception):
                     await client.call_tool(
                         "tbw_publish_draft", {"product_id": 7, "code": "nope"}
@@ -210,10 +229,17 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
              ("GET", "/suppliers/printify/products"),
              ("GET", "/suppliers/printify/products/abc123"),
              ("GET", "/suppliers/prodigi/products/GLOBAL-FAP-12X16"),
-             ("GET", "/products/7/shipping")],
+             ("GET", "/products/7/shipping"),
+             ("POST", "/suppliers/lulu/api"), ("POST", "/suppliers/printify/api"),
+             ("POST", "/suppliers/printify/api")],
         )
-        self.assertEqual(dict(requests[-1].url.params),
+        self.assertEqual(dict(requests[11].url.params),
                          {"country_code": "MX", "quantity": "1"})
+        self.assertEqual(json.loads(requests[12].content),
+                         {"method": "GET", "path": "/print-jobs/"})
+        self.assertEqual(dict(requests[13].url.params), {"preview": "true"})
+        self.assertEqual(dict(requests[14].url.params), {})
+        self.assertEqual(json.loads(requests[14].content)["code"], "A1B2C3")
         self.assertEqual(json.loads(requests[2].content), {"description": "Copy."})
         self.assertEqual(
             json.loads(requests[4].content), {"code": "A1B2C3", "pin": False}
