@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import math
+import hashlib
 import hmac
 import json
 import os
@@ -198,6 +199,21 @@ class DraftIn(BaseModel):
     title: str | None = Field(default=None, min_length=3, max_length=300)
     category: str = Field(default="", max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)
+
+
+class DraftUpdateIn(BaseModel):
+    """Internal: edit a hidden draft before publication."""
+
+    title: str | None = Field(default=None, min_length=3, max_length=300)
+    description: str | None = Field(default=None, min_length=1, max_length=5000)
+    category: str | None = Field(default=None, max_length=120)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)  # all variants
+
+
+class DraftPublishIn(BaseModel):
+    """Internal: the code shown by the publication preview."""
+
+    code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
 
 
 class ShipOrderIn(BaseModel):
@@ -1673,6 +1689,19 @@ async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed
 # ── Admin: add product when you pick one from CJ ──────────────────────
 
 
+def _unique_slug(db: Session, base: str, exclude_id: int | None = None) -> str:
+    slug = base
+    n = 2
+    while (
+        db.query(Product)
+        .filter(Product.slug == slug, Product.id != (exclude_id or 0))
+        .first()
+    ):
+        slug = f"{base}-{n}"
+        n += 1
+    return slug
+
+
 def _cj_import_plan(
     db: Session,
     details: dict,
@@ -1693,12 +1722,7 @@ def _cj_import_plan(
     default = _pick_variant(details, cj_vid)
     title = title or details.get("productNameEn") or "Untitled"
     # Prefer short clean title without a specific option name
-    slug = slug or _slugify(title)
-    base = slug
-    n = 2
-    while db.query(Product).filter(Product.slug == slug).first():
-        slug = f"{base}-{n}"
-        n += 1
+    slug = _unique_slug(db, slug or _slugify(title))
 
     from_country = "CN"
     inv = (default.get("inventories") or [{}])[0]
@@ -1786,17 +1810,22 @@ def _save_import_plan(db: Session, plan: dict, *, active: bool, draft: bool = Fa
     return product
 
 
+def _draft_key() -> str:
+    path = Path(os.getenv("TBW_DRAFT_KEY_FILE", "/etc/thebookswanderer/draft_key"))
+    try:
+        key = path.read_text().strip()
+    except OSError:
+        key = ""
+    if len(key) < 32:
+        raise HTTPException(503, "Draft credential unavailable")
+    return key
+
+
 def _internal_ok(request: Request) -> None:
     """Loopback callers with the draft key only (nginx always adds X-Real-IP)."""
     if request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for"):
         raise HTTPException(404, "Not Found")
-    path = Path(os.getenv("TBW_DRAFT_KEY_FILE", "/etc/thebookswanderer/draft_key"))
-    try:
-        expected = path.read_text().strip()
-    except OSError:
-        expected = ""
-    if len(expected) < 32:
-        raise HTTPException(503, "Draft credential unavailable")
+    expected = _draft_key()
     supplied = request.headers.get("authorization", "")
     if not hmac.compare_digest(supplied.encode(), ("Bearer " + expected).encode()):
         raise HTTPException(401, "Unauthorized")
@@ -1881,6 +1910,118 @@ async def internal_create_draft(
             "draft": True,
         },
         "variants": len(plan["variants"]),
+    }
+
+
+def _draft_or_404(db: Session, product_id: int) -> Product:
+    """Only hidden drafts: archived or live products are never edited here."""
+    product = db.get(Product, product_id)
+    if not product or not product.draft or product.active:
+        raise HTTPException(404, "Draft not found")
+    return product
+
+
+def _draft_summary(product: Product) -> dict:
+    return {
+        "id": product.id,
+        "slug": product.slug,
+        "title": product.title,
+        "description": product.description,
+        "category": product.category,
+        "image_url": product.image_url,
+        "price_usd": product.price_usd,
+        "cost_usd": product.cost_usd,
+        "variants": [
+            {"name": v.name, "cost_usd": v.cost_usd, "price_usd": v.price_usd}
+            for v in product.active_variants()
+        ],
+    }
+
+
+def _publish_problems(product: Product) -> list[str]:
+    problems = []
+    if len((product.description or "").strip()) < 40:
+        problems.append("description is missing or shorter than 40 characters")
+    if not cat_service.get_category(product.category):
+        slugs = ", ".join(c["slug"] for c in cat_service.all_categories())
+        problems.append(f"category must be one of: {slugs}")
+    if not product.image_url:
+        problems.append("no main image")
+    variants = product.active_variants()
+    if not variants:
+        problems.append("no variants")
+    if any(v.price_usd <= v.cost_usd for v in variants):
+        problems.append("every variant price must exceed its cost")
+    return problems
+
+
+def _publish_code(product: Product) -> str:
+    """Bound to the draft's current state: any edit invalidates an earlier code."""
+    state = json.dumps(_draft_summary(product), sort_keys=True)
+    digest = hmac.new(_draft_key().encode(), state.encode(), hashlib.sha256)
+    return digest.hexdigest()[:6].upper()
+
+
+@app.post("/api/internal/drafts/{product_id}/update")
+async def internal_update_draft(
+    product_id: int, body: DraftUpdateIn, request: Request, db: Session = Depends(get_db)
+):
+    """Edit title, description, category or price of a hidden draft."""
+    _internal_ok(request)
+    product = _draft_or_404(db, product_id)
+    if body.category is not None:
+        category = cat_service.get_category(body.category)
+        if not category:
+            raise HTTPException(422, "Unknown category")
+        product.category = category["slug"]
+    if body.title is not None:
+        product.title = body.title.strip()
+        # Never public yet, so the URL can still follow the title.
+        product.slug = _unique_slug(db, _slugify(product.title), exclude_id=product.id)
+    if body.description is not None:
+        product.description = body.description.strip()
+    if body.price_usd is not None:
+        product.price_usd = body.price_usd
+        for v in product.variants:
+            v.price_usd = body.price_usd
+    db.commit()
+    db.refresh(product)
+    return {"ok": True, "draft": _draft_summary(product), "problems": _publish_problems(product)}
+
+
+@app.post("/api/internal/drafts/{product_id}/publish")
+async def internal_publish_draft(
+    product_id: int,
+    request: Request,
+    body: DraftPublishIn | None = None,
+    preview: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Preview returns a code; publishing needs that code for the unchanged draft."""
+    _internal_ok(request)
+    product = _draft_or_404(db, product_id)
+    problems = _publish_problems(product)
+    if preview:
+        return {
+            "ok": True,
+            "published": False,
+            "draft": _draft_summary(product),
+            "url": product_url(product.slug),
+            "problems": problems,
+            "code": None if problems else _publish_code(product),
+        }
+    if problems:
+        raise HTTPException(409, "Draft is not ready: " + "; ".join(problems))
+    if body is None or not hmac.compare_digest(body.code.upper(), _publish_code(product)):
+        raise HTTPException(409, "Confirmation code does not match the current draft")
+    product.active = True
+    product.draft = False
+    db.commit()
+    log.info("draft published: %s", product.slug)
+    return {
+        "ok": True,
+        "published": True,
+        "product": {"id": product.id, "slug": product.slug, "url": product_url(product.slug)},
     }
 
 

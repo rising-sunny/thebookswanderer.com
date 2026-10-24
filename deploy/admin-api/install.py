@@ -78,12 +78,15 @@ def ensure_draft_key():
     os.chmod(draft_key, 0o640)
 
 def store_has_drafts():
-    """The deployed store answers its internal draft route (422 on an empty body)."""
+    """The deployed store answers its draft routes (422 on an invalid body)."""
     try:
-        response = httpx.post("http://127.0.0.1:8010/api/internal/drafts", json={}, timeout=10)
+        return all(
+            httpx.post("http://127.0.0.1:8010/api/internal/drafts" + path,
+                       json=[], timeout=10).status_code == 422
+            for path in ("", "/1/update", "/1/publish")
+        )
     except httpx.HTTPError:
         return False
-    return response.status_code == 422
 
 def wait_health(secret):
     headers = {"Authorization": "Bearer " + secret}
@@ -140,9 +143,9 @@ if args.upgrade:
         command("systemctl", "restart", service)
         health = wait_health(key.read_text().strip())
         if (
-            not {"cj:read", "products:draft"} <= set(health.get("capabilities", []))
+            not {"cj:read", "products:draft", "products:publish"}
+            <= set(health.get("capabilities", []))
             or health.get("order_submission_enabled") is not False
-            or health.get("product_publication_enabled") is not False
         ):
             raise RuntimeError("Capacidades administrativas inesperadas.")
     except Exception as error:
@@ -155,8 +158,8 @@ if args.upgrade:
             print(str(error))
         print("Respaldo:", backup)
         raise SystemExit(1)
-    print("API administrativa actualizada: lectura de catálogo y de CJ, borradores ocultos.")
-    print("Pedidos reales y publicación: deshabilitados. Tienda no reiniciada.")
+    print("API administrativa actualizada: catálogo, CJ, borradores y publicación con código.")
+    print("Pedidos reales: deshabilitados. Tienda no reiniciada.")
     print("Respaldo:", backup)
     raise SystemExit(0)
 if args.resume:
@@ -275,7 +278,6 @@ try:
         if (
             health.get("service") != "tbw-admin-api"
             or health.get("order_submission_enabled") is not False
-            or health.get("product_publication_enabled") is not False
         ):
             raise RuntimeError("Capacidades administrativas inesperadas.")
 
@@ -358,7 +360,7 @@ try:
     print("Instalado: https://thebookswanderer.com/api/ops/health")
     print("Autenticación local y HTTPS: con clave 200, sin clave 401.")
     print("Catálogo: lectura correcta. CJ: solo lectura.")
-    print("Pedidos reales y publicación: deshabilitados.")
+    print("Pedidos reales: deshabilitados. Publicación: solo borradores con código.")
     print("No se reinició la tienda.")
     print("Respaldo Nginx:", backup)
 except Exception as error:
