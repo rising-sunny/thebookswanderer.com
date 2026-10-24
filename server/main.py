@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import math
+import hmac
 import json
 import os
 import re
@@ -187,6 +188,16 @@ class AddProductIn(BaseModel):
     price_usd: float | None = None  # retail for all variants if set
     slug: str | None = None
     admin_key: str
+
+
+class DraftIn(BaseModel):
+    """Internal: hidden draft of a CJ product for the restricted admin API."""
+
+    cj_pid: str = Field(pattern=r"^[A-Za-z0-9-]{1,64}$")
+    cj_vid: str | None = Field(default=None, pattern=r"^[A-Za-z0-9-]{1,64}$")
+    title: str | None = Field(default=None, min_length=3, max_length=300)
+    category: str = Field(default="", max_length=120)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)
 
 
 class ShipOrderIn(BaseModel):
@@ -1662,28 +1673,27 @@ async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed
 # ── Admin: add product when you pick one from CJ ──────────────────────
 
 
-@app.post("/api/admin/products")
-async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
-    """Import a CJ product as ONE store product with all variants selectable."""
-    if not _admin_ok(body.admin_key):
-        raise HTTPException(403, "Invalid admin key")
-
-    try:
-        details = await cj_service.get_product_details(pid=body.cj_pid)
-    except cj_service.CJError as exc:
-        raise HTTPException(502, f"CJ product query failed: {exc}") from exc
-
-    import json as _json
-    import re as _re
-
+def _cj_import_plan(
+    db: Session,
+    details: dict,
+    *,
+    cj_pid: str,
+    cj_vid: str | None = None,
+    title: str | None = None,
+    slug: str | None = None,
+    price_usd: float | None = None,
+    description: str | None = None,
+    category: str = "",
+) -> dict:
+    """Store rows for one CJ product with all variants. Writes nothing."""
     cj_variants = details.get("variants") or []
     if not cj_variants:
         raise HTTPException(400, "CJ product has no variants")
 
-    default = _pick_variant(details, body.cj_vid)
-    title = body.title or details.get("productNameEn") or "Untitled"
+    default = _pick_variant(details, cj_vid)
+    title = title or details.get("productNameEn") or "Untitled"
     # Prefer short clean title without a specific option name
-    slug = body.slug or _slugify(title)
+    slug = slug or _slugify(title)
     base = slug
     n = 2
     while db.query(Product).filter(Product.slug == slug).first():
@@ -1707,8 +1717,8 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
 
     default_cost = float(default.get("variantSellPrice") or details.get("sellPrice") or 0)
     default_price = (
-        body.price_usd
-        if body.price_usd is not None
+        price_usd
+        if price_usd is not None
         else pricing_service.retail_from_cost(default_cost)
     )
     default_img = (
@@ -1718,31 +1728,29 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
         or ""
     )
 
-    product = Product(
+    product = dict(
         slug=slug,
         title=title,
         # Prefer store-written copy; never paste raw CJ HTML as description
-        description=body.description or "",
+        description=description or "",
         image_url=str(default_img),
-        gallery_json=_json.dumps(gallery[:16]),
+        gallery_json=json.dumps(gallery[:16]),
         details_html="",
-        category=body.category or "",
-        cj_pid=str(details.get("pid") or body.cj_pid),
+        category=category or "",
+        cj_pid=str(details.get("pid") or cj_pid),
         cj_vid=str(default.get("vid") or ""),
         cj_sku=str(default.get("variantSku") or details.get("productSku") or ""),
         cost_usd=default_cost,
         price_usd=default_price,
         from_country=from_country,
-        active=True,
     )
-    db.add(product)
-    db.flush()
 
+    variants = []
     for i, v in enumerate(cj_variants):
         cost = float(v.get("variantSellPrice") or default_cost or 0)
         price = (
-            body.price_usd
-            if body.price_usd is not None
+            price_usd
+            if price_usd is not None
             else pricing_service.retail_from_cost(cost)
         )
         # Design name: prefer variantKey, else strip base title from variantNameEn
@@ -1753,9 +1761,8 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
             name = vname.replace(base_en, "").strip(" -") if base_en and vname else vname
         if not name:
             name = f"Option {i + 1}"
-        db.add(
-            ProductVariant(
-                product_id=product.id,
+        variants.append(
+            dict(
                 name=name[:200],
                 cj_vid=str(v.get("vid") or ""),
                 cj_sku=str(v.get("variantSku") or ""),
@@ -1763,12 +1770,55 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
                 cost_usd=cost,
                 price_usd=price,
                 sort_order=i,
-                active=True,
             )
         )
+    return {"product": product, "variants": variants}
 
+
+def _save_import_plan(db: Session, plan: dict, *, active: bool, draft: bool = False) -> Product:
+    product = Product(**plan["product"], active=active, draft=draft)
+    db.add(product)
+    db.flush()
+    for v in plan["variants"]:
+        db.add(ProductVariant(product_id=product.id, active=True, **v))
     db.commit()
     db.refresh(product)
+    return product
+
+
+def _internal_ok(request: Request) -> None:
+    """Loopback callers with the draft key only (nginx always adds X-Real-IP)."""
+    if request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for"):
+        raise HTTPException(404, "Not Found")
+    path = Path(os.getenv("TBW_DRAFT_KEY_FILE", "/etc/thebookswanderer/draft_key"))
+    try:
+        expected = path.read_text().strip()
+    except OSError:
+        expected = ""
+    if len(expected) < 32:
+        raise HTTPException(503, "Draft credential unavailable")
+    supplied = request.headers.get("authorization", "")
+    if not hmac.compare_digest(supplied.encode(), ("Bearer " + expected).encode()):
+        raise HTTPException(401, "Unauthorized")
+
+
+@app.post("/api/admin/products")
+async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
+    """Import a CJ product as ONE store product with all variants selectable."""
+    if not _admin_ok(body.admin_key):
+        raise HTTPException(403, "Invalid admin key")
+
+    try:
+        details = await cj_service.get_product_details(pid=body.cj_pid)
+    except cj_service.CJError as exc:
+        raise HTTPException(502, f"CJ product query failed: {exc}") from exc
+
+    plan = _cj_import_plan(
+        db, details, cj_pid=body.cj_pid, cj_vid=body.cj_vid, title=body.title,
+        slug=body.slug, price_usd=body.price_usd, description=body.description,
+        category=body.category,
+    )
+    product = _save_import_plan(db, plan, active=True)
 
     # Launch pin (best-effort — never fail the import if Pinterest is down).
     pinterest_launch: dict | None = None
@@ -1784,6 +1834,53 @@ async def admin_add_product(body: AddProductIn, db: Session = Depends(get_db)):
         "product": product.to_detail(),
         "variants": len(product.active_variants()),
         "pinterest_launch": pinterest_launch,
+    }
+
+
+@app.post("/api/internal/drafts")
+async def internal_create_draft(
+    body: DraftIn, request: Request, preview: bool = Query(False), db: Session = Depends(get_db)
+):
+    """Hidden, unpinned draft of a CJ product (or its preview) for the admin API."""
+    _internal_ok(request)
+    existing = db.query(Product).filter(Product.cj_pid == body.cj_pid).first()
+    if existing:
+        return {
+            "ok": True,
+            "created": False,
+            "existing": {
+                "id": existing.id,
+                "slug": existing.slug,
+                "active": bool(existing.active),
+                "draft": bool(existing.draft),
+            },
+        }
+    try:
+        details = await cj_service.get_product_details(pid=body.cj_pid)
+    except cj_service.CJError as exc:
+        log.warning("draft: CJ product query failed for %s: %s", body.cj_pid, exc)
+        raise HTTPException(502, "CJ product query failed") from exc
+    if not isinstance(details, dict) or not details:
+        raise HTTPException(404, "CJ product not found")
+    plan = _cj_import_plan(
+        db, details, cj_pid=body.cj_pid, cj_vid=body.cj_vid, title=body.title,
+        price_usd=body.price_usd, category=body.category,
+    )
+    if preview:
+        return {"ok": True, "created": False, "preview": plan}
+    product = _save_import_plan(db, plan, active=False, draft=True)
+    return {
+        "ok": True,
+        "created": True,
+        "product": {
+            "id": product.id,
+            "slug": product.slug,
+            "title": product.title,
+            "price_usd": product.price_usd,
+            "active": False,
+            "draft": True,
+        },
+        "variants": len(plan["variants"]),
     }
 
 

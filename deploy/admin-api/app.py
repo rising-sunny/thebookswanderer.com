@@ -1,4 +1,4 @@
-"""Restricted administrative API: store reads and read-only supplier search."""
+"""Restricted administrative API: store reads, read-only CJ search, hidden drafts."""
 import hmac
 import os
 import re
@@ -12,6 +12,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path as PathParam, Query
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -50,6 +51,7 @@ async def private_responses(request, call_next):
     return response
 
 STORE_API = "http://127.0.0.1:8010"
+store_transport = None  # tests replace it
 CJ_ID = r"^[A-Za-z0-9-]{1,64}$"
 
 def credential(name, variable):
@@ -135,7 +137,7 @@ def health():
     return {
         "service": "tbw-admin-api",
         "ready": True,
-        "capabilities": ["products:read", "cj:read"],
+        "capabilities": ["products:read", "cj:read", "products:draft"],
         "order_submission_enabled": False,
         "product_publication_enabled": False,
     }
@@ -212,3 +214,49 @@ async def cj_product(pid: str = PathParam(pattern=CJ_ID)):
         "variants": variants[:100],
         "in_store": bool(owned_cj_pids({pid})),
     }
+
+class Draft(BaseModel):
+    pid: str = Field(pattern=CJ_ID)
+    vid: str | None = Field(default=None, pattern=CJ_ID)
+    title: str | None = Field(default=None, min_length=3, max_length=300)
+    category: str = Field(default="", max_length=120)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)
+
+async def store_draft(draft, preview):
+    """The storefront builds the draft; this service never writes store.db."""
+    key = credential("draft_key", "TBW_DRAFT_KEY_FILE")
+    try:
+        async with httpx.AsyncClient(
+            timeout=60, follow_redirects=False, transport=store_transport
+        ) as client:
+            response = await client.post(
+                STORE_API + "/api/internal/drafts",
+                params={"preview": "true"} if preview else None,
+                headers={"Authorization": "Bearer " + key},
+                json={
+                    "cj_pid": draft.pid, "cj_vid": draft.vid, "title": draft.title,
+                    "category": draft.category, "price_usd": draft.price_usd,
+                },
+            )
+    except httpx.HTTPError:
+        raise HTTPException(503, "Store unavailable") from None
+    if response.status_code in {400, 404, 422}:
+        raise HTTPException(response.status_code, "Store rejected the draft")
+    if response.status_code != 200:
+        raise HTTPException(502 if response.status_code == 502 else 503,
+                            "Store or CJ unavailable")
+    try:
+        data = response.json()
+    except ValueError:
+        raise HTTPException(503, "Invalid store response") from None
+    if not isinstance(data, dict):
+        raise HTTPException(503, "Invalid store response")
+    return data
+
+@app.post("/drafts/preview")
+async def draft_preview(draft: Draft):
+    return await store_draft(draft, preview=True)
+
+@app.post("/drafts")
+async def draft_create(draft: Draft):
+    return await store_draft(draft, preview=False)

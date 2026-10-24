@@ -10,7 +10,8 @@ OAuth client redirects are restricted to HTTPS chatgpt.com and chat.openai.com,
 the claude.ai/claude.com connector callback and loopback ports for CLI clients.
 CIMD is disabled; downstream clients can use dynamic registration.
 
-Only store product reads and read-only CJ catalog search are exposed.
+Only store product reads, read-only CJ catalog search and hidden CJ drafts
+(tbw_preview_draft, tbw_create_draft) are exposed.
 There are no publication, deletion, real-order, wallet or execution tools.
 
 Runtime credentials are delivered by systemd LoadCredential:
