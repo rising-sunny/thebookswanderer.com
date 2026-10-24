@@ -6,10 +6,11 @@ Provider credentials remain on the VPS. No repository permissions are requested.
 
 The planned MCP URL is https://thebookswanderer.com/mcp.
 GitHub callback: https://thebookswanderer.com/mcp-oauth/callback.
-OAuth client redirects are restricted to HTTPS chatgpt.com and chat.openai.com.
+OAuth client redirects are restricted to HTTPS chatgpt.com and chat.openai.com,
+the claude.ai/claude.com connector callback and loopback ports for CLI clients.
 CIMD is disabled; downstream clients can use dynamic registration.
 
-Only product reads and isolated Qikink draft operations are exposed.
+Only store product reads and read-only CJ catalog search are exposed.
 There are no publication, deletion, real-order, wallet or execution tools.
 
 Runtime credentials are delivered by systemd LoadCredential:
@@ -28,5 +29,7 @@ Tests use fake credentials, temporary encrypted stores, mocked GitHub
 verification and mocked local API responses. No external requests are made.
 Run test_tbw_mcp.py with the isolated MCP virtualenv.
 
-Installation, HTTPS discovery and a real owner OAuth login are pending.
+On an existing installation, upgrade admin-api first, then run
+install.py --upgrade --check and install.py --upgrade. It replaces only the
+code, restarts tbw-mcp and restores the previous code if discovery fails.
 Creating this PR does not publish a service or authorize this chat.

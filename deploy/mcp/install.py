@@ -1,4 +1,4 @@
-"""Install the isolated owner-only MCP service without rotating credentials."""
+"""Install or upgrade the owner-only MCP service without rotating credentials."""
 import argparse
 import json
 import os
@@ -19,6 +19,7 @@ from tbw_mcp import BASE_URL, CALLBACK, OWNER_ID, create_app
 parser = argparse.ArgumentParser()
 parser.add_argument("--check", action="store_true")
 parser.add_argument("--resume", action="store_true")
+parser.add_argument("--upgrade", action="store_true")
 args = parser.parse_args()
 
 source = Path(__file__).resolve().parent / "tbw_mcp.py"
@@ -39,10 +40,16 @@ def command(*values):
 
 if os.geteuid() != 0:
     raise SystemExit("Ejecutar como root.")
-for path in (unit, snippet):
+if args.upgrade:
+    for path in (unit, snippet, target):
+        if not path.is_file():
+            raise SystemExit("No hay instalación que actualizar: falta " + str(path))
+for path in (() if args.upgrade else (unit, snippet)):
     if path.exists():
         raise SystemExit("Ya existe " + str(path) + "; no se sobrescribirá.")
-if target.exists():
+if args.upgrade:
+    pass
+elif target.exists():
     if not args.resume or target.read_bytes() != source.read_bytes():
         raise SystemExit("El código instalado ya existe o no coincide; revisar antes.")
 elif args.resume:
@@ -64,8 +71,8 @@ original = site.read_bytes()
 original_text = original.decode()
 if original_text.count(anchor) != 1:
     raise SystemExit("No se encontró un único punto de inclusión Nginx.")
-if "tbw-mcp.conf" in original_text:
-    raise SystemExit("Ya existe una inclusión MCP.")
+if ("tbw-mcp.conf" in original_text) != args.upgrade:
+    raise SystemExit("La inclusión MCP de Nginx no coincide con el modo elegido.")
 
 with tempfile.TemporaryDirectory() as temporary:
     fake = {
@@ -84,14 +91,18 @@ routes.update({"/mcp", "/mcp/"})
 for route in routes:
     if not re.fullmatch(r"/[A-Za-z0-9._/-]+", route):
         raise SystemExit("Ruta dinámica no prevista: " + route)
-    if re.search(r"location\s*=\s*" + re.escape(route) + r"\s*\{", original_text):
+    if args.upgrade:
+        if "location = " + route + " {" not in snippet.read_text():
+            raise SystemExit("La nueva versión necesita una ruta Nginx no instalada: " + route)
+    elif re.search(r"location\s*=\s*" + re.escape(route) + r"\s*\{", original_text):
         raise SystemExit("Ya existe una ruta Nginx: " + route)
 if not {"/authorize", "/token", "/register", "/consent", CALLBACK} <= routes:
     raise SystemExit("No se encontraron todas las rutas OAuth necesarias.")
 
 command("nginx", "-t")
-with socket.socket() as probe:
-    probe.bind(("127.0.0.1", 8879))
+if not args.upgrade:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 8879))
 if command("systemctl", "is-active", "tbw-admin-api.service") != "active":
     raise SystemExit("La API administrativa no está activa.")
 
@@ -167,6 +178,38 @@ def verify(client, base, local=False):
             value.rstrip("/") for value in data.get("authorization_servers", [])
         ]
     )
+
+if args.upgrade:
+    shutil.copy2(target, backup / "tbw_mcp.py.before")
+    try:
+        shutil.copyfile(source, target)
+        command("systemctl", "restart", service)
+        with httpx2.Client(timeout=15, follow_redirects=False) as client:
+            for base, local, attempts in (
+                ("http://127.0.0.1:8879", True, 20), (BASE_URL, False, 12),
+            ):
+                for attempt in range(attempts):
+                    try:
+                        if verify(client, base, local=local):
+                            break
+                    except (httpx2.HTTPError, ValueError):
+                        pass
+                    time.sleep(1)
+                else:
+                    raise RuntimeError("La comprobación MCP/OAuth no pasó: " + base)
+    except Exception as error:
+        shutil.copyfile(backup / "tbw_mcp.py.before", target)
+        subprocess.run(["systemctl", "restart", service], capture_output=True)
+        print("Actualización revertida:", type(error).__name__)
+        if isinstance(error, RuntimeError):
+            print(str(error))
+        print("Respaldo:", backup)
+        raise SystemExit(1)
+    print("MCP actualizado:", BASE_URL + "/mcp")
+    print("Herramientas: salud, catálogo y lectura de CJ. Sin pedidos ni publicación.")
+    print("Clientes OAuth: ChatGPT, Claude y CLI en loopback.")
+    print("Respaldo:", backup)
+    raise SystemExit(0)
 
 try:
     shutil.copyfile(source, target)

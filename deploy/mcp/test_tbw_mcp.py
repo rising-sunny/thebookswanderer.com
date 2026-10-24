@@ -48,22 +48,22 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(request.url.host, "127.0.0.1")
             self.assertEqual(request.url.port, 8878)
             self.assertEqual(request.headers["Authorization"], "Bearer " + key)
-            if request.method == "POST":
-                return httpx2.Response(409, json={"private": key})
+            if request.url.path.startswith("/suppliers/"):
+                return httpx2.Response(502, json={"private": key})
             return httpx2.Response(200, json={"products": []})
         bridge = AdminBridge(key, httpx2.MockTransport(handler))
         self.assertEqual(
             await bridge.request("GET", "/products"), {"products": []}
         )
         for method, path in [
-            ("POST", "/orders"), ("GET", "/drafts/../products"),
-            ("POST", "/products"),
+            ("POST", "/orders"), ("GET", "/suppliers/cj/products/../x"),
+            ("POST", "/products"), ("POST", "/drafts"), ("GET", "/drafts"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
         self.assertEqual(len(calls), 1)
         with self.assertRaises(ToolError) as error:
-            await bridge.request("POST", "/drafts", payload={})
+            await bridge.request("GET", "/suppliers/cj/search", params={"q": "x"})
         self.assertNotIn(key, str(error.exception))
         self.assertNotIn("private", str(error.exception))
 
@@ -131,14 +131,37 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 tools = await client.list_tools()
             self.assertEqual({tool.name for tool in tools}, {
                 "tbw_health", "tbw_list_products",
-                "tbw_list_qikink_drafts", "tbw_get_qikink_draft",
-                "tbw_create_qikink_draft",
+                "tbw_search_cj", "tbw_get_cj_product",
             })
+            for tool in tools:
+                self.assertTrue(tool.annotations.read_only_hint)
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]
             )
             self.assertNotIn("a" * 40, serialized)
             self.assertNotIn("s" * 40, serialized)
+
+    async def test_client_redirects(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            app = create_app(config(), "a" * 40, temporary)
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url=BASE_URL,
+            ) as client:
+                for uri, allowed in [
+                    ("https://claude.ai/api/mcp/auth_callback", True),
+                    ("https://chatgpt.com/connector_platform_oauth_redirect", True),
+                    ("http://localhost:1455/auth/callback", True),
+                    ("http://127.0.0.1:33418/callback", True),
+                    ("https://evil.example/callback", False),
+                    ("http://localhost@evil.example/callback", False),
+                ]:
+                    response = await client.post("/register", json={
+                        "redirect_uris": [uri], "client_name": "offline",
+                        "token_endpoint_auth_method": "none",
+                        "grant_types": ["authorization_code", "refresh_token"],
+                        "response_types": ["code"],
+                    })
+                    self.assertEqual(response.status_code < 300, allowed, uri)
 
 if __name__ == "__main__":
     unittest.main()
