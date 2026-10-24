@@ -4,6 +4,12 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Docs and the separately installed VPS ops services don't need a deploy.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'deploy/admin-api/**'
+      - 'deploy/mcp/**'
   workflow_dispatch:
 
 concurrency:
@@ -96,11 +102,11 @@ jobs:
           scp -o BatchMode=yes scripts/*.py scripts/*.json "$VPS_HOST:$REMOTE/server/scripts/"
           scp -o BatchMode=yes -r social "$VPS_HOST:$REMOTE/server/"
 
-      - name: Prodigi print asset and read-only readiness check
+      - name: Prodigi print asset
         run: |
-          ssh -o BatchMode=yes "$VPS_HOST" "test -s /etc/tbw-prodigi/api_key && install -d -o www-data -g www-data -m 750 /var/lib/tbw-prodigi/artwork"
+          ssh -o BatchMode=yes "$VPS_HOST" "install -d -o www-data -g www-data -m 750 /var/lib/tbw-prodigi/artwork"
           scp -o BatchMode=yes server/artwork/prodigi/moonlit-botanicals-12x16-300dpi.jpg "$VPS_HOST:/var/lib/tbw-prodigi/artwork/"
-          ssh -o BatchMode=yes "$VPS_HOST" "chown www-data:www-data /var/lib/tbw-prodigi/artwork/*.jpg && chmod 640 /var/lib/tbw-prodigi/artwork/*.jpg && cd $REMOTE/server && PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key PRODIGI_ORDERS_ENABLED=1 .venv/bin/python scripts/publish_prodigi_phyllotaxis.py"
+          ssh -o BatchMode=yes "$VPS_HOST" "chown www-data:www-data /var/lib/tbw-prodigi/artwork/*.jpg && chmod 640 /var/lib/tbw-prodigi/artwork/*.jpg"
 
       - name: Setup on VPS
         run: |
@@ -110,15 +116,3 @@ jobs:
 
       - name: Health
         run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://thebookswanderer.com/api/health
-
-      - name: Update reviewed Color the Classics copy
-        run: |
-          ssh -o BatchMode=yes "$VPS_HOST" "cd $REMOTE/server && .venv/bin/python scripts/update_color_classics_copy.py --apply"
-
-      - name: Publish reviewed Prodigi print
-        run: |
-          ssh -o BatchMode=yes "$VPS_HOST" "cd $REMOTE/server && PRODIGI_API_KEY_FILE=/etc/tbw-prodigi/api_key PRODIGI_ORDERS_ENABLED=1 .venv/bin/python scripts/publish_prodigi_phyllotaxis.py --publish"
-
-      - name: Verify published print
-        run: |
-          curl -fsS https://thebookswanderer.com/api/products/by-slug/moonlit-botanicals-phyllotaxis-art-print | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["supplier"]=="prodigi" and p["price_usd"]==44.95 and "mathematical code" in p["description"] and "AI image generator" in p["description"]'
