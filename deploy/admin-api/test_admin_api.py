@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import httpx
+
 from fastapi.testclient import TestClient
 import app as admin
 from app import app
@@ -156,8 +158,42 @@ class AdminApiTests(unittest.TestCase):
         )
         self.assertEqual(
             self.client.post("/drafts", headers=self.headers, json={}).status_code,
-            404,
+            422,
         )
+
+    def test_drafts_go_through_the_store_with_its_own_key(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.params.get("preview") == "true":
+                return httpx.Response(200, json={"created": False, "preview": {}})
+            return httpx.Response(502, json={"detail": "upstream-secret"})
+        body = {"pid": "CJ-NEW", "price_usd": 19.99}
+        for route in ("/drafts", "/drafts/preview"):
+            self.assertEqual(self.client.post(route, json=body).status_code, 401)
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)):
+            self.assertEqual(self.client.post(
+                "/drafts/preview", headers=self.headers, json=body
+            ).status_code, 503)
+            with patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+                self.assertEqual(self.client.post(
+                    "/drafts", headers=self.headers, json={"pid": "../x"}
+                ).status_code, 422)
+                self.assertEqual(self.client.post(
+                    "/drafts/preview", headers=self.headers, json=body
+                ).json(), {"created": False, "preview": {}})
+                failed = self.client.post("/drafts", headers=self.headers, json=body)
+        self.assertEqual(failed.status_code, 502)
+        self.assertNotIn("upstream-secret", failed.text)
+        self.assertEqual(len(calls), 2)
+        for request in calls:
+            self.assertEqual(str(request.url).split("?")[0],
+                             "http://127.0.0.1:8010/api/internal/drafts")
+            self.assertEqual(request.headers["Authorization"], "Bearer " + "d" * 40)
+            self.assertNotIn("a" * 40, request.content.decode())
+        self.assertEqual(self.fake.calls, [])
 
 if __name__ == "__main__":
     unittest.main()

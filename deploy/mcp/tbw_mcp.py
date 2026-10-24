@@ -30,6 +30,8 @@ READ = {
     "idempotentHint": True, "openWorldHint": False,
 }
 SUPPLIER = dict(READ, openWorldHint=True)
+# Creates a hidden store row; repeating it returns the existing product.
+DRAFT = dict(SUPPLIER, readOnlyHint=False)
 
 class OwnerVerifier(GitHubTokenVerifier):
     def __init__(self, owner_id):
@@ -70,10 +72,10 @@ class AdminBridge:
         self.transport = transport
 
     async def request(self, method, path, *, payload=None, params=None):
-        allowed = method == "GET" and (
+        allowed = (method == "GET" and (
             path in {"/health", "/products", "/suppliers/cj/search"}
             or re.fullmatch(r"/suppliers/cj/products/[A-Za-z0-9-]{1,64}", path)
-        )
+        )) or (method == "POST" and path in {"/drafts/preview", "/drafts"})
         if not allowed:
             raise ToolError("Administrative operation is not permitted")
         try:
@@ -187,6 +189,49 @@ def create_server(config, admin_key, state_directory, transport=None):
         Read-only; never imports or orders.
         """
         return await bridge.request("GET", "/suppliers/cj/products/" + pid)
+
+    def draft(pid, vid, title, category, price_usd):
+        return {"pid": pid, "vid": vid, "title": title,
+                "category": category, "price_usd": price_usd}
+
+    @server.tool(annotations=SUPPLIER)
+    async def tbw_preview_draft(
+        pid: Annotated[str, Field(pattern=CJ_ID)],
+        vid: Annotated[str | None, Field(pattern=CJ_ID)] = None,
+        title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
+        category: Annotated[str, Field(max_length=120)] = "",
+        price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+    ) -> dict:
+        """Show the hidden store product a CJ import would create. Writes nothing.
+
+        Returns the slug, default variant, every variant with its cost and
+        retail price, and images. If the CJ product is already in the store it
+        returns that product instead. Without price_usd each variant gets the
+        store's suggested price; vid picks the default variant.
+        """
+        return await bridge.request(
+            "POST", "/drafts/preview",
+            payload=draft(pid, vid, title, category, price_usd),
+        )
+
+    @server.tool(annotations=DRAFT)
+    async def tbw_create_draft(
+        pid: Annotated[str, Field(pattern=CJ_ID)],
+        vid: Annotated[str | None, Field(pattern=CJ_ID)] = None,
+        title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
+        category: Annotated[str, Field(max_length=120)] = "",
+        price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+    ) -> dict:
+        """Create a hidden draft product from CJ with the same fields as the preview.
+
+        Show tbw_preview_draft to the owner first. The draft is inactive: not
+        listed, not purchasable and not pinned. It has no description yet.
+        Does nothing if the CJ product is already in the store. Never
+        publishes, orders or pays.
+        """
+        return await bridge.request(
+            "POST", "/drafts", payload=draft(pid, vid, title, category, price_usd),
+        )
 
     return server
 

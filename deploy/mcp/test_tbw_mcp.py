@@ -57,7 +57,8 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
         )
         for method, path in [
             ("POST", "/orders"), ("GET", "/suppliers/cj/products/../x"),
-            ("POST", "/products"), ("POST", "/drafts"), ("GET", "/drafts"),
+            ("POST", "/products"), ("GET", "/drafts"), ("POST", "/drafts/publish"),
+            ("PUT", "/drafts"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -132,14 +133,43 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({tool.name for tool in tools}, {
                 "tbw_health", "tbw_list_products",
                 "tbw_search_cj", "tbw_get_cj_product",
+                "tbw_preview_draft", "tbw_create_draft",
             })
             for tool in tools:
-                self.assertTrue(tool.annotations.read_only_hint)
+                self.assertEqual(
+                    tool.annotations.read_only_hint, tool.name != "tbw_create_draft"
+                )
+                self.assertFalse(tool.annotations.destructive_hint)
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]
             )
             self.assertNotIn("a" * 40, serialized)
             self.assertNotIn("s" * 40, serialized)
+
+    async def test_draft_tools_forward_only_their_fields(self):
+        requests = []
+        def handler(request):
+            requests.append(request)
+            return httpx2.Response(200, json={"created": True})
+        with tempfile.TemporaryDirectory() as temporary:
+            server = create_server(
+                config(), "a" * 40, temporary, httpx2.MockTransport(handler)
+            )
+            async with Client(server) as client:
+                await client.call_tool("tbw_preview_draft", {"pid": "CJ-1"})
+                await client.call_tool(
+                    "tbw_create_draft", {"pid": "CJ-1", "price_usd": 19.99}
+                )
+                with self.assertRaises(Exception):
+                    await client.call_tool("tbw_create_draft", {"pid": "../x"})
+        self.assertEqual(
+            [(r.method, r.url.path) for r in requests],
+            [("POST", "/drafts/preview"), ("POST", "/drafts")],
+        )
+        self.assertEqual(json.loads(requests[1].content), {
+            "pid": "CJ-1", "vid": None, "title": None,
+            "category": "", "price_usd": 19.99,
+        })
 
     async def test_client_redirects(self):
         with tempfile.TemporaryDirectory() as temporary:
