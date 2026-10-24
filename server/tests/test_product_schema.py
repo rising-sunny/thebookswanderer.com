@@ -327,6 +327,22 @@ class StorefrontRegressionTests(unittest.TestCase):
             else:
                 self.assertEqual(rows, [])
 
+    def test_feed_descriptions_use_the_product_page_shipping_wording(self):
+        legacy = ("Free shipping to the United States, United Kingdom, Canada, Australia, "
+                  "Germany, France, the Netherlands and Ireland.")
+        with self.sessions() as db:
+            db.get(Product, 3).description = "A printed journal. " + legacy
+            db.commit()
+        root = ET.fromstring(self.client.get("/api/feeds/google-products.xml").text)
+        texts = [i.findtext("description") for i in root.findall("channel/item")
+                 if "lulu" in i.findtext("link")]
+        self.assertTrue(texts)
+        for text in texts:
+            self.assertNotIn("Canada", text)
+            self.assertIn("Other destinations quoted before payment.", text)
+        page = self.client.get("/api/products/by-slug/lulu-fixture").json()["description"]
+        self.assertIn(texts[0].split(" Standard")[0], page)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -775,7 +775,8 @@ def google_products_feed(db: Session = Depends(get_db)):
             parts = [
                 f"<g:id>{xml_escape(f'tbw-{p.id}-{v.id}' if v else f'tbw-{p.id}')}</g:id>",
                 f"<title>{xml_escape(_feed_text(title, 150))}</title>",
-                f"<description>{xml_escape(_feed_text(p.description, 5000) or p.title)}</description>",
+                # Same shipping wording as the product page (retires older promises).
+                f"<description>{xml_escape(_feed_text(shipping_service.description(p.description or '', p.supplier or 'cj'), 5000) or p.title)}</description>",
                 f"<link>{xml_escape(link)}</link>",
                 f"<g:image_link>{xml_escape(_abs_url(image))}</g:image_link>",
                 *[f"<g:additional_image_link>{xml_escape(_abs_url(u))}</g:additional_image_link>" for u in extra],
