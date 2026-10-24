@@ -89,5 +89,53 @@ class Drafts(unittest.TestCase):
         self.assertEqual(self.post(price_usd=0).status_code, 422)
         self.cj.assert_not_awaited()
 
+    def draft_id(self):
+        self.assertTrue(self.post(price_usd=24.99).json()['created'])
+        with self.sessions() as db:return db.query(Product).one().id
+
+    def call(self, path, body=None, preview=False):
+        return self.client.post(f'/api/internal/drafts/{path}' + ('?preview=true' if preview else ''),
+                                json=body, headers={'Authorization': 'Bearer ' + KEY})
+
+    def test_update_edits_only_drafts(self):
+        pid = self.draft_id()
+        response = self.call(f'{pid}/update', {'title': 'Little House Bookends', 'category': 'Book-Accessories',
+                                               'description': 'A small wooden house.', 'price_usd': 19.5})
+        self.assertEqual(response.status_code, 200)
+        draft = response.json()['draft']
+        self.assertEqual((draft['slug'], draft['category']), ('little-house-bookends', 'book-accessories'))
+        self.assertEqual({v['price_usd'] for v in draft['variants']}, {19.5})
+        self.assertIn('description is missing or shorter than 40 characters', response.json()['problems'])
+        self.assertEqual(self.call(f'{pid}/update', {'category': 'toys'}).status_code, 422)
+        with self.sessions() as db:
+            archived = Product(slug='old', title='Old', active=False, draft=False)
+            live = Product(slug='live', title='Live', active=True, draft=False)
+            db.add_all([archived, live]);db.commit();ids = (archived.id, live.id)
+        for other in ids:
+            self.assertEqual(self.call(f'{other}/update', {'title': 'Changed'}).status_code, 404)
+            self.assertEqual(self.call(f'{other}/publish', preview=True).status_code, 404)
+        self.assertEqual(self.client.post(f'/api/internal/drafts/{pid}/update', json={'title': 'Nope'},
+                                          headers={'Authorization': 'Bearer ' + KEY, 'X-Real-IP': '203.0.113.9'}).status_code, 404)
+
+    def test_publish_needs_ready_draft_and_current_code(self):
+        pid = self.draft_id()
+        preview = self.call(f'{pid}/publish', preview=True).json()
+        self.assertIsNone(preview['code']);self.assertTrue(preview['problems'])
+        self.assertEqual(self.call(f'{pid}/publish', {'code': 'ABC123'}).status_code, 409)
+        self.call(f'{pid}/update', {'category': 'book-accessories',
+                                     'description': 'A small wooden house that keeps a shelf of books upright.'})
+        code = self.call(f'{pid}/publish', preview=True).json()['code']
+        self.assertRegex(code, r'^[0-9A-F]{6}$')
+        self.call(f'{pid}/update', {'price_usd': 26.0})
+        self.assertEqual(self.call(f'{pid}/publish', {'code': code}).status_code, 409)
+        with self.sessions() as db:self.assertFalse(db.get(Product, pid).active)
+        code = self.call(f'{pid}/publish', preview=True).json()['code']
+        response = self.call(f'{pid}/publish', {'code': code.lower()})
+        self.assertEqual(response.status_code, 200);self.assertTrue(response.json()['published'])
+        with self.sessions() as db:
+            product = db.get(Product, pid);self.assertTrue(product.active);self.assertFalse(product.draft)
+        self.assertEqual(self.client.get('/api/products/by-slug/walnut-book-stand').status_code, 200)
+        self.assertEqual(self.call(f'{pid}/publish', {'code': code}).status_code, 404)
+
 if __name__ == '__main__':
     unittest.main()

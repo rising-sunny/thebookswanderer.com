@@ -4,7 +4,9 @@ Separate FastAPI service for authenticated store reads, read-only CJ
 catalog search and hidden CJ drafts. This service is not imported by the storefront.
 
 Routes: GET /health, GET /products, GET /suppliers/cj/search,
-GET /suppliers/cj/products/{pid}, POST /drafts/preview, POST /drafts.
+GET /suppliers/cj/products/{pid}, POST /drafts/preview, POST /drafts,
+POST /drafts/{id}/update, POST /drafts/{id}/publish/preview,
+POST /drafts/{id}/publish.
 All implemented routes require Authorization: Bearer with a dedicated key.
 OpenAPI and interactive documentation are disabled.
 
@@ -18,8 +20,11 @@ Only the CJ key is delivered, as cj_api_key, and never returned. The
 installer copies it from the store .env into a root-only credential file.
 
 Drafts are built by the storefront's loopback-only POST /api/internal/drafts
-(inactive, draft=1, no Pinterest pin); this service still never writes
-store.db. Both sides use draft_key, /etc/thebookswanderer/draft_key
+(inactive, draft=1, no Pinterest pin), which also edits drafts and publishes
+them. Publishing needs a code from the preview, an HMAC of the draft's
+current state, and a ready draft (description, store category, image, price
+above cost). Only rows with draft=1 and active=0 are touched. This service
+still never writes store.db. Both sides use draft_key, /etc/thebookswanderer/draft_key
 (root:www-data, 0640), which --upgrade generates if missing. The store reads
 it on each request, so it needs no restart.
 

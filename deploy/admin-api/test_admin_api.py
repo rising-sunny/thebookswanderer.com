@@ -53,12 +53,12 @@ class AdminApiTests(unittest.TestCase):
             db.execute("""
                 CREATE TABLE products (
                     id INTEGER, slug TEXT, title TEXT, supplier TEXT,
-                    price_usd REAL, active INTEGER, cj_pid TEXT
+                    price_usd REAL, active INTEGER, cj_pid TEXT, draft INTEGER
                 )
             """)
             db.execute(
                 "INSERT INTO products VALUES "
-                "(1, 'existing', 'Existing', 'cj', 12, 1, 'CJ-OWNED')"
+                "(1, 'existing', 'Existing', 'cj', 12, 1, 'CJ-OWNED', 0)"
             )
         self.before = hashlib.sha256(self.store.read_bytes()).hexdigest()
         environment = patch.dict(os.environ, {
@@ -194,6 +194,39 @@ class AdminApiTests(unittest.TestCase):
             self.assertEqual(request.headers["Authorization"], "Bearer " + "d" * 40)
             self.assertNotIn("a" * 40, request.content.decode())
         self.assertEqual(self.fake.calls, [])
+
+    def test_edit_and_publish_forward_to_the_store(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.path.endswith("/7/publish") and request.content:
+                return httpx.Response(409, json={"detail": "Confirmation code does not match"})
+            return httpx.Response(200, json={"ok": True})
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            self.assertEqual(self.client.post(
+                "/drafts/7/publish/preview", json={"code": "ABC123"}
+            ).status_code, 401)
+            ok = self.client.post("/drafts/7/update", headers=self.headers,
+                                  json={"description": "Hand-written copy."})
+            preview = self.client.post("/drafts/7/publish/preview", headers=self.headers)
+            denied = self.client.post("/drafts/7/publish", headers=self.headers,
+                                      json={"code": "ABC123"})
+            for route, body in (("/drafts/0/update", {}), ("/drafts/7/publish", {"code": "x"})):
+                self.assertEqual(self.client.post(
+                    route, headers=self.headers, json=body
+                ).status_code, 422)
+        self.assertEqual((ok.status_code, preview.status_code), (200, 200))
+        self.assertEqual(denied.status_code, 409)
+        self.assertIn("does not match", denied.json()["detail"])
+        self.assertEqual([(r.url.path, r.url.params.get("preview")) for r in calls], [
+            ("/api/internal/drafts/7/update", None),
+            ("/api/internal/drafts/7/publish", "true"),
+            ("/api/internal/drafts/7/publish", None),
+        ])
+        self.assertEqual(calls[0].content, b'{"description":"Hand-written copy."}')
 
 if __name__ == "__main__":
     unittest.main()

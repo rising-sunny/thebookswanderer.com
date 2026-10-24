@@ -32,6 +32,8 @@ READ = {
 SUPPLIER = dict(READ, openWorldHint=True)
 # Creates a hidden store row; repeating it returns the existing product.
 DRAFT = dict(SUPPLIER, readOnlyHint=False)
+# Changes a hidden draft only; publishing needs the preview's code.
+STORE_WRITE = dict(READ, readOnlyHint=False)
 
 class OwnerVerifier(GitHubTokenVerifier):
     def __init__(self, owner_id):
@@ -75,7 +77,10 @@ class AdminBridge:
         allowed = (method == "GET" and (
             path in {"/health", "/products", "/suppliers/cj/search"}
             or re.fullmatch(r"/suppliers/cj/products/[A-Za-z0-9-]{1,64}", path)
-        )) or (method == "POST" and path in {"/drafts/preview", "/drafts"})
+        )) or (method == "POST" and (
+            path in {"/drafts/preview", "/drafts"}
+            or re.fullmatch(r"/drafts/[1-9][0-9]{0,9}/(update|publish|publish/preview)", path)
+        ))
         if not allowed:
             raise ToolError("Administrative operation is not permitted")
         try:
@@ -231,6 +236,56 @@ def create_server(config, admin_key, state_directory, transport=None):
         """
         return await bridge.request(
             "POST", "/drafts", payload=draft(pid, vid, title, category, price_usd),
+        )
+
+    @server.tool(annotations=STORE_WRITE)
+    async def tbw_update_draft(
+        product_id: Annotated[int, Field(ge=1)],
+        title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
+        description: Annotated[str | None, Field(min_length=1, max_length=5000)] = None,
+        category: Annotated[str | None, Field(max_length=120)] = None,
+        price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+    ) -> dict:
+        """Edit a hidden draft. Only products still marked as drafts can change.
+
+        Fields left out stay as they are. A new title also renames the slug.
+        category must be a store category slug; price_usd applies to every
+        variant. The description is plain text written for the store, never
+        copied from CJ. Returns the draft and what still blocks publication.
+        """
+        payload = {
+            "title": title, "description": description,
+            "category": category, "price_usd": price_usd,
+        }
+        return await bridge.request(
+            "POST", f"/drafts/{product_id}/update",
+            payload={k: v for k, v in payload.items() if v is not None},
+        )
+
+    @server.tool(annotations=READ)
+    async def tbw_preview_publish(
+        product_id: Annotated[int, Field(ge=1)],
+    ) -> dict:
+        """Show a draft as it would go live, what blocks it, and its confirmation code.
+
+        Writes nothing. Show the whole preview to the owner; the code is only
+        valid for the draft exactly as shown and changes after any edit.
+        """
+        return await bridge.request("POST", f"/drafts/{product_id}/publish/preview")
+
+    @server.tool(annotations=STORE_WRITE)
+    async def tbw_publish_draft(
+        product_id: Annotated[int, Field(ge=1)],
+        code: Annotated[str, Field(pattern=r"^[0-9A-Fa-f]{6}$")],
+    ) -> dict:
+        """Make a reviewed draft visible and purchasable in the store.
+
+        Only call this after the owner has seen tbw_preview_publish and
+        explicitly approved publishing; code is the one from that preview.
+        Never pins, posts, orders or pays.
+        """
+        return await bridge.request(
+            "POST", f"/drafts/{product_id}/publish", payload={"code": code},
         )
 
     return server

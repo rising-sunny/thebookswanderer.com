@@ -1,4 +1,4 @@
-"""Restricted administrative API: store reads, read-only CJ search, hidden drafts."""
+"""Restricted administrative API: store reads, read-only CJ search, drafts."""
 import hmac
 import os
 import re
@@ -137,9 +137,10 @@ def health():
     return {
         "service": "tbw-admin-api",
         "ready": True,
-        "capabilities": ["products:read", "cj:read", "products:draft"],
+        "capabilities": ["products:read", "cj:read", "products:draft", "products:publish"],
         "order_submission_enabled": False,
-        "product_publication_enabled": False,
+        # Drafts only, each with the code from its publication preview.
+        "product_publication_enabled": True,
     }
 
 @app.get("/products")
@@ -147,7 +148,7 @@ def products(limit: int = Query(default=50, ge=1, le=100),
              offset: int = Query(default=0, ge=0)):
     with closing(store()) as db:
         rows = db.execute("""
-            SELECT id, slug, title, supplier, price_usd, active
+            SELECT id, slug, title, supplier, price_usd, active, draft
             FROM products ORDER BY id LIMIT ? OFFSET ?
         """, (limit, offset)).fetchall()
     return {"products": [dict(row) for row in rows], "limit": limit, "offset": offset}
@@ -222,26 +223,37 @@ class Draft(BaseModel):
     category: str = Field(default="", max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)
 
-async def store_draft(draft, preview):
-    """The storefront builds the draft; this service never writes store.db."""
+class DraftEdit(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=300)
+    description: str | None = Field(default=None, min_length=1, max_length=5000)
+    category: str | None = Field(default=None, max_length=120)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)
+
+class Publication(BaseModel):
+    code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+
+async def store_call(path, payload, preview=False):
+    """The storefront does every write; this service never writes store.db."""
     key = credential("draft_key", "TBW_DRAFT_KEY_FILE")
     try:
         async with httpx.AsyncClient(
             timeout=60, follow_redirects=False, transport=store_transport
         ) as client:
             response = await client.post(
-                STORE_API + "/api/internal/drafts",
+                STORE_API + "/api/internal/drafts" + path,
                 params={"preview": "true"} if preview else None,
                 headers={"Authorization": "Bearer " + key},
-                json={
-                    "cj_pid": draft.pid, "cj_vid": draft.vid, "title": draft.title,
-                    "category": draft.category, "price_usd": draft.price_usd,
-                },
+                json=payload,
             )
     except httpx.HTTPError:
         raise HTTPException(503, "Store unavailable") from None
-    if response.status_code in {400, 404, 422}:
-        raise HTTPException(response.status_code, "Store rejected the draft")
+    if response.status_code in {400, 404, 409, 422}:
+        # The store's own messages (unknown draft, what blocks publication).
+        try:
+            detail = str(response.json().get("detail"))[:500]
+        except (ValueError, AttributeError):
+            detail = ""
+        raise HTTPException(response.status_code, detail or "Store rejected the request")
     if response.status_code != 200:
         raise HTTPException(502 if response.status_code == 502 else 503,
                             "Store or CJ unavailable")
@@ -253,10 +265,30 @@ async def store_draft(draft, preview):
         raise HTTPException(503, "Invalid store response")
     return data
 
+def new_draft(draft):
+    return {
+        "cj_pid": draft.pid, "cj_vid": draft.vid, "title": draft.title,
+        "category": draft.category, "price_usd": draft.price_usd,
+    }
+
 @app.post("/drafts/preview")
 async def draft_preview(draft: Draft):
-    return await store_draft(draft, preview=True)
+    return await store_call("", new_draft(draft), preview=True)
 
 @app.post("/drafts")
 async def draft_create(draft: Draft):
-    return await store_draft(draft, preview=False)
+    return await store_call("", new_draft(draft))
+
+@app.post("/drafts/{product_id}/update")
+async def draft_update(edit: DraftEdit, product_id: int = PathParam(ge=1)):
+    return await store_call(
+        f"/{product_id}/update", edit.model_dump(exclude_none=True)
+    )
+
+@app.post("/drafts/{product_id}/publish/preview")
+async def draft_publish_preview(product_id: int = PathParam(ge=1)):
+    return await store_call(f"/{product_id}/publish", None, preview=True)
+
+@app.post("/drafts/{product_id}/publish")
+async def draft_publish(publication: Publication, product_id: int = PathParam(ge=1)):
+    return await store_call(f"/{product_id}/publish", {"code": publication.code})

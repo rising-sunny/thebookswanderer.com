@@ -58,7 +58,8 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
         for method, path in [
             ("POST", "/orders"), ("GET", "/suppliers/cj/products/../x"),
             ("POST", "/products"), ("GET", "/drafts"), ("POST", "/drafts/publish"),
-            ("PUT", "/drafts"),
+            ("PUT", "/drafts"), ("POST", "/drafts/0/publish"), ("GET", "/drafts/7/update"),
+            ("POST", "/drafts/7/delete"), ("POST", "/drafts/7/publish/x"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -133,11 +134,13 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({tool.name for tool in tools}, {
                 "tbw_health", "tbw_list_products",
                 "tbw_search_cj", "tbw_get_cj_product",
-                "tbw_preview_draft", "tbw_create_draft",
+                "tbw_preview_draft", "tbw_create_draft", "tbw_update_draft",
+                "tbw_preview_publish", "tbw_publish_draft",
             })
+            writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft"}
             for tool in tools:
                 self.assertEqual(
-                    tool.annotations.read_only_hint, tool.name != "tbw_create_draft"
+                    tool.annotations.read_only_hint, tool.name not in writers
                 )
                 self.assertFalse(tool.annotations.destructive_hint)
             serialized = json.dumps(
@@ -162,10 +165,25 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 )
                 with self.assertRaises(Exception):
                     await client.call_tool("tbw_create_draft", {"pid": "../x"})
+                await client.call_tool(
+                    "tbw_update_draft", {"product_id": 7, "description": "Copy."}
+                )
+                await client.call_tool("tbw_preview_publish", {"product_id": 7})
+                await client.call_tool(
+                    "tbw_publish_draft", {"product_id": 7, "code": "A1B2C3"}
+                )
+                with self.assertRaises(Exception):
+                    await client.call_tool(
+                        "tbw_publish_draft", {"product_id": 7, "code": "nope"}
+                    )
         self.assertEqual(
             [(r.method, r.url.path) for r in requests],
-            [("POST", "/drafts/preview"), ("POST", "/drafts")],
+            [("POST", "/drafts/preview"), ("POST", "/drafts"),
+             ("POST", "/drafts/7/update"), ("POST", "/drafts/7/publish/preview"),
+             ("POST", "/drafts/7/publish")],
         )
+        self.assertEqual(json.loads(requests[2].content), {"description": "Copy."})
+        self.assertEqual(json.loads(requests[4].content), {"code": "A1B2C3"})
         self.assertEqual(json.loads(requests[1].content), {
             "pid": "CJ-1", "vid": None, "title": None,
             "category": "", "price_usd": 19.99,
