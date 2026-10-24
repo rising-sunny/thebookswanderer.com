@@ -1,9 +1,11 @@
-"""Install or upgrade the isolated admin API. It receives only the CJ key."""
+"""Install or upgrade the isolated admin API. It receives the CJ and draft keys."""
 import argparse
 import getpass
+import grp
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import socket
 import subprocess
@@ -27,6 +29,8 @@ key = Path("/etc/tbw-admin-api/key")
 cj_key = Path("/etc/tbw-admin-api/cj_api_key")
 store_env = Path("/var/www/thebookswanderer.com/server/.env")
 cj_line = "LoadCredential=cj_api_key:/etc/tbw-admin-api/cj_api_key\n"
+draft_key = Path("/etc/thebookswanderer/draft_key")
+draft_line = "LoadCredential=draft_key:/etc/thebookswanderer/draft_key\n"
 unit = Path("/etc/systemd/system") / service
 snippet = Path("/etc/nginx/snippets/tbw-admin-api.conf")
 site = Path("/etc/nginx/sites-available/thebookswanderer.com")
@@ -55,6 +59,31 @@ def ensure_cj_key():
     fd = os.open(cj_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as file:
         file.write(values[0] + "\n")
+
+def ensure_draft_key():
+    """Key shared with the store (group www-data), which reads it per request."""
+    group = grp.getgrnam("www-data").gr_gid
+    if not draft_key.parent.exists():
+        draft_key.parent.mkdir()
+        os.chown(draft_key.parent, 0, group)
+        os.chmod(draft_key.parent, 0o750)
+    if draft_key.exists():
+        if draft_key.stat().st_uid != 0 or draft_key.stat().st_mode & 0o037:
+            raise SystemExit("La clave de borradores no tiene propietario o permisos seguros.")
+        return
+    fd = os.open(draft_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as file:
+        file.write(secrets.token_urlsafe(48) + "\n")
+    os.chown(draft_key, 0, group)
+    os.chmod(draft_key, 0o640)
+
+def store_has_drafts():
+    """The deployed store answers its internal draft route (422 on an empty body)."""
+    try:
+        response = httpx.post("http://127.0.0.1:8010/api/internal/drafts", json={}, timeout=10)
+    except httpx.HTTPError:
+        return False
+    return response.status_code == 422
 
 def wait_health(secret):
     headers = {"Authorization": "Bearer " + secret}
@@ -85,10 +114,13 @@ if args.upgrade:
     unit_before = unit.read_text()
     if "LoadCredential=admin_key:" not in unit_before:
         raise SystemExit("La unidad instalada no tiene el formato esperado.")
+    if not store_has_drafts():
+        raise SystemExit("La tienda desplegada aún no tiene borradores; despliega main primero.")
     if args.check:
         print("Precomprobación de actualización correcta.")
         raise SystemExit(0)
     ensure_cj_key()
+    ensure_draft_key()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = Path("/var/backups/tbw-admin-api") / timestamp
     backup.mkdir(parents=True, mode=0o700)
@@ -96,15 +128,19 @@ if args.upgrade:
     shutil.copy2(unit, backup / "unit.before")
     try:
         shutil.copyfile(source, code / "app.py")
-        if cj_line not in unit_before:
-            unit.write_text(unit_before.replace(
-                "LoadCredential=admin_key:", cj_line + "LoadCredential=admin_key:", 1
-            ))
+        unit_after = unit_before
+        for line in (cj_line, draft_line):
+            if line not in unit_after:
+                unit_after = unit_after.replace(
+                    "LoadCredential=admin_key:", line + "LoadCredential=admin_key:", 1
+                )
+        if unit_after != unit_before:
+            unit.write_text(unit_after)
         command("systemctl", "daemon-reload")
         command("systemctl", "restart", service)
         health = wait_health(key.read_text().strip())
         if (
-            "cj:read" not in health.get("capabilities", [])
+            not {"cj:read", "products:draft"} <= set(health.get("capabilities", []))
             or health.get("order_submission_enabled") is not False
             or health.get("product_publication_enabled") is not False
         ):
@@ -119,7 +155,7 @@ if args.upgrade:
             print(str(error))
         print("Respaldo:", backup)
         raise SystemExit(1)
-    print("API administrativa actualizada: lectura de catálogo y de CJ.")
+    print("API administrativa actualizada: lectura de catálogo y de CJ, borradores ocultos.")
     print("Pedidos reales y publicación: deshabilitados. Tienda no reiniciada.")
     print("Respaldo:", backup)
     raise SystemExit(0)
@@ -188,6 +224,7 @@ try:
         with os.fdopen(fd, "w") as file:
             file.write(secret + "\n")
     ensure_cj_key()
+    ensure_draft_key()
 
     unit.write_text(
         "[Unit]\n"
@@ -198,7 +235,7 @@ try:
         "WorkingDirectory=/opt/tbw-admin-api\n"
         "ExecStart=" + str(python) +
         " -m uvicorn app:app --host 127.0.0.1 --port 8878 --workers 1 --no-access-log\n"
-        + cj_line +
+        + cj_line + draft_line +
         "LoadCredential=admin_key:/etc/tbw-admin-api/key\n"
         "StateDirectory=tbw-admin-api\nStateDirectoryMode=0700\n"
         "Environment=TBW_ADMIN_STORE_DB=/var/www/thebookswanderer.com/server/data/store.db\n"

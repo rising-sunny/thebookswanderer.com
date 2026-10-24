@@ -1,10 +1,10 @@
 # Restricted VPS administrative API
 
-Separate FastAPI service for authenticated store reads and read-only CJ
-catalog search. This service is not imported by the storefront.
+Separate FastAPI service for authenticated store reads, read-only CJ
+catalog search and hidden CJ drafts. This service is not imported by the storefront.
 
 Routes: GET /health, GET /products, GET /suppliers/cj/search,
-GET /suppliers/cj/products/{pid}.
+GET /suppliers/cj/products/{pid}, POST /drafts/preview, POST /drafts.
 All implemented routes require Authorization: Bearer with a dedicated key.
 OpenAPI and interactive documentation are disabled.
 
@@ -16,6 +16,12 @@ The key stays on the VPS. Systemd LoadCredential should deliver admin_key
 through CREDENTIALS_DIRECTORY. TBW_ADMIN_KEY_FILE supports local testing.
 Only the CJ key is delivered, as cj_api_key, and never returned. The
 installer copies it from the store .env into a root-only credential file.
+
+Drafts are built by the storefront's loopback-only POST /api/internal/drafts
+(inactive, draft=1, no Pinterest pin); this service still never writes
+store.db. Both sides use draft_key, /etc/thebookswanderer/draft_key
+(root:www-data, 0640), which --upgrade generates if missing. The store reads
+it on each request, so it needs no restart.
 
 Production paths:
 - Key: /etc/tbw-admin-api/key, root-owned, mode 0600.
@@ -43,7 +49,8 @@ It uses systemd LoadCredential and a restricted service on 127.0.0.1:8878.
 Failures trigger removal of the new Nginx inclusion and service configuration; credentials, state and backups are retained for diagnosis.
 Do not rerun over an existing installation or rotate its key implicitly.
 On an existing installation use --upgrade (after --upgrade --check): it backs
-up the code and unit, adds the CJ credential, restarts only this service and
-restores the backup if the health check fails.
+up the code and unit, adds the CJ and draft credentials, restarts only this
+service and restores the backup if the health check fails. It refuses to run
+until the deployed store answers its draft route.
 
 After a rolled-back installation, --resume may reuse the retained key and identical application code. It refuses existing service or Nginx configuration and checks key ownership and permissions. HTTPS readiness is retried for a bounded period after the Nginx reload.

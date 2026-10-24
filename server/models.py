@@ -49,6 +49,8 @@ class Product(Base):
     video_poster: Mapped[str] = mapped_column(String(500), default="")
 
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Hidden import awaiting review; only drafts may later be published.
+    draft: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     variants: Mapped[list["ProductVariant"]] = relationship(
