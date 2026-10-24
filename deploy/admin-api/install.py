@@ -1,4 +1,4 @@
-"""Install the isolated admin API. Never loads provider credentials."""
+"""Install or upgrade the isolated admin API. It receives only the CJ key."""
 import argparse
 import getpass
 import hashlib
@@ -17,12 +17,16 @@ import httpx
 parser = argparse.ArgumentParser()
 parser.add_argument("--check", action="store_true")
 parser.add_argument("--resume", action="store_true")
+parser.add_argument("--upgrade", action="store_true")
 args = parser.parse_args()
 
 service = "tbw-admin-api.service"
 source = Path(__file__).resolve().parent / "app.py"
 code = Path("/opt/tbw-admin-api")
 key = Path("/etc/tbw-admin-api/key")
+cj_key = Path("/etc/tbw-admin-api/cj_api_key")
+store_env = Path("/var/www/thebookswanderer.com/server/.env")
+cj_line = "LoadCredential=cj_api_key:/etc/tbw-admin-api/cj_api_key\n"
 unit = Path("/etc/systemd/system") / service
 snippet = Path("/etc/nginx/snippets/tbw-admin-api.conf")
 site = Path("/etc/nginx/sites-available/thebookswanderer.com")
@@ -35,8 +39,90 @@ def command(*values):
         raise RuntimeError("Falló: " + " ".join(values[:2]))
     return result.stdout.strip()
 
+def ensure_cj_key():
+    """Copy CJ_API_KEY from the store .env into a root-only credential file."""
+    if cj_key.exists():
+        if cj_key.stat().st_uid != 0 or cj_key.stat().st_mode & 0o077:
+            raise SystemExit("La clave CJ no tiene propietario o permisos seguros.")
+        return
+    values = [
+        line.split("=", 1)[1].strip().strip("'\"")
+        for line in store_env.read_text().splitlines()
+        if line.startswith("CJ_API_KEY=")
+    ]
+    if len(values) != 1 or not values[0]:
+        raise SystemExit("No se encontró un único CJ_API_KEY en el .env de la tienda.")
+    fd = os.open(cj_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as file:
+        file.write(values[0] + "\n")
+
+def wait_health(secret):
+    headers = {"Authorization": "Bearer " + secret}
+    with httpx.Client(timeout=10, follow_redirects=False) as client:
+        for attempt in range(20):
+            try:
+                response = client.get("http://127.0.0.1:8878/health", headers=headers)
+                if response.status_code == 200:
+                    break
+            except httpx.RequestError:
+                pass
+            time.sleep(1)
+        else:
+            raise RuntimeError("El servicio administrativo no respondió.")
+        if client.get("http://127.0.0.1:8878/health").status_code != 401:
+            raise RuntimeError("La comprobación sin clave no fue rechazada.")
+    return response.json()
+
 if os.geteuid() != 0:
     raise SystemExit("Ejecutar como root.")
+if args.upgrade:
+    for path in (unit, code / "app.py", key):
+        if not path.is_file():
+            raise SystemExit("No hay instalación que actualizar: falta " + str(path))
+    if key.stat().st_uid != 0 or key.stat().st_mode & 0o077:
+        raise SystemExit("La clave no tiene propietario o permisos seguros.")
+    compile(source.read_text(), str(source), "exec")
+    unit_before = unit.read_text()
+    if "LoadCredential=admin_key:" not in unit_before:
+        raise SystemExit("La unidad instalada no tiene el formato esperado.")
+    if args.check:
+        print("Precomprobación de actualización correcta.")
+        raise SystemExit(0)
+    ensure_cj_key()
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    backup = Path("/var/backups/tbw-admin-api") / timestamp
+    backup.mkdir(parents=True, mode=0o700)
+    shutil.copy2(code / "app.py", backup / "app.py.before")
+    shutil.copy2(unit, backup / "unit.before")
+    try:
+        shutil.copyfile(source, code / "app.py")
+        if cj_line not in unit_before:
+            unit.write_text(unit_before.replace(
+                "LoadCredential=admin_key:", cj_line + "LoadCredential=admin_key:", 1
+            ))
+        command("systemctl", "daemon-reload")
+        command("systemctl", "restart", service)
+        health = wait_health(key.read_text().strip())
+        if (
+            "cj:read" not in health.get("capabilities", [])
+            or health.get("order_submission_enabled") is not False
+            or health.get("product_publication_enabled") is not False
+        ):
+            raise RuntimeError("Capacidades administrativas inesperadas.")
+    except Exception as error:
+        shutil.copyfile(backup / "app.py.before", code / "app.py")
+        shutil.copyfile(backup / "unit.before", unit)
+        subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
+        subprocess.run(["systemctl", "restart", service], capture_output=True)
+        print("Actualización revertida:", type(error).__name__)
+        if isinstance(error, RuntimeError):
+            print(str(error))
+        print("Respaldo:", backup)
+        raise SystemExit(1)
+    print("API administrativa actualizada: lectura de catálogo y de CJ.")
+    print("Pedidos reales y publicación: deshabilitados. Tienda no reiniciada.")
+    print("Respaldo:", backup)
+    raise SystemExit(0)
 if args.resume:
     if not key.is_file() or not (code / "app.py").is_file():
         raise SystemExit("Falta la instalación parcial o su clave.")
@@ -85,7 +171,7 @@ shutil.copy2(site, backup / "nginx-site.before")
 (backup / "installation.json").write_text(json.dumps({
     "app_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
     "service": service,
-    "note": "No provider credentials or store database backups copied.",
+    "note": "No credentials or store database backups copied.",
 }, indent=2))
 
 site_changed = False
@@ -101,6 +187,7 @@ try:
         fd = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as file:
             file.write(secret + "\n")
+    ensure_cj_key()
 
     unit.write_text(
         "[Unit]\n"
@@ -111,9 +198,9 @@ try:
         "WorkingDirectory=/opt/tbw-admin-api\n"
         "ExecStart=" + str(python) +
         " -m uvicorn app:app --host 127.0.0.1 --port 8878 --workers 1 --no-access-log\n"
+        + cj_line +
         "LoadCredential=admin_key:/etc/tbw-admin-api/key\n"
         "StateDirectory=tbw-admin-api\nStateDirectoryMode=0700\n"
-        "Environment=TBW_ADMIN_DRAFT_DB=/var/lib/tbw-admin-api/drafts.sqlite3\n"
         "Environment=TBW_ADMIN_STORE_DB=/var/www/thebookswanderer.com/server/data/store.db\n"
         "Restart=on-failure\nRestartSec=3\nUMask=0077\n"
         "NoNewPrivileges=yes\nPrivateTmp=yes\n"
@@ -160,11 +247,6 @@ try:
         )
         if products.status_code != 200:
             raise RuntimeError("No se pudo leer el catálogo en modo protegido.")
-        drafts = client.get(
-            "http://127.0.0.1:8878/drafts?limit=1", headers=headers
-        )
-        if drafts.status_code != 200:
-            raise RuntimeError("No se pudo acceder al registro de borradores.")
 
     snippet.write_text(
         "# Managed by deploy/admin-api/install.py\n"
@@ -238,9 +320,9 @@ try:
     command("systemctl", "enable", service)
     print("Instalado: https://thebookswanderer.com/api/ops/health")
     print("Autenticación local y HTTPS: con clave 200, sin clave 401.")
-    print("Catálogo: lectura correcta. Registro de borradores: accesible.")
+    print("Catálogo: lectura correcta. CJ: solo lectura.")
     print("Pedidos reales y publicación: deshabilitados.")
-    print("No se creó ningún borrador ni se reinició la tienda.")
+    print("No se reinició la tienda.")
     print("Respaldo Nginx:", backup)
 except Exception as error:
     failures = []

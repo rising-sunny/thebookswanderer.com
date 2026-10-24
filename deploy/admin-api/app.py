@@ -1,18 +1,17 @@
-"""Restricted administrative API: product reads and isolated Qikink drafts."""
-import hashlib
+"""Restricted administrative API: store reads and read-only supplier search."""
 import hmac
-import json
 import os
+import re
 import sqlite3
+import sys
 from contextlib import closing
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+import httpx
+
+from fastapi import Depends, FastAPI, HTTPException, Path as PathParam, Query
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -50,55 +49,80 @@ async def private_responses(request, call_next):
     response.headers["Cache-Control"] = "no-store"
     return response
 
-StoreImage = Annotated[str, StringConstraints(
-    max_length=500,
-    pattern=r"^https://(?:www\.)?thebookswanderer\.com/assets/[A-Za-z0-9_./%-]+\.(?:jpg|jpeg|png)$",
-)]
+STORE_API = "http://127.0.0.1:8010"
+CJ_ID = r"^[A-Za-z0-9-]{1,64}$"
 
-class Variant(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    name: str = Field(min_length=1, max_length=200)
-    qikink_sku: str = Field(min_length=1, max_length=50)
-    design_image: StoreImage | None = None
-    mockup_image: StoreImage | None = None
+def credential(name, variable):
+    directory = os.getenv("CREDENTIALS_DIRECTORY", "")
+    path = Path(directory) / name if directory else Path(os.getenv(variable, ""))
+    try:
+        value = path.read_text().strip() if str(path) not in {"", "."} else ""
+    except OSError:
+        value = ""
+    if not value:
+        raise HTTPException(503, "Supplier credential unavailable")
+    return value
 
-class Draft(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    reference: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$")
-    supplier: Literal["qikink"] = "qikink"
-    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)
-    title: str = Field(min_length=1, max_length=300)
-    description: str = Field(default="", max_length=5000)
-    variants: list[Variant] = Field(min_length=1, max_length=40)
+def cj_module():
+    """The storefront's CJ client, fed only the CJ credential."""
+    os.environ["CJ_API_KEY"] = credential("cj_api_key", "TBW_CJ_KEY_FILE")
+    server = os.getenv("TBW_STORE_SERVER", "/var/www/thebookswanderer.com/server")
+    if server not in sys.path:
+        sys.path.insert(0, server)
+    from services import cj
+    return cj
 
-def journal():
+def store():
     path = Path(os.getenv(
-        "TBW_ADMIN_DRAFT_DB", "/var/lib/tbw-admin-api/drafts.sqlite3"
+        "TBW_ADMIN_STORE_DB",
+        "/var/www/thebookswanderer.com/server/data/store.db",
     ))
-    connection = sqlite3.connect(path, timeout=10)
-    connection.row_factory = sqlite3.Row
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS drafts (
-            reference TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
-            payload TEXT NOT NULL, created_at TEXT NOT NULL
-        )
-    """)
-    connection.commit()
-    return connection
+    uri = path.resolve().as_uri() + "?mode=ro"
+    db = sqlite3.connect(uri, uri=True, timeout=5)
+    db.row_factory = sqlite3.Row
+    return db
 
-def draft_result(row):
-    return {
-        "draft": json.loads(row["payload"]),
-        "created_at": row["created_at"],
-        "state": "draft",
-        "public_sales_enabled": False,
-        "order_submission_enabled": False,
-        "pending": [
-            "supplier_sku_and_artwork_verification",
-            "destination_and_supplier_cost_verification",
-            "retail_pricing_and_store_mapping",
-        ],
-    }
+def owned_cj_pids(pids):
+    if not pids:
+        return set()
+    marks = ",".join("?" * len(pids))
+    with closing(store()) as db:
+        rows = db.execute(
+            f"SELECT cj_pid FROM products WHERE cj_pid IN ({marks})", list(pids)
+        ).fetchall()
+    return {row["cj_pid"] for row in rows}
+
+async def retail_prices(costs):
+    """Suggested retail per cost, from the storefront's own pricing rules."""
+    prices = {}
+    async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+        for cost in sorted(set(costs)):
+            try:
+                response = await client.get(
+                    STORE_API + "/api/pricing/preview", params={"cost_usd": cost}
+                )
+                prices[cost] = float(response.json()["price_usd"])
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                prices[cost] = None
+    return prices
+
+def number(value):
+    """CJ sends either a scalar or a "1.20-3.40" range; keep the low end."""
+    if isinstance(value, str) and "-" in value:
+        value = value.split("-")[0]
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+async def cj_call(name, *args, **kwargs):
+    cj = cj_module()
+    try:
+        return await getattr(cj, name)(*args, **kwargs)
+    except cj.CJError:
+        raise HTTPException(502, "CJ request failed") from None
+    except httpx.HTTPError:
+        raise HTTPException(502, "CJ unavailable") from None
 
 @app.exception_handler(sqlite3.Error)
 async def database_error(request, error):
@@ -111,7 +135,7 @@ def health():
     return {
         "service": "tbw-admin-api",
         "ready": True,
-        "capabilities": ["products:read", "qikink-drafts:read", "qikink-drafts:write"],
+        "capabilities": ["products:read", "cj:read"],
         "order_submission_enabled": False,
         "product_publication_enabled": False,
     }
@@ -119,66 +143,72 @@ def health():
 @app.get("/products")
 def products(limit: int = Query(default=50, ge=1, le=100),
              offset: int = Query(default=0, ge=0)):
-    path = Path(os.getenv(
-        "TBW_ADMIN_STORE_DB",
-        "/var/www/thebookswanderer.com/server/data/store.db",
-    ))
-    uri = path.resolve().as_uri() + "?mode=ro"
-    with closing(sqlite3.connect(uri, uri=True, timeout=5)) as db:
-        db.row_factory = sqlite3.Row
+    with closing(store()) as db:
         rows = db.execute("""
             SELECT id, slug, title, supplier, price_usd, active
             FROM products ORDER BY id LIMIT ? OFFSET ?
         """, (limit, offset)).fetchall()
     return {"products": [dict(row) for row in rows], "limit": limit, "offset": offset}
 
-@app.post("/drafts")
-def create_draft(draft: Draft):
-    if len({v.qikink_sku for v in draft.variants}) != len(draft.variants):
-        raise HTTPException(422, "Duplicate Qikink SKU")
-    payload = json.dumps(
-        draft.model_dump(mode="json"), sort_keys=True,
-        separators=(",", ":"), ensure_ascii=False,
-    )
-    fingerprint = hashlib.sha256(payload.encode()).hexdigest()
-    with closing(journal()) as db, db:
-        db.execute("BEGIN IMMEDIATE")
-        row = db.execute(
-            "SELECT * FROM drafts WHERE reference=?", (draft.reference,)
-        ).fetchone()
-        created = row is None
-        if row is not None and row["fingerprint"] != fingerprint:
-            raise HTTPException(409, "Reference already used with different content")
-        if created:
-            db.execute(
-                "INSERT INTO drafts VALUES (?, ?, ?, ?)",
-                (draft.reference, fingerprint, payload,
-                 datetime.now(timezone.utc).isoformat()),
-            )
-            row = db.execute(
-                "SELECT * FROM drafts WHERE reference=?", (draft.reference,)
-            ).fetchone()
-    return JSONResponse(
-        status_code=201 if created else 200,
-        content=draft_result(row),
-    )
+@app.get("/suppliers/cj/search")
+async def cj_search(q: str = Query(min_length=2, max_length=100),
+                    page: int = Query(default=1, ge=1, le=50),
+                    size: int = Query(default=20, ge=1, le=50)):
+    data = await cj_call("search_products", q.strip(), page=page, size=size)
+    rows = []
+    for bucket in (data.get("content") if isinstance(data, dict) else None) or []:
+        if isinstance(bucket, dict) and isinstance(bucket.get("productList"), list):
+            rows.extend(x for x in bucket["productList"] if isinstance(x, dict))
+        elif isinstance(bucket, dict):
+            rows.append(bucket)
+    items = []
+    for row in rows:
+        pid = str(row.get("id") or row.get("pid") or "")
+        if not re.fullmatch(CJ_ID, pid):
+            continue
+        items.append({
+            "pid": pid,
+            "sku": str(row.get("sku") or ""),
+            "title": str(row.get("nameEn") or row.get("productNameEn") or ""),
+            "cost_usd": number(row.get("sellPrice") or row.get("productSellPrice")),
+            "image_url": str(row.get("bigImage") or row.get("productImage") or ""),
+            "listed_num": int(number(row.get("listedNum"))),
+            "has_video": bool(number(row.get("isVedio"))),
+        })
+    prices = await retail_prices(item["cost_usd"] for item in items)
+    owned = owned_cj_pids({item["pid"] for item in items})
+    for item in items:
+        item["suggested_price_usd"] = prices.get(item["cost_usd"])
+        item["in_store"] = item["pid"] in owned
+    return {"query": q.strip(), "page": page, "products": items}
 
-@app.get("/drafts")
-def drafts(limit: int = Query(default=50, ge=1, le=100),
-           offset: int = Query(default=0, ge=0)):
-    with closing(journal()) as db:
-        rows = db.execute("""
-            SELECT * FROM drafts ORDER BY created_at DESC, reference
-            LIMIT ? OFFSET ?
-        """, (limit, offset)).fetchall()
-    return {"drafts": [draft_result(row) for row in rows]}
-
-@app.get("/drafts/{reference}")
-def get_draft(reference: str):
-    with closing(journal()) as db:
-        row = db.execute(
-            "SELECT * FROM drafts WHERE reference=?", (reference,)
-        ).fetchone()
-    if row is None:
-        raise HTTPException(404, "Draft not found")
-    return draft_result(row)
+@app.get("/suppliers/cj/products/{pid}")
+async def cj_product(pid: str = PathParam(pattern=CJ_ID)):
+    data = await cj_call("get_product_details", pid=pid)
+    if not isinstance(data, dict) or not data:
+        raise HTTPException(404, "CJ product not found")
+    variants = []
+    for row in data.get("variants") or []:
+        if not isinstance(row, dict):
+            continue
+        variants.append({
+            "vid": str(row.get("vid") or ""),
+            "sku": str(row.get("variantSku") or ""),
+            "name": str(row.get("variantKey") or row.get("variantNameEn") or ""),
+            "cost_usd": number(row.get("variantSellPrice")),
+            "image_url": str(row.get("variantImage") or ""),
+            "weight_g": number(row.get("variantWeight")),
+        })
+    prices = await retail_prices(v["cost_usd"] for v in variants)
+    for variant in variants:
+        variant["suggested_price_usd"] = prices.get(variant["cost_usd"])
+    images = [str(u) for u in (data.get("productImageSet") or []) if u][:16]
+    return {
+        "pid": str(data.get("pid") or pid),
+        "sku": str(data.get("productSku") or ""),
+        "title": str(data.get("productNameEn") or ""),
+        "category": str(data.get("categoryName") or ""),
+        "images": images,
+        "variants": variants[:100],
+        "in_store": bool(owned_cj_pids({pid})),
+    }
