@@ -19,8 +19,9 @@ estado reportado y tareas pendientes.
   VPS, muestra solamente su nombre y un booleano o estado.
 - Antes de usar instrucciones antiguas que proponen copiar claves al entorno
   local, aplica la política actual de credenciales exclusivamente en el VPS.
-- `main` activa un despliegue automático. Trabaja en una rama y prepara un PR;
-  no mezcles una actualización documental con un despliegue no solicitado.
+- `main` activa un despliegue automático (salvo cambios solo en `*.md`,
+  `docs/`, `deploy/admin-api/` o `deploy/mcp/`). Trabaja en una rama y prepara
+  un PR; no mezcles una actualización documental con un despliegue no solicitado.
 - Una solicitud de diagnóstico no autoriza pagos, pedidos reales, publicación
   de productos, mensajes o anuncios. Respeta el alcance solicitado y las
   autorizaciones explícitas vigentes; no asumas que todas las integraciones

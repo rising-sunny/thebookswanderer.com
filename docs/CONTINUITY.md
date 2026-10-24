@@ -73,18 +73,17 @@ ni que la ausencia en una terminal implica ausencia en el proceso systemd.
 
 ## MCP del VPS
 
-El dueño reportó que el MCP con OAuth funcionaba y que `tbw_health` y
-`tbw_list_products` habían sido probados. Su código estaba en el PR #93:
-<https://github.com/rising-sunny/thebookswanderer.com/pull/93>.
-En la revisión de `main` realizada para esta guía, `deploy/mcp/` no estaba
-presente. No se ha vuelto a comprobar la instalación en producción desde esta
-sesión. Comprueba revisión/fusión e instalación por separado.
+El MCP está instalado en el VPS y su código está en `deploy/mcp/` y
+`deploy/admin-api/` (PR #106, que sustituye al #93). El 24 de octubre de 2026
+se probaron `tbw_health`, `tbw_list_products` y `tbw_search_cj`.
 
-Diseño documentado en esa rama: endpoint `https://thebookswanderer.com/mcp`,
-OAuth de GitHub limitado al dueño autorizado, servicio en loopback y puente a
-la API administrativa restringida. Claves y estado OAuth del servidor permanecen
-en el VPS. El diseño incluye lecturas de productos y borradores Qikink aislados;
-no herramientas de publicación, pagos ni pedidos reales.
+Diseño: endpoint `https://thebookswanderer.com/mcp`, OAuth de GitHub limitado
+al dueño autorizado, servicio en loopback y puente a la API administrativa
+restringida. Claves y estado OAuth del servidor permanecen en el VPS. Las
+herramientas son de solo lectura (`tbw_health`, `tbw_list_products`,
+`tbw_search_cj`, `tbw_get_cj_product`); no hay publicación, pagos ni pedidos
+reales. El despliegue automático no instala estas carpetas: se actualizan en el
+VPS con `install.py --upgrade` (ver los README de cada carpeta).
 
 Una cuenta nueva de ChatGPT necesita volver a autorizar la conexión con la
 identidad permitida. El código OAuth de esa rama restringe los clientes de
@@ -126,9 +125,11 @@ no requiere pagos, pedidos ni pruebas autenticadas.
 
 Consulta [el workflow](../.github/workflows/deploy.yml) y
 [la guía de despliegue](../deploy/DEPLOY.md). Los pushes a `main` y la ejecución
-manual del workflow activan despliegue. Además de copiar archivos y reiniciar
-el servicio, el workflow actual ejecuta actualizaciones de catálogo y el
-publicador de la lámina Prodigi revisada. No es un cambio exclusivamente estático.
+manual del workflow activan despliegue: copia archivos, ejecuta
+`deploy/remote-setup.sh` y reinicia el servicio. Desde el PR #105 ya no ejecuta
+scripts de catálogo, y los pushes que solo cambian `*.md`, `docs/`,
+`deploy/admin-api/` o `deploy/mcp/` no despliegan. Los scripts de
+`server/scripts` se ejecutan aparte (`run-script.yml` o en el VPS).
 
 La CI referencia secretos de GitHub Actions llamados `VPS_SSH_KEY` y
 `VPS_KNOWN_HOSTS`. No se inspeccionaron sus valores ni su disponibilidad.
