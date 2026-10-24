@@ -38,7 +38,7 @@ jobs:
           import sys, unittest
           sys.path.insert(0, 'server/tests')
           suite = unittest.TestSuite()
-          for name in ['test_prodigi_store', 'test_worldwide_shipping', 'test_paypal_recovery', 'test_lulu_submission', 'test_product_schema', 'test_internal_drafts', 'test_internal_suppliers']:
+          for name in ['test_prodigi_store', 'test_worldwide_shipping', 'test_paypal_recovery', 'test_lulu_submission', 'test_product_schema', 'test_internal_drafts', 'test_internal_suppliers', 'test_supplier_api']:
               suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
           result = unittest.TextTestRunner(verbosity=1).run(suite)
           raise SystemExit(not result.wasSuccessful())
@@ -96,6 +96,7 @@ jobs:
             services/shipping.py services/countries.py services/prodigi_store.py services/prodigi_submission.py \
             services/collaborators.py services/collaborators_store.py \
             services/invitation.py services/outreach.py services/monthly_newsletter.py \
+            services/supplier_api.py \
             "$VPS_HOST:$REMOTE/server/services/"
           scp -o BatchMode=yes routers/__init__.py routers/pinterest.py routers/collaborators.py routers/outreach.py "$VPS_HOST:$REMOTE/server/routers/"
           scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"

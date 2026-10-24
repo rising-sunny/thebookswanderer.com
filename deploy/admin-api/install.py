@@ -85,7 +85,7 @@ def store_has_drafts():
                        json=[], timeout=10).status_code == 422
             for path in ("/drafts", "/drafts/1/update", "/drafts/1/publish",
                          "/products/1/unpublish", "/shipping/1",
-                         "/suppliers/printify/products")
+                         "/suppliers/printify/products", "/suppliers/cj/api")
         )
     except httpx.HTTPError:
         return False

@@ -10,7 +10,13 @@ POST /drafts/{id}/publish, POST /drafts/{id}/delete,
 POST /products/{id}/unpublish/preview, POST /products/{id}/unpublish.
 GET /suppliers/printify/products, GET /suppliers/printify/products/{id},
 GET /suppliers/prodigi/products/{sku}, GET /products/{id}/shipping
-(read through the storefront, which keeps the Printify/Prodigi/Lulu keys).
+(read through the storefront, which keeps the Printify/Prodigi/Lulu keys),
+and POST /suppliers/{cj|printify|lulu|prodigi}/api: any call to that API,
+made by the storefront with its key. Writes need a single-use code from
+?preview=true (bound to the exact request, valid 10-20 minutes); paths for
+orders and payments are refused unless TBW_SUPPLIER_ORDERS_ENABLED=1 is set
+in the store's .env. Customer personal data is redacted from responses and
+each call is logged (supplier, method, path) in the store's journal.
 All implemented routes require Authorization: Bearer with a dedicated key.
 OpenAPI and interactive documentation are disabled.
 

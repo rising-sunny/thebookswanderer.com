@@ -267,5 +267,30 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[3].content),
                          {"country_code": "MX", "variant_id": None, "quantity": 1})
 
+    def test_supplier_api_goes_through_the_store(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.params.get("preview") == "true":
+                return httpx.Response(200, json={"executed": False, "code": "ABC123"})
+            return httpx.Response(403, json={"detail": "Orders and payments are disabled"})
+        body = {"method": "POST", "path": "/orders", "body": {}}
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            self.assertEqual(self.client.post("/suppliers/prodigi/api", json=body).status_code, 401)
+            self.assertEqual(self.client.post("/suppliers/etsy/api", headers=self.headers,
+                                              json=body).status_code, 422)
+            preview = self.client.post("/suppliers/prodigi/api?preview=true",
+                                       headers=self.headers, json=body)
+            blocked = self.client.post("/suppliers/prodigi/api", headers=self.headers, json=body)
+        self.assertEqual(preview.json()["code"], "ABC123")
+        self.assertEqual(blocked.status_code, 403)
+        self.assertIn("disabled", blocked.json()["detail"])
+        self.assertEqual([r.url.path for r in calls], ["/api/internal/suppliers/prodigi/api"] * 2)
+        self.assertEqual(json.loads(calls[0].content),
+                         {"method": "POST", "path": "/orders", "body": {}, "code": None})
+
 if __name__ == "__main__":
     unittest.main()
