@@ -1,6 +1,11 @@
 # The Books Wanderer
 
-Literary boutique storefront: static front + FastAPI, CJ Dropshipping fulfillment, PayPal checkout.
+Literary boutique storefront: static front + FastAPI, CJ/Printify/Lulu/Prodigi fulfillment, PayPal checkout.
+
+**New account or Codex environment:** read [AGENTS.md](AGENTS.md) and
+[the continuity guide](docs/CONTINUITY.md) first. Provider credentials and
+authenticated provider operations stay on the VPS. Older examples below that
+require credentials are for execution on the VPS, not in the Codex environment.
 
 ## Clone on a new machine
 
@@ -11,7 +16,8 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
-# Edit .env: CJ_API_KEY, and optionally PayPal keys for local checkout tests
+# Local development: leave provider credentials empty; use mocked clients/tests.
+# Never copy the production .env or provider credentials into this environment.
 ```
 
 ### CJ Dropshipping API (in this repo)
