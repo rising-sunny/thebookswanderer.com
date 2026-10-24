@@ -11,9 +11,10 @@ the claude.ai/claude.com connector callback and loopback ports for CLI clients.
 CIMD is disabled; downstream clients can use dynamic registration.
 
 Only store product reads, read-only CJ catalog search and CJ drafts are
-exposed: tbw_preview_draft, tbw_create_draft, tbw_update_draft, and
-tbw_preview_publish / tbw_publish_draft (publishing needs the code shown by
-the preview, which changes after any edit).
+exposed: tbw_preview_draft, tbw_create_draft, tbw_update_draft (English and
+Spanish copy), tbw_delete_draft, tbw_preview_publish / tbw_publish_draft and
+tbw_preview_unpublish / tbw_unpublish_product (both need the code shown by
+their preview, which changes after any edit).
 There are no publication, deletion, real-order, wallet or execution tools.
 
 Runtime credentials are delivered by systemd LoadCredential:

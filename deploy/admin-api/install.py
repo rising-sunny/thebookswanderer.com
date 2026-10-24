@@ -81,9 +81,10 @@ def store_has_drafts():
     """The deployed store answers its draft routes (422 on an invalid body)."""
     try:
         return all(
-            httpx.post("http://127.0.0.1:8010/api/internal/drafts" + path,
+            httpx.post("http://127.0.0.1:8010/api/internal" + path,
                        json=[], timeout=10).status_code == 422
-            for path in ("", "/1/update", "/1/publish")
+            for path in ("/drafts", "/drafts/1/update", "/drafts/1/publish",
+                         "/products/1/unpublish")
         )
     except httpx.HTTPError:
         return False

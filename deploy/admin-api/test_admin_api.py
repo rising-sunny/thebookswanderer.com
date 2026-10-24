@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import sqlite3
 import tempfile
@@ -214,6 +215,12 @@ class AdminApiTests(unittest.TestCase):
             preview = self.client.post("/drafts/7/publish/preview", headers=self.headers)
             denied = self.client.post("/drafts/7/publish", headers=self.headers,
                                       json={"code": "ABC123"})
+            for route, body in (("/drafts/7/delete", None),
+                                ("/products/7/unpublish/preview", None),
+                                ("/products/7/unpublish", {"code": "ABC123"})):
+                self.assertEqual(self.client.post(
+                    route, headers=self.headers, json=body
+                ).status_code, 200)
             for route, body in (("/drafts/0/update", {}), ("/drafts/7/publish", {"code": "x"})):
                 self.assertEqual(self.client.post(
                     route, headers=self.headers, json=body
@@ -225,7 +232,11 @@ class AdminApiTests(unittest.TestCase):
             ("/api/internal/drafts/7/update", None),
             ("/api/internal/drafts/7/publish", "true"),
             ("/api/internal/drafts/7/publish", None),
+            ("/api/internal/drafts/7/delete", None),
+            ("/api/internal/products/7/unpublish", "true"),
+            ("/api/internal/products/7/unpublish", None),
         ])
+        self.assertEqual(json.loads(calls[2].content), {"code": "ABC123", "pin": False})
         self.assertEqual(calls[0].content, b'{"description":"Hand-written copy."}')
 
 if __name__ == "__main__":

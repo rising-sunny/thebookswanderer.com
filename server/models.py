@@ -51,6 +51,9 @@ class Product(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Hidden import awaiting review; only drafts may later be published.
     draft: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Spanish copy kept with the product; i18n/products_es.json still wins.
+    title_es: Mapped[str] = mapped_column(String(300), default="")
+    description_es: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     variants: Mapped[list["ProductVariant"]] = relationship(
@@ -86,7 +89,7 @@ class Product(Base):
         if not img and variants and variants[0].image_url:
             img = variants[0].image_url
         cat_meta = cat_service.public_meta(self.category)
-        return {
+        out = {
             "id": self.id,
             "slug": self.slug,
             "title": self.title,
@@ -101,6 +104,9 @@ class Product(Base):
             "variant_count": len(variants),
             "has_variants": len(variants) > 1,
         }
+        if self.title_es or self.description_es:
+            out["es"] = {"title": self.title_es or "", "description": self.description_es or ""}
+        return out
 
     def to_detail(self) -> dict:
         variants = self.active_variants()

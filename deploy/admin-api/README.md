@@ -6,7 +6,8 @@ catalog search and hidden CJ drafts. This service is not imported by the storefr
 Routes: GET /health, GET /products, GET /suppliers/cj/search,
 GET /suppliers/cj/products/{pid}, POST /drafts/preview, POST /drafts,
 POST /drafts/{id}/update, POST /drafts/{id}/publish/preview,
-POST /drafts/{id}/publish.
+POST /drafts/{id}/publish, POST /drafts/{id}/delete,
+POST /products/{id}/unpublish/preview, POST /products/{id}/unpublish.
 All implemented routes require Authorization: Bearer with a dedicated key.
 OpenAPI and interactive documentation are disabled.
 
@@ -23,7 +24,10 @@ Drafts are built by the storefront's loopback-only POST /api/internal/drafts
 (inactive, draft=1, no Pinterest pin), which also edits drafts and publishes
 them. Publishing needs a code from the preview, an HMAC of the draft's
 current state, and a ready draft (description, store category, image, price
-above cost). Only rows with draft=1 and active=0 are touched. This service
+above cost). Only rows with draft=1 and active=0 are edited, published or deleted
+(deletion also requires no orders); unpublishing turns a live product back
+into a draft, with its own preview code. Publishing pins on Pinterest only
+when pin=true. This service
 still never writes store.db. Both sides use draft_key, /etc/thebookswanderer/draft_key
 (root:www-data, 0640), which --upgrade generates if missing. The store reads
 it on each request, so it needs no restart.

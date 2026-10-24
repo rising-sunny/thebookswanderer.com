@@ -206,12 +206,21 @@ class DraftUpdateIn(BaseModel):
 
     title: str | None = Field(default=None, min_length=3, max_length=300)
     description: str | None = Field(default=None, min_length=1, max_length=5000)
+    title_es: str | None = Field(default=None, min_length=3, max_length=300)
+    description_es: str | None = Field(default=None, min_length=1, max_length=5000)
     category: str | None = Field(default=None, max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)  # all variants
 
 
 class DraftPublishIn(BaseModel):
     """Internal: the code shown by the publication preview."""
+
+    code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+    pin: bool = False  # launch pin on Pinterest, same as an admin import
+
+
+class ConfirmIn(BaseModel):
+    """Internal: the code shown by an unpublish preview."""
 
     code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
 
@@ -1065,7 +1074,7 @@ def cart_preview(body: CartPreviewIn, lang: str = Query("en"), db: Session = Dep
         product_total += line_total
         img = (v.image_url if v and v.image_url else p.image_url) or ""
         name = (v.name if v and v.name else "") or ""
-        ptitle = i18n.product_title(p.slug, p.title, lang)
+        ptitle = i18n.product_title(p.slug, p.title, lang, p.title_es or "")
         title = ptitle
         if name:
             title = f"{ptitle} — {name}"
@@ -1927,6 +1936,8 @@ def _draft_summary(product: Product) -> dict:
         "slug": product.slug,
         "title": product.title,
         "description": product.description,
+        "title_es": product.title_es or "",
+        "description_es": product.description_es or "",
         "category": product.category,
         "image_url": product.image_url,
         "price_usd": product.price_usd,
@@ -1955,9 +1966,17 @@ def _publish_problems(product: Product) -> list[str]:
     return problems
 
 
-def _publish_code(product: Product) -> str:
-    """Bound to the draft's current state: any edit invalidates an earlier code."""
-    state = json.dumps(_draft_summary(product), sort_keys=True)
+def _publish_warnings(product: Product) -> list[str]:
+    """Not blocking: /es/ falls back to the English copy."""
+    if i18n.has_product(product.slug):
+        return []
+    missing = [n for n, v in (("title_es", product.title_es), ("description_es", product.description_es)) if not v]
+    return [f"no Spanish {', '.join(missing)}: /es/ will show the English copy"] if missing else []
+
+
+def _publish_code(product: Product, action: str = "publish") -> str:
+    """Bound to the product's current state: any edit invalidates an earlier code."""
+    state = json.dumps([action, _draft_summary(product), bool(product.active)], sort_keys=True)
     digest = hmac.new(_draft_key().encode(), state.encode(), hashlib.sha256)
     return digest.hexdigest()[:6].upper()
 
@@ -1980,13 +1999,22 @@ async def internal_update_draft(
         product.slug = _unique_slug(db, _slugify(product.title), exclude_id=product.id)
     if body.description is not None:
         product.description = body.description.strip()
+    if body.title_es is not None:
+        product.title_es = body.title_es.strip()
+    if body.description_es is not None:
+        product.description_es = body.description_es.strip()
     if body.price_usd is not None:
         product.price_usd = body.price_usd
         for v in product.variants:
             v.price_usd = body.price_usd
     db.commit()
     db.refresh(product)
-    return {"ok": True, "draft": _draft_summary(product), "problems": _publish_problems(product)}
+    return {
+        "ok": True,
+        "draft": _draft_summary(product),
+        "problems": _publish_problems(product),
+        "warnings": _publish_warnings(product),
+    }
 
 
 @app.post("/api/internal/drafts/{product_id}/publish")
@@ -2008,6 +2036,7 @@ async def internal_publish_draft(
             "draft": _draft_summary(product),
             "url": product_url(product.slug),
             "problems": problems,
+            "warnings": _publish_warnings(product),
             "code": None if problems else _publish_code(product),
         }
     if problems:
@@ -2018,11 +2047,66 @@ async def internal_publish_draft(
     product.draft = False
     db.commit()
     log.info("draft published: %s", product.slug)
+    pinterest_launch: dict | None = None
+    if body.pin:
+        # Best-effort, as in admin_add_product: never undo a publication.
+        try:
+            from services import pinterest_jobs as pin_jobs
+
+            pinterest_launch = await pin_jobs.pin_product_launch(db, product)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("draft launch pin failed for %s: %s", product.slug, exc)
+            pinterest_launch = {"ok": False, "error": "pin failed"}
     return {
         "ok": True,
         "published": True,
         "product": {"id": product.id, "slug": product.slug, "url": product_url(product.slug)},
+        "pinterest_launch": pinterest_launch,
     }
+
+
+@app.post("/api/internal/drafts/{product_id}/delete")
+async def internal_delete_draft(product_id: int, request: Request, db: Session = Depends(get_db)):
+    """Remove a hidden draft that was never sold."""
+    _internal_ok(request)
+    product = _draft_or_404(db, product_id)
+    if db.query(OrderItem).filter(OrderItem.product_id == product.id).first():
+        raise HTTPException(409, "Product has orders; keep it hidden instead of deleting it")
+    slug = product.slug
+    db.delete(product)
+    db.commit()
+    log.info("draft deleted: %s", slug)
+    return {"ok": True, "deleted": True, "slug": slug}
+
+
+@app.post("/api/internal/products/{product_id}/unpublish")
+async def internal_unpublish_product(
+    product_id: int,
+    request: Request,
+    body: ConfirmIn | None = None,
+    preview: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Hide a live product and turn it back into an editable draft."""
+    _internal_ok(request)
+    product = db.get(Product, product_id)
+    if not product or not product.active:
+        raise HTTPException(404, "Live product not found")
+    if preview:
+        return {
+            "ok": True,
+            "unpublished": False,
+            "product": _draft_summary(product),
+            "url": product_url(product.slug),
+            "code": _publish_code(product, "unpublish"),
+        }
+    if body is None or not hmac.compare_digest(body.code.upper(), _publish_code(product, "unpublish")):
+        raise HTTPException(409, "Confirmation code does not match the current product")
+    product.active = False
+    product.draft = True
+    db.commit()
+    log.info("product unpublished: %s", product.slug)
+    return {"ok": True, "unpublished": True, "product": {"id": product.id, "slug": product.slug}}
 
 
 @app.post("/api/admin/orders/ship")

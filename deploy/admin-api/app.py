@@ -226,11 +226,16 @@ class Draft(BaseModel):
 class DraftEdit(BaseModel):
     title: str | None = Field(default=None, min_length=3, max_length=300)
     description: str | None = Field(default=None, min_length=1, max_length=5000)
+    title_es: str | None = Field(default=None, min_length=3, max_length=300)
+    description_es: str | None = Field(default=None, min_length=1, max_length=5000)
     category: str | None = Field(default=None, max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)
 
-class Publication(BaseModel):
+class Confirmation(BaseModel):
     code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+
+class Publication(Confirmation):
+    pin: bool = False
 
 async def store_call(path, payload, preview=False):
     """The storefront does every write; this service never writes store.db."""
@@ -240,7 +245,7 @@ async def store_call(path, payload, preview=False):
             timeout=60, follow_redirects=False, transport=store_transport
         ) as client:
             response = await client.post(
-                STORE_API + "/api/internal/drafts" + path,
+                STORE_API + "/api/internal" + path,
                 params={"preview": "true"} if preview else None,
                 headers={"Authorization": "Bearer " + key},
                 json=payload,
@@ -273,22 +278,36 @@ def new_draft(draft):
 
 @app.post("/drafts/preview")
 async def draft_preview(draft: Draft):
-    return await store_call("", new_draft(draft), preview=True)
+    return await store_call("/drafts", new_draft(draft), preview=True)
 
 @app.post("/drafts")
 async def draft_create(draft: Draft):
-    return await store_call("", new_draft(draft))
+    return await store_call("/drafts", new_draft(draft))
 
 @app.post("/drafts/{product_id}/update")
 async def draft_update(edit: DraftEdit, product_id: int = PathParam(ge=1)):
     return await store_call(
-        f"/{product_id}/update", edit.model_dump(exclude_none=True)
+        f"/drafts/{product_id}/update", edit.model_dump(exclude_none=True)
     )
 
 @app.post("/drafts/{product_id}/publish/preview")
 async def draft_publish_preview(product_id: int = PathParam(ge=1)):
-    return await store_call(f"/{product_id}/publish", None, preview=True)
+    return await store_call(f"/drafts/{product_id}/publish", None, preview=True)
 
 @app.post("/drafts/{product_id}/publish")
 async def draft_publish(publication: Publication, product_id: int = PathParam(ge=1)):
-    return await store_call(f"/{product_id}/publish", {"code": publication.code})
+    return await store_call(f"/drafts/{product_id}/publish", publication.model_dump())
+
+@app.post("/drafts/{product_id}/delete")
+async def draft_delete(product_id: int = PathParam(ge=1)):
+    return await store_call(f"/drafts/{product_id}/delete", None)
+
+@app.post("/products/{product_id}/unpublish/preview")
+async def unpublish_preview(product_id: int = PathParam(ge=1)):
+    return await store_call(f"/products/{product_id}/unpublish", None, preview=True)
+
+@app.post("/products/{product_id}/unpublish")
+async def unpublish(confirmation: Confirmation, product_id: int = PathParam(ge=1)):
+    return await store_call(
+        f"/products/{product_id}/unpublish", {"code": confirmation.code}
+    )
