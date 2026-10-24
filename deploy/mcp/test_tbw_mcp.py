@@ -59,7 +59,10 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             ("POST", "/orders"), ("GET", "/suppliers/cj/products/../x"),
             ("POST", "/products"), ("GET", "/drafts"), ("POST", "/drafts/publish"),
             ("PUT", "/drafts"), ("POST", "/drafts/0/publish"), ("GET", "/drafts/7/update"),
-            ("POST", "/drafts/7/delete"), ("POST", "/drafts/7/publish/x"),
+            ("POST", "/drafts/7/remove"), ("POST", "/drafts/7/publish/x"),
+            ("POST", "/products/7/delete"), ("POST", "/products/0/unpublish"),
+            ("GET", "/suppliers/printify/products/a..b"), ("POST", "/products/7/shipping"),
+            ("GET", "/suppliers/lulu/products"), ("GET", "/products/0/shipping"),
         ]:
             with self.assertRaises(ToolError):
                 await bridge.request(method, path)
@@ -135,14 +138,20 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 "tbw_health", "tbw_list_products",
                 "tbw_search_cj", "tbw_get_cj_product",
                 "tbw_preview_draft", "tbw_create_draft", "tbw_update_draft",
-                "tbw_preview_publish", "tbw_publish_draft",
+                "tbw_preview_publish", "tbw_publish_draft", "tbw_delete_draft",
+                "tbw_preview_unpublish", "tbw_unpublish_product",
+                "tbw_list_printify_products", "tbw_get_printify_product",
+                "tbw_get_prodigi_product", "tbw_quote_shipping",
             })
-            writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft"}
+            writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft",
+                       "tbw_delete_draft", "tbw_unpublish_product"}
             for tool in tools:
                 self.assertEqual(
                     tool.annotations.read_only_hint, tool.name not in writers
                 )
-                self.assertFalse(tool.annotations.destructive_hint)
+                self.assertEqual(
+                    tool.annotations.destructive_hint, tool.name == "tbw_delete_draft"
+                )
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]
             )
@@ -172,6 +181,21 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 await client.call_tool(
                     "tbw_publish_draft", {"product_id": 7, "code": "A1B2C3"}
                 )
+                await client.call_tool("tbw_delete_draft", {"product_id": 7})
+                await client.call_tool("tbw_preview_unpublish", {"product_id": 7})
+                await client.call_tool(
+                    "tbw_unpublish_product", {"product_id": 7, "code": "A1B2C3"}
+                )
+                await client.call_tool("tbw_list_printify_products", {})
+                await client.call_tool(
+                    "tbw_get_printify_product", {"printify_id": "abc123"}
+                )
+                await client.call_tool(
+                    "tbw_get_prodigi_product", {"sku": "GLOBAL-FAP-12X16"}
+                )
+                await client.call_tool(
+                    "tbw_quote_shipping", {"product_id": 7, "country_code": "MX"}
+                )
                 with self.assertRaises(Exception):
                     await client.call_tool(
                         "tbw_publish_draft", {"product_id": 7, "code": "nope"}
@@ -180,10 +204,21 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             [(r.method, r.url.path) for r in requests],
             [("POST", "/drafts/preview"), ("POST", "/drafts"),
              ("POST", "/drafts/7/update"), ("POST", "/drafts/7/publish/preview"),
-             ("POST", "/drafts/7/publish")],
+             ("POST", "/drafts/7/publish"), ("POST", "/drafts/7/delete"),
+             ("POST", "/products/7/unpublish/preview"),
+             ("POST", "/products/7/unpublish"),
+             ("GET", "/suppliers/printify/products"),
+             ("GET", "/suppliers/printify/products/abc123"),
+             ("GET", "/suppliers/prodigi/products/GLOBAL-FAP-12X16"),
+             ("GET", "/products/7/shipping")],
         )
+        self.assertEqual(dict(requests[-1].url.params),
+                         {"country_code": "MX", "quantity": "1"})
         self.assertEqual(json.loads(requests[2].content), {"description": "Copy."})
-        self.assertEqual(json.loads(requests[4].content), {"code": "A1B2C3"})
+        self.assertEqual(
+            json.loads(requests[4].content), {"code": "A1B2C3", "pin": False}
+        )
+        self.assertEqual(json.loads(requests[7].content), {"code": "A1B2C3"})
         self.assertEqual(json.loads(requests[1].content), {
             "pid": "CJ-1", "vid": None, "title": None,
             "category": "", "price_usd": 19.99,

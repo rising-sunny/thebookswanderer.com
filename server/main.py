@@ -15,6 +15,7 @@ import sqlite3
 from pathlib import Path
 from urllib.parse import quote as url_quote
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -206,6 +207,8 @@ class DraftUpdateIn(BaseModel):
 
     title: str | None = Field(default=None, min_length=3, max_length=300)
     description: str | None = Field(default=None, min_length=1, max_length=5000)
+    title_es: str | None = Field(default=None, min_length=3, max_length=300)
+    description_es: str | None = Field(default=None, min_length=1, max_length=5000)
     category: str | None = Field(default=None, max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)  # all variants
 
@@ -214,6 +217,26 @@ class DraftPublishIn(BaseModel):
     """Internal: the code shown by the publication preview."""
 
     code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+    pin: bool = False  # launch pin on Pinterest, same as an admin import
+
+
+class ConfirmIn(BaseModel):
+    """Internal: the code shown by an unpublish preview."""
+
+    code: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
+
+
+class InternalQuoteIn(BaseModel):
+    """Internal: shipping quote for a live product or a draft."""
+
+    country_code: str = Field(pattern=r"^[A-Za-z]{2}$")
+    variant_id: int | None = Field(default=None, ge=1)
+    quantity: int = Field(default=1, ge=1, le=20)
+
+
+class PageIn(BaseModel):
+    page: int = Field(default=1, ge=1, le=100)
+    limit: int = Field(default=20, ge=1, le=50)
 
 
 class ShipOrderIn(BaseModel):
@@ -1065,7 +1088,7 @@ def cart_preview(body: CartPreviewIn, lang: str = Query("en"), db: Session = Dep
         product_total += line_total
         img = (v.image_url if v and v.image_url else p.image_url) or ""
         name = (v.name if v and v.name else "") or ""
-        ptitle = i18n.product_title(p.slug, p.title, lang)
+        ptitle = i18n.product_title(p.slug, p.title, lang, p.title_es or "")
         title = ptitle
         if name:
             title = f"{ptitle} — {name}"
@@ -1927,6 +1950,8 @@ def _draft_summary(product: Product) -> dict:
         "slug": product.slug,
         "title": product.title,
         "description": product.description,
+        "title_es": product.title_es or "",
+        "description_es": product.description_es or "",
         "category": product.category,
         "image_url": product.image_url,
         "price_usd": product.price_usd,
@@ -1955,9 +1980,17 @@ def _publish_problems(product: Product) -> list[str]:
     return problems
 
 
-def _publish_code(product: Product) -> str:
-    """Bound to the draft's current state: any edit invalidates an earlier code."""
-    state = json.dumps(_draft_summary(product), sort_keys=True)
+def _publish_warnings(product: Product) -> list[str]:
+    """Not blocking: /es/ falls back to the English copy."""
+    if i18n.has_product(product.slug):
+        return []
+    missing = [n for n, v in (("title_es", product.title_es), ("description_es", product.description_es)) if not v]
+    return [f"no Spanish {', '.join(missing)}: /es/ will show the English copy"] if missing else []
+
+
+def _publish_code(product: Product, action: str = "publish") -> str:
+    """Bound to the product's current state: any edit invalidates an earlier code."""
+    state = json.dumps([action, _draft_summary(product), bool(product.active)], sort_keys=True)
     digest = hmac.new(_draft_key().encode(), state.encode(), hashlib.sha256)
     return digest.hexdigest()[:6].upper()
 
@@ -1980,13 +2013,22 @@ async def internal_update_draft(
         product.slug = _unique_slug(db, _slugify(product.title), exclude_id=product.id)
     if body.description is not None:
         product.description = body.description.strip()
+    if body.title_es is not None:
+        product.title_es = body.title_es.strip()
+    if body.description_es is not None:
+        product.description_es = body.description_es.strip()
     if body.price_usd is not None:
         product.price_usd = body.price_usd
         for v in product.variants:
             v.price_usd = body.price_usd
     db.commit()
     db.refresh(product)
-    return {"ok": True, "draft": _draft_summary(product), "problems": _publish_problems(product)}
+    return {
+        "ok": True,
+        "draft": _draft_summary(product),
+        "problems": _publish_problems(product),
+        "warnings": _publish_warnings(product),
+    }
 
 
 @app.post("/api/internal/drafts/{product_id}/publish")
@@ -2008,6 +2050,7 @@ async def internal_publish_draft(
             "draft": _draft_summary(product),
             "url": product_url(product.slug),
             "problems": problems,
+            "warnings": _publish_warnings(product),
             "code": None if problems else _publish_code(product),
         }
     if problems:
@@ -2018,11 +2061,196 @@ async def internal_publish_draft(
     product.draft = False
     db.commit()
     log.info("draft published: %s", product.slug)
+    pinterest_launch: dict | None = None
+    if body.pin:
+        # Best-effort, as in admin_add_product: never undo a publication.
+        try:
+            from services import pinterest_jobs as pin_jobs
+
+            pinterest_launch = await pin_jobs.pin_product_launch(db, product)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("draft launch pin failed for %s: %s", product.slug, exc)
+            pinterest_launch = {"ok": False, "error": "pin failed"}
     return {
         "ok": True,
         "published": True,
         "product": {"id": product.id, "slug": product.slug, "url": product_url(product.slug)},
+        "pinterest_launch": pinterest_launch,
     }
+
+
+@app.post("/api/internal/drafts/{product_id}/delete")
+async def internal_delete_draft(product_id: int, request: Request, db: Session = Depends(get_db)):
+    """Remove a hidden draft that was never sold."""
+    _internal_ok(request)
+    product = _draft_or_404(db, product_id)
+    if db.query(OrderItem).filter(OrderItem.product_id == product.id).first():
+        raise HTTPException(409, "Product has orders; keep it hidden instead of deleting it")
+    slug = product.slug
+    db.delete(product)
+    db.commit()
+    log.info("draft deleted: %s", slug)
+    return {"ok": True, "deleted": True, "slug": slug}
+
+
+@app.post("/api/internal/products/{product_id}/unpublish")
+async def internal_unpublish_product(
+    product_id: int,
+    request: Request,
+    body: ConfirmIn | None = None,
+    preview: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Hide a live product and turn it back into an editable draft."""
+    _internal_ok(request)
+    product = db.get(Product, product_id)
+    if not product or not product.active:
+        raise HTTPException(404, "Live product not found")
+    if preview:
+        return {
+            "ok": True,
+            "unpublished": False,
+            "product": _draft_summary(product),
+            "url": product_url(product.slug),
+            "code": _publish_code(product, "unpublish"),
+        }
+    if body is None or not hmac.compare_digest(body.code.upper(), _publish_code(product, "unpublish")):
+        raise HTTPException(409, "Confirmation code does not match the current product")
+    product.active = False
+    product.draft = True
+    db.commit()
+    log.info("product unpublished: %s", product.slug)
+    return {"ok": True, "unpublished": True, "product": {"id": product.id, "slug": product.slug}}
+
+
+# ── Internal: supplier reads for the restricted admin API ─────────────
+
+
+def _cents(value) -> float | None:
+    try:
+        return round(float(value) / 100, 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _printify_summary(row: dict, owned: set[str]) -> dict:
+    variants = [v for v in row.get("variants") or [] if isinstance(v, dict) and v.get("is_enabled")]
+    costs = [c for c in (_cents(v.get("cost")) for v in variants) if c is not None]
+    prices = [c for c in (_cents(v.get("price")) for v in variants) if c is not None]
+    return {
+        "id": str(row.get("id") or ""),
+        "title": str(row.get("title") or ""),
+        "visible": bool(row.get("visible")),
+        "enabled_variants": len(variants),
+        "cost_usd_min": min(costs) if costs else None,
+        "price_usd_min": min(prices) if prices else None,
+        "in_store": str(row.get("id") or "") in owned,
+    }
+
+
+async def _printify_get(path: str):
+    try:
+        return await printify_service._request("GET", f"/shops/{printify_service.shop_id()}{path}")
+    except printify_service.PrintifyError as exc:
+        log.warning("internal Printify read failed: %s", exc)
+        raise HTTPException(502, "Printify request failed") from None
+    except httpx.HTTPError:
+        raise HTTPException(502, "Printify unavailable") from None
+
+
+def _printify_owned(db: Session) -> set[str]:
+    rows = db.query(Product.printify_product_id).filter(Product.printify_product_id != "").all()
+    return {r[0] for r in rows}
+
+
+@app.post("/api/internal/suppliers/printify/products")
+async def internal_printify_products(
+    request: Request, body: PageIn | None = None, db: Session = Depends(get_db)
+):
+    """Products in the store's Printify shop (read-only)."""
+    _internal_ok(request)
+    body = body or PageIn()
+    data = await _printify_get(f"/products.json?page={body.page}&limit={body.limit}")
+    owned = _printify_owned(db)
+    rows = data.get("data") if isinstance(data, dict) else None
+    return {
+        "page": body.page,
+        "last_page": data.get("last_page") if isinstance(data, dict) else None,
+        "products": [_printify_summary(r, owned) for r in rows or [] if isinstance(r, dict)],
+    }
+
+
+@app.post("/api/internal/suppliers/printify/products/{printify_id}")
+async def internal_printify_product(
+    printify_id: str, request: Request, db: Session = Depends(get_db)
+):
+    """One Printify shop product with its enabled variants (read-only)."""
+    _internal_ok(request)
+    if not re.fullmatch(r"[A-Za-z0-9]{1,64}", printify_id):
+        raise HTTPException(422, "Invalid Printify product id")
+    row = await _printify_get(f"/products/{printify_id}.json")
+    if not isinstance(row, dict) or not row.get("id"):
+        raise HTTPException(404, "Printify product not found")
+    return {
+        **_printify_summary(row, _printify_owned(db)),
+        "variants": [
+            {"id": v.get("id"), "title": str(v.get("title") or ""),
+             "cost_usd": _cents(v.get("cost")), "price_usd": _cents(v.get("price"))}
+            for v in row.get("variants") or [] if isinstance(v, dict) and v.get("is_enabled")
+        ][:100],
+        "images": len(row.get("images") or []),
+    }
+
+
+@app.post("/api/internal/suppliers/prodigi/products/{sku}")
+async def internal_prodigi_product(sku: str, request: Request):
+    """Prodigi catalogue entry for a SKU (read-only)."""
+    _internal_ok(request)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", sku):
+        raise HTTPException(422, "Invalid Prodigi SKU")
+    try:
+        data = await prodigi_store.request("GET", "/products/" + sku)
+    except prodigi_store.ProdigiError:
+        raise HTTPException(502, "Prodigi request failed") from None
+    product = data.get("product") if isinstance(data.get("product"), dict) else {}
+    if not product:
+        raise HTTPException(404, "Prodigi product not found")
+    variants = [v for v in product.get("variants") or [] if isinstance(v, dict)]
+    ships_to = sorted({c for v in variants for c in v.get("shipsTo") or [] if isinstance(c, str)})
+    return {
+        "sku": str(product.get("sku") or sku),
+        "description": str(product.get("description") or ""),
+        "dimensions": product.get("productDimensions") or {},
+        "attributes": product.get("attributes") or {},
+        "print_areas": sorted((product.get("printAreas") or {}).keys()),
+        "variants": [
+            {"attributes": v.get("attributes") or {}, "ships_to_count": len(v.get("shipsTo") or [])}
+            for v in variants
+        ][:50],
+        "ships_to": ships_to,
+    }
+
+
+@app.post("/api/internal/shipping/{product_id}")
+async def internal_shipping_quote(
+    product_id: int, body: InternalQuoteIn, request: Request, db: Session = Depends(get_db)
+):
+    """Customer shipping for a live product or a draft, any supplier (CJ, Printify, Lulu, Prodigi)."""
+    _internal_ok(request)
+    product = db.get(Product, product_id)
+    if not product or not (product.active or product.draft):
+        raise HTTPException(404, "Product not found")
+    variant = _resolve_variant(db, product, body.variant_id)
+    try:
+        result = await shipping_service.quote(
+            [(product, variant, body.quantity)], body.country_code, free_us=FREE_SHIPPING
+        )
+    except shipping_service.QuoteError as exc:
+        return {"available": False, "reason": exc.reason, "message": str(exc),
+                "country_code": body.country_code.upper(), "product_id": product_id}
+    return {**result, "available": True, "product_id": product_id,
+            "supplier": product.supplier or "cj",
+            "variant_id": variant.id if variant else None, "quantity": body.quantity}
 
 
 @app.post("/api/admin/orders/ship")

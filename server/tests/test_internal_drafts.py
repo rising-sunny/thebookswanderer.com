@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import main
 from database import Base, get_db
-from models import Product, ProductVariant
+from models import OrderItem, Product, ProductVariant
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -136,6 +136,68 @@ class Drafts(unittest.TestCase):
             product = db.get(Product, pid);self.assertTrue(product.active);self.assertFalse(product.draft)
         self.assertEqual(self.client.get('/api/products/by-slug/walnut-book-stand').status_code, 200)
         self.assertEqual(self.call(f'{pid}/publish', {'code': code}).status_code, 404)
+
+    def ready(self, pid):
+        self.call(f'{pid}/update', {'category': 'book-accessories',
+                                     'description': 'A small wooden house that keeps a shelf of books upright.'})
+
+    def test_spanish_copy_reaches_es_pages_and_only_warns(self):
+        pid = self.draft_id();self.ready(pid)
+        preview = self.call(f'{pid}/publish', preview=True).json()
+        self.assertTrue(preview['code']);self.assertTrue(preview['warnings'])
+        response = self.call(f'{pid}/update', {'title_es': 'Sujetalibros casita',
+                                               'description_es': 'Una casita de madera que sostiene tus libros.'})
+        self.assertEqual(response.json()['warnings'], [])
+        code = self.call(f'{pid}/publish', preview=True).json()['code']
+        self.assertEqual(self.call(f'{pid}/publish', {'code': code}).status_code, 200)
+        es = self.client.get('/api/products/by-slug/walnut-book-stand?lang=es').json()
+        self.assertEqual(es['title'], 'Sujetalibros casita')
+        self.assertIn('Una casita de madera', es['description'])
+        en = self.client.get('/api/products/by-slug/walnut-book-stand').json()
+        self.assertEqual(en['title'], 'Walnut Book Stand');self.assertNotIn('es', en)
+
+    def test_publish_pins_only_when_asked(self):
+        for pin in (False, True):
+            with self.sessions() as db:
+                for p in db.query(Product).all():db.delete(p)
+                db.commit()
+            pid = self.draft_id();self.ready(pid)
+            code = self.call(f'{pid}/publish', preview=True).json()['code']
+            with patch('services.pinterest_jobs.pin_product_launch', AsyncMock(return_value={'ok': True})) as launch:
+                data = self.call(f'{pid}/publish', {'code': code, 'pin': pin}).json()
+            self.assertEqual(launch.await_count, int(pin))
+            self.assertEqual(data['pinterest_launch'], {'ok': True} if pin else None)
+
+    def test_delete_only_unsold_drafts(self):
+        pid = self.draft_id()
+        with self.sessions() as db:
+            db.add(OrderItem(order_id=1, product_id=pid, title='x', quantity=1, unit_price=1));db.commit()
+        self.assertEqual(self.call(f'{pid}/delete').status_code, 409)
+        with self.sessions() as db:
+            db.query(OrderItem).delete();db.commit()
+        self.assertEqual(self.call(f'{pid}/delete').json()['slug'], 'walnut-book-stand')
+        self.assertEqual(self.count(), 0)
+        with self.sessions() as db:self.assertEqual(db.query(ProductVariant).count(), 0)
+        self.assertEqual(self.call(f'{pid}/delete').status_code, 404)
+
+    def test_unpublish_needs_code_and_returns_to_draft(self):
+        with self.sessions() as db:
+            live = Product(slug='live', title='Live', active=True, draft=False, image_url='x')
+            hidden = Product(slug='old', title='Old', active=False, draft=False)
+            db.add_all([live, hidden]);db.commit();lid, hid = live.id, hidden.id
+        unpublish = lambda pid, body=None, preview=False: self.client.post(
+            f'/api/internal/products/{pid}/unpublish' + ('?preview=true' if preview else ''),
+            json=body, headers={'Authorization': 'Bearer ' + KEY})
+        self.assertEqual(unpublish(hid, preview=True).status_code, 404)
+        code = unpublish(lid, preview=True).json()['code']
+        publish_style = self.client.post(f'/api/internal/products/{lid}/unpublish', json={'code': code},
+                                         headers={'Authorization': 'Bearer ' + KEY, 'X-Real-IP': '203.0.113.9'})
+        self.assertEqual(publish_style.status_code, 404)
+        self.assertEqual(unpublish(lid, {'code': '000000' if code != '000000' else '111111'}).status_code, 409)
+        self.assertTrue(unpublish(lid, {'code': code}).json()['unpublished'])
+        with self.sessions() as db:
+            product = db.get(Product, lid);self.assertFalse(product.active);self.assertTrue(product.draft)
+        self.assertEqual(self.call(f'{lid}/update', {'title': 'Live again'}).status_code, 200)
 
 if __name__ == '__main__':
     unittest.main()

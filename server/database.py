@@ -86,6 +86,10 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE products ADD COLUMN lulu_package VARCHAR(40) DEFAULT ''"))
         if "draft" not in cols:
             conn.execute(text("ALTER TABLE products ADD COLUMN draft BOOLEAN DEFAULT 0"))
+        if "title_es" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN title_es VARCHAR(300) DEFAULT ''"))
+        if "description_es" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN description_es TEXT DEFAULT ''"))
     if "product_variants" in insp.get_table_names():
         vcols = {c["name"] for c in insp.get_columns("product_variants")}
         if "printify_variant_id" not in vcols:

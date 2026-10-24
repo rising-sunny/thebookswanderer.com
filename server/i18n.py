@@ -54,6 +54,11 @@ def _products() -> dict[str, dict[str, str]]:
         return {}
 
 
+def has_product(slug: str) -> bool:
+    """A curated entry in products_es.json (it overrides the database copy)."""
+    return bool(_products().get(slug))
+
+
 def lang_of(path: str) -> str:
     return "es" if path == "/es" or path.startswith("/es/") else "en"
 
@@ -101,10 +106,13 @@ def category_name(slug: str, fallback: str, lang: str) -> str:
 
 def product(p: dict[str, Any], lang: str) -> dict[str, Any]:
     """Spanish title/description over a to_public()/to_detail() dict."""
-    if lang != "es" or not p:
+    if not p:
         return p
-    es = _products().get(p.get("slug") or "", {})
+    if lang != "es":
+        return {k: v for k, v in p.items() if k != "es"} if "es" in p else p
+    es = _products().get(p.get("slug") or "") or p.get("es") or {}
     out = dict(p)
+    out.pop("es", None)
     if es.get("title"):
         out["title"] = es["title"]
     if es.get("description"):
@@ -127,10 +135,10 @@ def product(p: dict[str, Any], lang: str) -> dict[str, Any]:
     return out
 
 
-def product_title(slug: str, fallback: str, lang: str) -> str:
+def product_title(slug: str, fallback: str, lang: str, title_es: str = "") -> str:
     if lang != "es":
         return fallback
-    return _products().get(slug, {}).get("title") or fallback
+    return _products().get(slug, {}).get("title") or title_es or fallback
 
 
 # ── HTML pass ─────────────────────────────────────────────────────────────
