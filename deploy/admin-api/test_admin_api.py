@@ -292,5 +292,25 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[0].content),
                          {"method": "POST", "path": "/orders", "body": {}, "code": None})
 
+    def test_crosslist_goes_through_the_store(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={"ok": True})
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            self.assertEqual(self.client.post("/crosslist/from-etsy", json={"listing_id": "42"}).status_code, 401)
+            for route, body in (("/crosslist/from-etsy?preview=true", {"listing_id": "42"}),
+                                ("/crosslist/to-etsy/7", {"taxonomy_id": 2078, "code": "ABC123"})):
+                self.assertEqual(self.client.post(route, headers=self.headers, json=body).status_code, 200)
+            self.assertEqual(self.client.post("/crosslist/from-etsy", headers=self.headers,
+                                              json={"listing_id": "x"}).status_code, 422)
+        self.assertEqual([(r.url.path, r.url.params.get("preview")) for r in calls], [
+            ("/api/internal/crosslist/from-etsy", "true"), ("/api/internal/crosslist/to-etsy/7", None)])
+        self.assertEqual(json.loads(calls[1].content),
+                         {"taxonomy_id": 2078, "price_usd": None, "extra": None, "code": "ABC123"})
+
 if __name__ == "__main__":
     unittest.main()

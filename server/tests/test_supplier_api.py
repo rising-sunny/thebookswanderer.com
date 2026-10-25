@@ -24,7 +24,7 @@ class SupplierApi(unittest.TestCase):
         env = patch.dict(os.environ, {'TBW_DRAFT_KEY_FILE': str(key), 'PRINTIFY_API_TOKEN': 'printify-secret',
                                       'PRINTIFY_SHOP_ID': '99', 'TBW_SUPPLIER_ORDERS_ENABLED': ''})
         env.start();self.addCleanup(env.stop)
-        main._USED_SUPPLIER_CODES.clear()
+        main._USED_CODES.clear()
         self.requests = []
         def handler(request):
             self.requests.append(request)

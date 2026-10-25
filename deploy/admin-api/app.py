@@ -139,7 +139,7 @@ def health():
         "ready": True,
         "capabilities": [
             "products:read", "cj:read", "products:draft", "products:publish",
-            "printify:read", "prodigi:read", "shipping:quote", "suppliers:api",
+            "printify:read", "prodigi:read", "shipping:quote", "suppliers:api", "crosslist",
         ],
         "order_submission_enabled": False,
         # Drafts only, each with the code from its publication preview.
@@ -227,6 +227,7 @@ class Draft(BaseModel):
     price_usd: float | None = Field(default=None, gt=0, le=10000)
 
 class DraftEdit(BaseModel):
+    lulu_package: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$")
     title: str | None = Field(default=None, min_length=3, max_length=300)
     description: str | None = Field(default=None, min_length=1, max_length=5000)
     title_es: str | None = Field(default=None, min_length=3, max_length=300)
@@ -356,3 +357,23 @@ async def supplier_call(call: SupplierCall,
     return await store_call(
         f"/suppliers/{supplier}/api", call.model_dump(), preview=preview
     )
+
+class FromEtsy(BaseModel):
+    listing_id: str = Field(pattern=r"^[0-9]{1,20}$")
+    supplier: str | None = Field(default=None, pattern=r"^lulu$")
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+
+class ToEtsy(BaseModel):
+    taxonomy_id: int | None = Field(default=None, ge=1)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)
+    extra: dict[str, str | int | float | bool] | None = None
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+
+@app.post("/crosslist/from-etsy")
+async def draft_from_etsy(body: FromEtsy, preview: bool = Query(default=False)):
+    return await store_call("/crosslist/from-etsy", body.model_dump(), preview=preview)
+
+@app.post("/crosslist/to-etsy/{product_id}")
+async def publish_to_etsy(body: ToEtsy, product_id: int = PathParam(ge=1),
+                          preview: bool = Query(default=False)):
+    return await store_call(f"/crosslist/to-etsy/{product_id}", body.model_dump(), preview=preview)

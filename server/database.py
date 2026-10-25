@@ -90,6 +90,10 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE products ADD COLUMN title_es VARCHAR(300) DEFAULT ''"))
         if "description_es" not in cols:
             conn.execute(text("ALTER TABLE products ADD COLUMN description_es TEXT DEFAULT ''"))
+        if "etsy_listing_id" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN etsy_listing_id VARCHAR(40) DEFAULT ''"))
+        if "printify_twin_id" not in cols:
+            conn.execute(text("ALTER TABLE products ADD COLUMN printify_twin_id VARCHAR(40) DEFAULT ''"))
     if "product_variants" in insp.get_table_names():
         vcols = {c["name"] for c in insp.get_columns("product_variants")}
         if "printify_variant_id" not in vcols:

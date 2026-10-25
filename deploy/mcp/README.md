@@ -12,8 +12,8 @@ CIMD is disabled; downstream clients can use dynamic registration.
 
 Store product reads, CJ, Printify and Prodigi catalog reads, shipping quotes
 (any supplier, Lulu included), the supplier API pass-through (tbw_supplier_get;
-tbw_supplier_write needs the code from its own preview) and CJ drafts are
-exposed: tbw_preview_draft, tbw_create_draft, tbw_update_draft (English and
+tbw_supplier_write needs the code from its own preview), cross-listing with
+Etsy (tbw_draft_from_etsy, tbw_publish_to_etsy) and CJ drafts are exposed: tbw_preview_draft, tbw_create_draft, tbw_update_draft (English and
 Spanish copy), tbw_delete_draft, tbw_preview_publish / tbw_publish_draft and
 tbw_preview_unpublish / tbw_unpublish_product (both need the code shown by
 their preview, which changes after any edit).
