@@ -121,6 +121,15 @@ def _ship_countries() -> list[str]:
         return ["GB", "US"]
 
 
+# Where an item comes from and where it can go, by supplier; the live quote on the page confirms the country.
+_SHIP_LINES = {
+    "prodigi": "Printed to order, unframed · ships to US addresses only, standard shipping included",
+    "printify": "Printed to order in the US by our production partner · choose your country on this page to confirm delivery",
+    "lulu": "Printed and bound to order by our book printer · choose your country on this page to confirm delivery",
+    "cj": "Ships from partner warehouses (typically China origin unless noted)",
+}
+
+
 def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
     """Prodigi art launches in the US; other suppliers confirm coverage via quotes."""
     return {"US"} if supplier == "prodigi" else None
@@ -398,7 +407,7 @@ def render_product_page(
     </p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
-      {"<li>Digital download (PDF) — the link arrives by email right after payment</li>" if digital else "<li>Printed to order, unframed · standard US shipping included</li>" if detail.get("supplier") == "prodigi" else "<li>Ships from partner warehouses (typically China origin unless noted)</li>"}
+      <li>{"Digital download (PDF) — the link arrives by email right after payment" if digital else _SHIP_LINES.get(detail.get("supplier") or "", _SHIP_LINES["cj"])}</li>
       <li>Faulty or wrong items refunded in full within 30 days</li>
       <li>Secure checkout{"" if digital else " · shipping calculated by destination at cart"}</li>
     </ul>
