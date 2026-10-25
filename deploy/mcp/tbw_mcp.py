@@ -107,16 +107,8 @@ class AdminBridge:
                 )
         except httpx2.HTTPError:
             raise ToolError("Administrative service unavailable") from None
-        if response.status_code == 404:
-            raise ToolError("Not found")
-        if response.status_code == 422:
-            raise ToolError("Validation failed; check the provided fields")
-        if response.status_code in {502, 503}:
-            raise ToolError("Supplier or store service unavailable; retry later")
         if response.status_code not in {200, 201}:
-            raise ToolError(
-                f"Administrative request failed: HTTP {response.status_code}"
-            )
+            raise ToolError(self._error(response))
         try:
             data = response.json()
         except ValueError:
@@ -124,6 +116,26 @@ class AdminBridge:
         if not isinstance(data, dict):
             raise ToolError("Invalid administrative response")
         return data
+
+    def _error(self, response):
+        """The generic message for a status, plus the backend's own detail text if any."""
+        status = response.status_code
+        if status == 404:
+            message = "Not found"
+        elif status == 422:
+            message = "Validation failed; check the provided fields"
+        elif status in {502, 503}:
+            message = "Supplier or store service unavailable"
+        else:
+            message = f"Administrative request failed: HTTP {status}"
+        try:
+            detail = response.json().get("detail")
+        except (ValueError, AttributeError):
+            detail = None
+        if not isinstance(detail, str) or not detail.strip():
+            return message + ("; retry later" if status in {502, 503} else "")
+        detail = detail.replace(self.key, "[redacted]")[:500]
+        return f"{message}: {detail}"
 
 def create_server(config, admin_key, state_directory, transport=None):
     if (

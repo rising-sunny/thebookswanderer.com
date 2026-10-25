@@ -134,7 +134,9 @@ async def _printify(method: str, path: str, body: Any = None) -> Any:
     try:
         return await printify._request(method, path, body)
     except printify.PrintifyError as exc:
-        raise CrossListError(f"Printify {method} {path.split('?')[0]}: {exc}") from None
+        errors = exc.payload.get("errors") if isinstance(exc.payload, dict) else None
+        detail = f" {json.dumps(errors)[:300]}" if errors else ""
+        raise CrossListError(f"Printify {method} {path.split('?')[0]}: {exc}{detail}") from None
     except httpx.HTTPError:
         raise CrossListError("Printify unavailable") from None
 
@@ -167,11 +169,12 @@ def twin_payload(source: dict, *, title: str | None = None, description: str | N
     for area in source.get("print_areas") or []:
         areas.append({
             "variant_ids": area.get("variant_ids") or [],
+            # Printify lists empty positions (e.g. calendar grids) but rejects them on create
             "placeholders": [
                 {"position": ph.get("position"),
                  "images": [{k: img[k] for k in ("id", "x", "y", "scale", "angle") if k in img}
-                            for img in ph.get("images") or []]}
-                for ph in area.get("placeholders") or []
+                            for img in ph["images"]]}
+                for ph in area.get("placeholders") or [] if ph.get("images")
             ],
         })
     return {

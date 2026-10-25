@@ -189,6 +189,12 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(failed.status_code, 502)
         self.assertNotIn("upstream-secret", failed.text)
         self.assertEqual(len(calls), 2)
+        crosslist = lambda request: httpx.Response(502, json={"detail": "Printify POST /x: bad"})
+        with patch.object(admin, "store_transport", httpx.MockTransport(crosslist)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            failed = self.client.post("/crosslist/to-etsy/38", headers=self.headers, json={})
+        self.assertEqual(failed.status_code, 502)
+        self.assertIn("Printify POST /x: bad", failed.text)
         for request in calls:
             self.assertEqual(str(request.url).split("?")[0],
                              "http://127.0.0.1:8010/api/internal/drafts")
