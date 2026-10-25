@@ -123,5 +123,31 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "color-the-fairy-tales-printed",
+    "supplier": "lulu",
+    "lulu_package": "0850X1100FCSTDPB060UW444MXX",
+    "title": "Color the Fairy Tales — Walter Crane Coloring Book (Printed Paperback)",
+    "title_es": "Colorea los cuentos de hadas — Libro para colorear de Walter Crane (tapa blanda impresa)",
+    "price_usd": 24.99,
+    "cost_usd": 5.08,
+    "category": "book-accessories",
+    "description": "A coloring book made from Walter Crane's picture books, printed in London between 1873 and 1876. Each of the 24 plates appears twice: on the left page in its original colors, on the right page as line art for you to color.\n\nThe stories: The Sleeping Beauty, Beauty and the Beast, The Frog Prince, Bluebeard, Little Red Riding Hood, Goody Two Shoes, The Hind in the Wood and The Yellow Dwarf.\n\nThe plates come from first editions scanned by Smithsonian Libraries and are in the public domain. We traced the line art from those scans with software, including a line-art model, and checked every page. The verse boxes on the coloring pages are left blank, so you can write in them or color them.\n\n• Paperback, 8.5 × 11 in, 52 pages, printed in color\n• 60# uncoated paper, which takes colored pencils well. Markers can show through to the back of the page.\n• Printed to order by Lulu\n\nShipping to the United States is included. We ship to every country Lulu delivers to; for other countries the extra shipping cost is shown at checkout before you pay.",
+    "description_es": "Un libro para colorear hecho con los libros ilustrados de Walter Crane, impresos en Londres entre 1873 y 1876. Cada una de las 24 láminas aparece dos veces: en la página izquierda con sus colores originales y en la derecha como dibujo de líneas para que tú la colorees.\n\nLos cuentos: La Bella Durmiente, La Bella y la Bestia, El Príncipe Rana, Barba Azul, Caperucita Roja, Goody Two Shoes, La cierva del bosque y El enano amarillo.\n\nLas láminas vienen de primeras ediciones escaneadas por Smithsonian Libraries y son de dominio público. Sacamos los dibujos de líneas de esos escaneos con software, incluido un modelo de extracción de líneas, y revisamos cada página. Los recuadros de los versos quedan en blanco en las páginas para colorear, para que escribas en ellos o los colorees.\n\n• Tapa blanda, 8,5 × 11 pulgadas (21,6 × 27,9 cm), 52 páginas, impreso a color\n• Papel sin estucar de 60#, que recibe bien los lápices de colores. Los marcadores pueden traspasar al reverso de la página.\n• Impreso por encargo por Lulu\n\nEl envío a Estados Unidos está incluido. Enviamos a todos los países a los que llega Lulu; para otros países, el costo adicional de envío aparece en el checkout antes de pagar.",
+    "image_url": "/assets/products/color-the-fairy-tales-printed/main_en.jpg",
+    "gallery": [
+      "/assets/products/color-the-fairy-tales-printed/spread_en.jpg",
+      "/assets/products/color-the-fairy-tales-printed/pages_en.jpg",
+      "/assets/products/color-the-fairy-tales-printed/color_en.jpg",
+      "/assets/products/color-the-fairy-tales-printed/back_en.jpg"
+    ],
+    "variants": [
+      {
+        "name": "English",
+        "image_url": "/assets/products/color-the-fairy-tales-printed/main_en.jpg"
+      }
+    ],
+    "active": true
   }
 ]
