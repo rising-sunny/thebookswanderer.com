@@ -73,6 +73,21 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(key, str(error.exception))
         self.assertNotIn("private", str(error.exception))
 
+    async def test_backend_detail_is_shown_without_the_key(self):
+        key = "a" * 40
+        def handler(request):
+            if request.url.path == "/crosslist/to-etsy/38":
+                return httpx2.Response(502, json={"detail": "Printify POST /x: bad " + key})
+            return httpx2.Response(409, json={"detail": "Confirmation code was used"})
+        bridge = AdminBridge(key, httpx2.MockTransport(handler))
+        with self.assertRaises(ToolError) as error:
+            await bridge.request("POST", "/crosslist/to-etsy/38", payload={})
+        self.assertIn("Printify POST /x: bad [redacted]", str(error.exception))
+        self.assertNotIn(key, str(error.exception))
+        with self.assertRaises(ToolError) as error:
+            await bridge.request("POST", "/crosslist/to-etsy/33", payload={})
+        self.assertIn("HTTP 409: Confirmation code was used", str(error.exception))
+
     async def test_encrypted_persistent_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)

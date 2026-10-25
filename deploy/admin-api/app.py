@@ -256,7 +256,10 @@ async def store_call(path, payload, preview=False):
             )
     except httpx.HTTPError:
         raise HTTPException(503, "Store unavailable") from None
-    if response.status_code in {400, 403, 404, 409, 422}:
+    relayed = {400, 403, 404, 409, 422}
+    if path.startswith("/crosslist/"):
+        relayed.add(502)  # what Etsy or Printify answered; these messages carry no secrets
+    if response.status_code in relayed:
         # The store's own messages (unknown draft, what blocks publication).
         try:
             detail = str(response.json().get("detail"))[:500]
