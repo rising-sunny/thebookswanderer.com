@@ -1,0 +1,4 @@
+[
+  {"id": "fairy-tales-create", "script": "digital_products.py", "args": ["--apply", "color-the-fairy-tales-printed"]},
+  {"id": "fairy-tales-cert", "script": "print_release_cert.py", "args": []}
+]
