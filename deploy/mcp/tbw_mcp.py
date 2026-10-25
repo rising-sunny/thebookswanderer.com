@@ -91,6 +91,8 @@ class AdminBridge:
             or re.fullmatch(
                 r"/suppliers/(cj|printify|lulu|prodigi|etsy|meta|pinterest)/api", path
             )
+            or path == "/crosslist/from-etsy"
+            or re.fullmatch(r"/crosslist/to-etsy/[1-9][0-9]{0,9}", path)
         ))
         if not allowed:
             raise ToolError("Administrative operation is not permitted")
@@ -299,6 +301,57 @@ def create_server(config, admin_key, state_directory, transport=None):
             params=None if code else {"preview": "true"},
         )
 
+    @server.tool(annotations=DRAFT)
+    async def tbw_draft_from_etsy(
+        listing_id: Annotated[str, Field(pattern=r"^[0-9]{1,20}$")],
+        supplier: Literal["lulu"] | None = None,
+        code: Annotated[str | None, Field(pattern=r"^[0-9A-Fa-f]{6}$")] = None,
+    ) -> dict:
+        """Copy an Etsy listing of the connected shop into a hidden store draft. Two steps.
+
+        Without code: a preview (kind, variants, prices, images) and a code;
+        nothing is written. With the code, after the owner approved: creates
+        the draft. Printify listings also get a twin product in the store's
+        Printify shop (same artwork and variants) that checkout uses.
+        Downloads need their file uploaded at /admin/digital/ before
+        publishing; supplier="lulu" marks a printed book (PDFs and
+        lulu_package are then needed). Finish with tbw_update_draft and
+        tbw_preview_publish as for any draft.
+        """
+        params = None if code else {"preview": "true"}
+        return await bridge.request(
+            "POST", "/crosslist/from-etsy",
+            payload={"listing_id": listing_id, "supplier": supplier, "code": code},
+            params=params,
+        )
+
+    @server.tool(annotations=REMOVE)
+    async def tbw_publish_to_etsy(
+        product_id: Annotated[int, Field(ge=1)],
+        taxonomy_id: Annotated[int | None, Field(ge=1)] = None,
+        price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+        extra: dict[str, str | int | float | bool] | None = None,
+        code: Annotated[str | None, Field(pattern=r"^[0-9A-Fa-f]{6}$")] = None,
+    ) -> dict:
+        """Put a store product on Etsy. Two steps: without code a preview and a code.
+
+        Printify products: creates (or updates) the twin in the Etsy-connected
+        Printify shop and Printify publishes it on Etsy at once, public.
+        Downloads, Lulu and Prodigi products: an Etsy draft listing (not
+        public) with photos and, for downloads, the file; needs taxonomy_id
+        (Etsy GET /application/seller-taxonomy/nodes) and, for physical
+        items, extra fields such as shipping_profile_id. price_usd sets the
+        Etsy price for every variant. CJ products are refused (Etsy forbids
+        reselling). Run with the code only after the owner approved.
+        """
+        params = None if code else {"preview": "true"}
+        return await bridge.request(
+            "POST", f"/crosslist/to-etsy/{product_id}",
+            payload={"taxonomy_id": taxonomy_id, "price_usd": price_usd,
+                     "extra": extra, "code": code},
+            params=params,
+        )
+
     def draft(pid, vid, title, category, price_usd):
         return {"pid": pid, "vid": vid, "title": title,
                 "category": category, "price_usd": price_usd}
@@ -351,6 +404,7 @@ def create_server(config, admin_key, state_directory, transport=None):
         description_es: Annotated[str | None, Field(min_length=1, max_length=5000)] = None,
         category: Annotated[str | None, Field(max_length=120)] = None,
         price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+        lulu_package: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9._-]{1,40}$")] = None,
     ) -> dict:
         """Edit a hidden draft. Only products still marked as drafts can change.
 
@@ -363,7 +417,7 @@ def create_server(config, admin_key, state_directory, transport=None):
         payload = {
             "title": title, "description": description,
             "title_es": title_es, "description_es": description_es,
-            "category": category, "price_usd": price_usd,
+            "category": category, "price_usd": price_usd, "lulu_package": lulu_package,
         }
         return await bridge.request(
             "POST", f"/drafts/{product_id}/update",

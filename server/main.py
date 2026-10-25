@@ -42,7 +42,7 @@ from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
 from services import prodigi_store, prodigi_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
-from services import supplier_api  # noqa: E402
+from services import crosslist, supplier_api  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
 from services.countries import DESTINATIONS  # noqa: E402
 from ssr import (  # noqa: E402
@@ -213,6 +213,7 @@ class DraftUpdateIn(BaseModel):
     description_es: str | None = Field(default=None, min_length=1, max_length=5000)
     category: str | None = Field(default=None, max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)  # all variants
+    lulu_package: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$")
 
 
 class DraftPublishIn(BaseModel):
@@ -242,6 +243,23 @@ class SupplierCallIn(BaseModel):
     method: str = Field(pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
     path: str = Field(min_length=1, max_length=800)
     body: dict | list | None = None
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+
+
+class FromEtsyIn(BaseModel):
+    """Internal: store draft from an Etsy listing; create needs the preview's code."""
+
+    listing_id: str = Field(pattern=r"^[0-9]{1,20}$")
+    supplier: str | None = Field(default=None, pattern=r"^lulu$")  # printed books (no Printify twin)
+    code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+
+
+class ToEtsyIn(BaseModel):
+    """Internal: put a store product on Etsy; needs the preview's code."""
+
+    taxonomy_id: int | None = Field(default=None, ge=1)  # Etsy drafts (not Printify)
+    price_usd: float | None = Field(default=None, gt=0, le=10000)  # Etsy price, all variants
+    extra: dict[str, str | int | float | bool] | None = None  # more createDraftListing fields
     code: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
 
 
@@ -1989,6 +2007,22 @@ def _publish_problems(product: Product) -> list[str]:
         problems.append("no variants")
     if any(v.price_usd <= v.cost_usd for v in variants):
         problems.append("every variant price must exceed its cost")
+    supplier = product.supplier or "cj"
+    if supplier == digital_service.SUPPLIER and any(
+        not digital_service.file_path(digital_service.file_for(product, v)) for v in variants
+    ):
+        problems.append("download file missing: upload it at /admin/digital/")
+    if supplier == lulu_service.SUPPLIER:
+        if not product.lulu_package:
+            problems.append("set lulu_package (the Lulu pod_package_id)")
+        if any(not _lulu_files(product, v) for v in variants):
+            problems.append("interior and cover PDFs missing: upload them at /admin/digital/")
+    if supplier == "printify" and (
+        not product.printify_product_id or any(not v.printify_variant_id for v in variants)
+    ):
+        problems.append("Printify product or variant ids missing")
+    if supplier == "prodigi":
+        problems.append("Prodigi products are set up by hand, not through drafts")
     return problems
 
 
@@ -2033,6 +2067,10 @@ async def internal_update_draft(
         product.price_usd = body.price_usd
         for v in product.variants:
             v.price_usd = body.price_usd
+    if body.lulu_package is not None:
+        if product.supplier != lulu_service.SUPPLIER:
+            raise HTTPException(422, "lulu_package is only for printed books")
+        product.lulu_package = body.lulu_package
     db.commit()
     db.refresh(product)
     return {
@@ -2265,13 +2303,25 @@ async def internal_shipping_quote(
             "variant_id": variant.id if variant else None, "quantity": body.quantity}
 
 
-_USED_SUPPLIER_CODES: set[str] = set()
+_USED_CODES: set[str] = set()
 
 
-def _supplier_code(supplier: str, body: SupplierCallIn, window: int) -> str:
-    """Bound to the exact request and a 10-minute window."""
-    state = json.dumps(["supplier-api", supplier, body.method, body.path, body.body, window], sort_keys=True)
+def _action_code(action: Any, window: int | None = None) -> str:
+    """Bound to the exact action and a 10-minute window."""
+    window = int(time.time() // 600) if window is None else window
+    state = json.dumps([action, window], sort_keys=True, default=str)
     return hmac.new(_draft_key().encode(), state.encode(), hashlib.sha256).hexdigest()[:6].upper()
+
+
+def _use_code(action: Any, code: str | None) -> None:
+    """Accept a code once, from this window or the previous one."""
+    window = int(time.time() // 600)
+    supplied = (code or "").upper()
+    if not supplied or supplied in _USED_CODES or supplied not in {
+        _action_code(action, w) for w in (window, window - 1)
+    }:
+        raise HTTPException(409, "Confirmation code does not match this exact request, has expired or was used")
+    _USED_CODES.add(supplied)
 
 
 @app.post("/api/internal/suppliers/{supplier}/api")
@@ -2288,21 +2338,178 @@ async def internal_supplier_api(
         raise HTTPException(403, str(exc)) from None
     request_info = {"supplier": supplier, "method": body.method, "path": body.path}
     if body.method != "GET":
-        window = int(time.time() // 600)
+        action = ["supplier-api", supplier, body.method, body.path, body.body]
         if preview:
             return {"ok": True, "executed": False, **request_info, "body": body.body,
-                    "code": _supplier_code(supplier, body, window)}
-        valid = {_supplier_code(supplier, body, w) for w in (window, window - 1)}
-        supplied = (body.code or "").upper()
-        if not supplied or supplied not in valid or supplied in _USED_SUPPLIER_CODES:
-            raise HTTPException(409, "Confirmation code does not match this exact request, has expired or was used")
-        _USED_SUPPLIER_CODES.add(supplied)
+                    "code": _action_code(action)}
+        _use_code(action, body.code)
     try:
         result = await supplier_api.call(supplier, body.method, body.path, body.body)
     except supplier_api.SupplierAPIError as exc:
         raise HTTPException(502, str(exc)) from None
     log.info("supplier api: %s %s %s -> %s", supplier, body.method, body.path.split("?")[0], result["status"])
     return {"ok": True, "executed": True, **request_info, **result}
+
+
+# ── Internal: cross-listing with Etsy ─────────────────────────────────
+
+
+def _cross(exc: crosslist.CrossListError) -> HTTPException:
+    return HTTPException(502, str(exc))
+
+
+@app.post("/api/internal/crosslist/from-etsy")
+async def internal_draft_from_etsy(
+    body: FromEtsyIn, request: Request, preview: bool = Query(False), db: Session = Depends(get_db)
+):
+    """Hidden store draft from an Etsy listing (Printify listings get a twin in the store's shop)."""
+    _internal_ok(request)
+    existing = db.query(Product).filter(Product.etsy_listing_id == body.listing_id).first()
+    if existing:
+        return {"ok": True, "created": False,
+                "existing": {"id": existing.id, "slug": existing.slug, "active": bool(existing.active)}}
+    try:
+        listing = await crosslist.etsy_listing(body.listing_id)
+        source = None if listing["is_digital"] else await crosslist.printify_for_listing(body.listing_id)
+    except crosslist.CrossListError as exc:
+        raise _cross(exc) from None
+    if listing["is_digital"]:
+        supplier = digital_service.SUPPLIER
+    elif source:
+        supplier = "printify"
+    elif body.supplier == lulu_service.SUPPLIER:
+        supplier = lulu_service.SUPPLIER
+    else:
+        raise HTTPException(422, "Not a download and no Printify product publishes it; "
+                                 "pass supplier='lulu' for a printed book")
+    if source:
+        variants = crosslist.printify_variants(source)
+        images = listing["images"] + [i.get("src") for i in source.get("images") or [] if i.get("src")]
+    else:
+        variants = [{"name": v["name"][:200], "printify_variant_id": 0, "cost_usd": 0.0, "price_usd": v["price_usd"]}
+                    for v in listing["variants"]]
+        images = listing["images"]
+    if not variants:
+        raise HTTPException(422, "The listing has no enabled variants")
+    plan = {
+        "supplier": supplier,
+        "listing": {"id": listing["listing_id"], "title": listing["title"], "url": listing["url"]},
+        "printify_source": {"id": source["id"], "title": source.get("title")} if source else None,
+        "title": listing["title"],
+        "slug": _unique_slug(db, _slugify(listing["title"])),
+        "variants": variants,
+        "images": images[:16],
+    }
+    action = ["from-etsy", body.listing_id, supplier]
+    if preview:
+        return {"ok": True, "created": False, "preview": plan, "code": _action_code(action)}
+    _use_code(action, body.code)
+    twin_id = ""
+    if source:
+        try:
+            twin = await crosslist.create_twin(printify_service.shop_id(), crosslist.twin_payload(source))
+        except crosslist.CrossListError as exc:
+            raise _cross(exc) from None
+        twin_id = str(twin.get("id") or "")
+        # The new twin's variants and prices are what checkout will send.
+        variants = crosslist.printify_variants(twin) or variants
+    image = plan["images"][0] if plan["images"] else ""
+    product = Product(
+        slug=_unique_slug(db, plan["slug"]), title=listing["title"], description=listing["description"],
+        image_url=image, gallery_json=json.dumps(plan["images"]), details_html="", category="",
+        supplier=supplier, printify_product_id=twin_id, printify_twin_id=str(source["id"]) if source else "",
+        etsy_listing_id=listing["listing_id"], from_country="US" if source else "",
+        cost_usd=min(v["cost_usd"] for v in variants), price_usd=min(v["price_usd"] for v in variants),
+        active=False, draft=True,
+    )
+    db.add(product)
+    db.flush()
+    for i, v in enumerate(variants):
+        db.add(ProductVariant(product_id=product.id, name=v["name"][:200], image_url=image,
+                              printify_variant_id=v["printify_variant_id"], cost_usd=v["cost_usd"],
+                              price_usd=v["price_usd"], sort_order=i, active=True))
+    db.commit()
+    db.refresh(product)
+    log.info("draft from Etsy listing %s: %s (%s)", listing["listing_id"], product.slug, supplier)
+    return {"ok": True, "created": True, "draft": _draft_summary(product),
+            "problems": _publish_problems(product), "printify_twin_in_store_shop": twin_id or None}
+
+
+@app.post("/api/internal/crosslist/to-etsy/{product_id}")
+async def internal_publish_to_etsy(
+    product_id: int, body: ToEtsyIn, request: Request, preview: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Printify products: create or update the twin in the Etsy shop and publish it there.
+    Downloads, Lulu and Prodigi: an Etsy draft listing with photos (and the file)."""
+    _internal_ok(request)
+    product = db.get(Product, product_id)
+    if not product or not (product.active or product.draft):
+        raise HTTPException(404, "Product not found")
+    supplier = product.supplier or "cj"
+    if supplier == "cj":
+        raise HTTPException(422, "CJ products cannot be sold on Etsy: it does not allow reselling")
+    variants = product.active_variants()
+    request_args = body.model_dump(exclude={"code"})
+    if supplier == "printify":
+        if not product.printify_product_id:
+            raise HTTPException(409, "Printify product id missing")
+        prices = {v.printify_variant_id: body.price_usd or v.price_usd for v in variants}
+        plan = {"via": "printify", "action": "update and republish" if product.printify_twin_id else "create twin and publish",
+                "printify_twin_id": product.printify_twin_id or None, "title": product.title[:140],
+                "etsy_prices": prices, "public": "Printify publishes the listing on Etsy at once"}
+    else:
+        if product.etsy_listing_id:
+            raise HTTPException(409, f"Already on Etsy as listing {product.etsy_listing_id}")
+        if not body.taxonomy_id:
+            raise HTTPException(422, "taxonomy_id is required (GET /application/seller-taxonomy/nodes on Etsy)")
+        file = crosslist.digital_file(product) if supplier == digital_service.SUPPLIER else None
+        if supplier == digital_service.SUPPLIER and not file:
+            raise HTTPException(409, "Upload the download file at /admin/digital/ first")
+        price = body.price_usd or min([v.price_usd for v in variants] or [product.price_usd])
+        fields = {
+            "quantity": "999", "title": product.title[:140], "description": product.description or product.title,
+            "price": f"{price:.2f}", "who_made": "i_did", "when_made": "made_to_order",
+            "taxonomy_id": str(body.taxonomy_id), "type": "download" if file else "physical",
+            **{k: str(v) for k, v in (body.extra or {}).items()},
+        }
+        images = [_abs_url(u) for u in dict.fromkeys([product.image_url, *product.gallery()]) if u][:10]
+        plan = {"via": "etsy", "action": "create Etsy draft listing (not public)", "fields": fields,
+                "images": images, "file": file.name if file else None}
+    action = ["to-etsy", product.id, request_args, plan]
+    if preview:
+        return {"ok": True, "executed": False, "preview": plan, "code": _action_code(action)}
+    _use_code(action, body.code)
+    try:
+        if supplier == "printify":
+            twin_shop = crosslist._need(crosslist.printify_etsy_shop_id(), "PRINTIFY_ETSY_SHOP_ID")
+            source = await crosslist.get_printify(printify_service.shop_id(), product.printify_product_id)
+            payload = crosslist.twin_payload(source, title=product.title,
+                                             description=crosslist.plain_html(product.description), prices=prices)
+            if product.printify_twin_id:
+                await crosslist.update_twin(twin_shop, product.printify_twin_id, payload)
+            else:
+                twin = await crosslist.create_twin(twin_shop, payload)
+                product.printify_twin_id = str(twin.get("id") or "")
+                db.commit()
+            await crosslist.publish_twin_to_etsy(product.printify_twin_id)
+            published = await crosslist.get_printify(twin_shop, product.printify_twin_id)
+            external = str((published.get("external") or {}).get("id") or "")
+            if external:
+                product.etsy_listing_id = external
+                db.commit()
+            result = {"via": "printify", "printify_twin_id": product.printify_twin_id,
+                      "etsy_listing_id": external or "pending: Printify is publishing it"}
+        else:
+            listing_id = await crosslist.create_etsy_draft(fields, images, file)
+            product.etsy_listing_id = listing_id
+            db.commit()
+            result = {"via": "etsy", "etsy_listing_id": listing_id, "state": "draft",
+                      "next": "review and publish it in Etsy Shop Manager"}
+    except crosslist.CrossListError as exc:
+        raise _cross(exc) from None
+    log.info("to Etsy: %s via %s", product.slug, result["via"])
+    return {"ok": True, "executed": True, **result}
 
 
 @app.post("/api/admin/orders/ship")

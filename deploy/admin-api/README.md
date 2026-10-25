@@ -11,6 +11,9 @@ POST /products/{id}/unpublish/preview, POST /products/{id}/unpublish.
 GET /suppliers/printify/products, GET /suppliers/printify/products/{id},
 GET /suppliers/prodigi/products/{sku}, GET /products/{id}/shipping
 (read through the storefront, which keeps the Printify/Prodigi/Lulu keys),
+POST /crosslist/from-etsy and POST /crosslist/to-etsy/{id} (cross-listing
+with the Etsy shop through Printify twins or Etsy drafts; both previewed
+with a code, see server/services/crosslist.py),
 and POST /suppliers/{cj|printify|lulu|prodigi|etsy|meta|pinterest}/api: any
 call to that API (Meta Graph with FB_PAGE_TOKEN, Pinterest with the store's
 OAuth token, Etsy with ETSY_API_KEY and scripts/etsy_oauth.py),

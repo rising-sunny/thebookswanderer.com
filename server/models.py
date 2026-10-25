@@ -54,6 +54,9 @@ class Product(Base):
     # Spanish copy kept with the product; i18n/products_es.json still wins.
     title_es: Mapped[str] = mapped_column(String(300), default="")
     description_es: Mapped[str] = mapped_column(Text, default="")
+    # Cross-listing: the Etsy listing, and the Printify twin in the Etsy-connected shop.
+    etsy_listing_id: Mapped[str] = mapped_column(String(40), default="")
+    printify_twin_id: Mapped[str] = mapped_column(String(40), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     variants: Mapped[list["ProductVariant"]] = relationship(

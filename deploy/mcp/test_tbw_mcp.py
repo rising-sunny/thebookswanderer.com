@@ -144,16 +144,18 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 "tbw_list_printify_products", "tbw_get_printify_product",
                 "tbw_get_prodigi_product", "tbw_quote_shipping",
                 "tbw_supplier_get", "tbw_supplier_write",
+                "tbw_draft_from_etsy", "tbw_publish_to_etsy",
             })
             writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft",
-                       "tbw_delete_draft", "tbw_unpublish_product", "tbw_supplier_write"}
+                       "tbw_delete_draft", "tbw_unpublish_product", "tbw_supplier_write",
+                       "tbw_draft_from_etsy", "tbw_publish_to_etsy"}
             for tool in tools:
                 self.assertEqual(
                     tool.annotations.read_only_hint, tool.name not in writers
                 )
                 self.assertEqual(
                     tool.annotations.destructive_hint,
-                    tool.name in {"tbw_delete_draft", "tbw_supplier_write"},
+                    tool.name in {"tbw_delete_draft", "tbw_supplier_write", "tbw_publish_to_etsy"},
                 )
             serialized = json.dumps(
                 [tool.model_dump(mode="json") for tool in tools]
@@ -215,6 +217,10 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                     await client.call_tool(
                         "tbw_supplier_get", {"supplier": "amazon", "path": "/x"}
                     )
+                await client.call_tool("tbw_draft_from_etsy", {"listing_id": "42"})
+                await client.call_tool("tbw_publish_to_etsy", {
+                    "product_id": 7, "taxonomy_id": 2078, "code": "A1B2C3",
+                })
                 with self.assertRaises(Exception):
                     await client.call_tool(
                         "tbw_publish_draft", {"product_id": 7, "code": "nope"}
@@ -231,8 +237,12 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
              ("GET", "/suppliers/prodigi/products/GLOBAL-FAP-12X16"),
              ("GET", "/products/7/shipping"),
              ("POST", "/suppliers/lulu/api"), ("POST", "/suppliers/printify/api"),
-             ("POST", "/suppliers/printify/api")],
+             ("POST", "/suppliers/printify/api"),
+             ("POST", "/crosslist/from-etsy"), ("POST", "/crosslist/to-etsy/7")],
         )
+        self.assertEqual(dict(requests[15].url.params), {"preview": "true"})
+        self.assertEqual(json.loads(requests[16].content),
+                         {"taxonomy_id": 2078, "price_usd": None, "extra": None, "code": "A1B2C3"})
         self.assertEqual(dict(requests[11].url.params),
                          {"country_code": "MX", "quantity": "1"})
         self.assertEqual(json.loads(requests[12].content),

@@ -206,7 +206,7 @@ if args.upgrade:
         print("Respaldo:", backup)
         raise SystemExit(1)
     print("MCP actualizado:", BASE_URL + "/mcp")
-    print("Herramientas: catálogo, borradores, publicación y API de proveedores (escrituras con código). Pedidos solo si se activan en el VPS.")
+    print("Herramientas: catálogo, borradores, publicación, Etsy (cruce de productos) y API de proveedores (escrituras con código). Pedidos solo si se activan en el VPS.")
     print("Clientes OAuth: ChatGPT, Claude y CLI en loopback.")
     print("Respaldo:", backup)
     raise SystemExit(0)
