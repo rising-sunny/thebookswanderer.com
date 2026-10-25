@@ -8,6 +8,7 @@ through /admin/digital/ and never live in this (public) repository.
 
   python scripts/digital_products.py            # dry run
   python scripts/digital_products.py --apply
+  python scripts/digital_products.py --apply some-slug   # only that product
 """
 from __future__ import annotations
 
@@ -31,10 +32,13 @@ SPEC = Path(__file__).with_name("digital_products.json")
 
 def main() -> int:
     apply = "--apply" in sys.argv
+    only = [a for a in sys.argv[1:] if not a.startswith("--")]
     specs = json.loads(SPEC.read_text(encoding="utf-8"))
     init_db()
     db = SessionLocal()
     for spec in specs:
+        if only and spec["slug"] not in only:
+            continue
         p = db.query(Product).filter(Product.slug == spec["slug"]).first()
         new = p is None
         supplier = spec.get("supplier", digital.SUPPLIER)
@@ -47,6 +51,9 @@ def main() -> int:
         p.lulu_package = spec.get("lulu_package", "")
         p.title = spec["title"]
         p.description = spec.get("description", "")
+        for key in ("title_es", "description_es", "details_html", "cost_usd"):
+            if key in spec:
+                setattr(p, key, spec[key])
         p.category = spec.get("category", "")
         p.price_usd = float(spec["price_usd"])
         p.image_url = spec.get("image_url", "")
