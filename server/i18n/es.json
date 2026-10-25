@@ -40,6 +40,16 @@
         "Algunos compañeros de lectura no necesitan paquete. Nuestros imprimibles son PDF que compras una vez, imprimes en casa o en una copistería y doblas en cuadernillo: sin envío ni esperas, te llegan al correo justo después del pago.",
         "Cada uno está diseñado desde cero, no revendido de un pack de plantillas, con guía de impresión para A4 y Carta y una versión A5 para carpetas de anillas y tablets."
       ]
+    },
+    "mathrelaxing": {
+      "name": "MathRelaxing",
+      "h1": "MathRelaxing: matemáticas que puedes tocar",
+      "description": "Láminas, regalos e imprimibles de arte matemático de nuestro estudio hermano MathRelaxing.",
+      "meta_description": "MathRelaxing en The Books Wanderer: fractales, curvas y ecuaciones famosas dibujadas a partir de sus fórmulas, en pósters, tazas, marcapáginas e imprimibles.",
+      "intro": [
+        "MathRelaxing es nuestro estudio hermano para quienes leen y además disfrutan de una buena ecuación. Cada diseño se calcula a partir de matemáticas reales —un conjunto de Julia, la identidad de Euler, una onda estacionaria— y se compone con el mismo cuidado que una página de libro.",
+        "Los productos físicos los imprimen bajo pedido nuestros socios de producción; los imprimibles son PDF que te llegan justo después del pago. Los precios están en dólares (USD)."
+      ]
     }
   },
   "templates": [
@@ -54,6 +64,10 @@
     [
       "^(.+) is part of The Books Wanderer literary boutique — accessories chosen for everyday reading, not novelty clutter\\. We list real stock options, clear USD pricing, and ship with tracking\\. Checkout is secured with PayPal\\.$",
       "$1 forma parte de la boutique literaria The Books Wanderer: accesorios elegidos para leer todos los días, no adornos de relleno. Mostramos opciones reales en stock, precios claros en USD y envíos con seguimiento. El pago se hace de forma segura con PayPal."
+    ],
+    [
+      "^(.+) is part of MathRelaxing, the math art studio of The Books Wanderer — designs computed from real mathematics, not stock art\\. We list real stock options, clear USD pricing, and ship with tracking\\. Checkout is secured with PayPal\\.$",
+      "$1 forma parte de MathRelaxing, el estudio de arte matemático de The Books Wanderer: diseños calculados a partir de matemáticas reales, no imágenes de catálogo. Mostramos opciones reales en stock, precios claros en USD y envíos con seguimiento. El pago se hace de forma segura con PayPal."
     ],
     [
       "^(\\d+) designs$",
