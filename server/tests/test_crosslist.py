@@ -62,6 +62,12 @@ class CrossList(unittest.TestCase):
                          [{'id': 'img1', 'x': .5, 'y': .5, 'scale': 1, 'angle': 0}])
         self.assertEqual((payload['blueprint_id'], payload['print_provider_id']), (5, 9))
 
+    def test_twin_payload_drops_empty_positions(self):
+        area = dict(SOURCE['print_areas'][0])
+        area['placeholders'] = area['placeholders'] + [{'position': 'january_grid', 'images': []}]
+        payload = crosslist.twin_payload(dict(SOURCE, print_areas=[area]))
+        self.assertEqual([p['position'] for p in payload['print_areas'][0]['placeholders']], ['front'])
+
     def test_printify_listing_becomes_a_draft_with_a_twin_in_the_store_shop(self):
         self.mock('etsy_listing', AsyncMock(return_value=LISTING))
         self.mock('printify_for_listing', AsyncMock(return_value=SOURCE))
