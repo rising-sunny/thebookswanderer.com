@@ -212,5 +212,6 @@ cat > /etc/cron.d/tbw-indexnow <<CRON
 CRON
 chmod 644 /etc/cron.d/tbw-indexnow
 
-# One-time release tasks (server/scripts/release_queue.json), each run once as www-data.
+# One-time release tasks (server/scripts/release_queue.json), each run once as www-data;
+# a failed task is retried on the next deploy.
 cd "$REMOTE_PATH/server" && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/run_release_queue.py || echo "WARNING: release queue failed"
