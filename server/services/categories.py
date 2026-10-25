@@ -113,6 +113,29 @@ CATEGORIES: list[dict[str, Any]] = [
         "tile": "linear-gradient(150deg, #3a4f7a, #1b2540)",
         "sort_order": 4,
     },
+    {
+        "slug": "mathrelaxing",
+        "name": "MathRelaxing",
+        "h1": "MathRelaxing: mathematics you can hold",
+        "description": "Math art prints, gifts and printables from our sister studio MathRelaxing.",
+        "meta_description": (
+            "MathRelaxing at The Books Wanderer — fractals, curves and famous equations "
+            "drawn from their formulas, on posters, mugs, bookmarks and printables."
+        ),
+        "intro": [
+            (
+                "MathRelaxing is our sister studio for readers who also love a good equation. "
+                "Every design is computed from real mathematics — a Julia set, Euler's identity, "
+                "a standing wave — and set with the same care we give a book page."
+            ),
+            (
+                "Physical pieces are printed to order by our production partners; printables "
+                "are PDF downloads delivered right after checkout. Prices are in USD."
+            ),
+        ],
+        "tile": "linear-gradient(150deg, #1f3b57, #0d1b2a)",
+        "sort_order": 5,
+    },
 ]
 
 _BY_SLUG = {c["slug"]: c for c in CATEGORIES}

@@ -392,8 +392,7 @@ def render_product_page(
   <section class="pdp-ssr__section">
     <h2>About this piece</h2>
     <p>
-      {_esc_text(title)} is part of The Books Wanderer literary boutique —
-      accessories chosen for everyday reading, not novelty clutter.
+      {_esc_text(title)} is part of {"MathRelaxing, the math art studio of The Books Wanderer — designs computed from real mathematics, not stock art." if cat_slug == "mathrelaxing" else "The Books Wanderer literary boutique — accessories chosen for everyday reading, not novelty clutter."}
       We list real stock options, clear USD pricing, and ship with tracking.
       Checkout is secured with PayPal.
     </p>
