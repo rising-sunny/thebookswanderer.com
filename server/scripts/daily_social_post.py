@@ -12,6 +12,10 @@ image pins rotating through the product's other photos and designs.
   python scripts/daily_social_post.py --dry-run            # render + captions, no posting
   python scripts/daily_social_post.py --slug some-product  # force a product
   python scripts/daily_social_post.py --at-hour 11         # cron guard (see below)
+  python scripts/daily_social_post.py --dry-run --content  # a content reel (reading challenge...)
+
+On SOCIAL_CONTENT_WEEKDAY (Sunday by default) the reel shows one of the free
+things in CONTENT instead of a product, rotating through them.
 
 Cron runs it at 15:03 and 16:03 UTC; --at-hour 11 lets only the run that
 falls at 11:xx in New York go through, so the post keeps its local time
@@ -76,6 +80,46 @@ HASHTAGS = {
 }
 DEFAULT_TAGS = "#booklover #bookish #readingtime #bookstagram"
 
+# Free things from the site that take a product's place one day a week
+# (SOCIAL_CONTENT_WEEKDAY, Monday=0, default Sunday; -1 turns them off).
+# Images live in social/content; the reel uses them in this order, one per scene.
+CONTENT_WEEKDAY = int(os.getenv("SOCIAL_CONTENT_WEEKDAY", "6"))
+CONTENT = [
+    {
+        "id": 1, "slug": "content/reading-challenge-2027", "url": "/reading-challenge-2027/",
+        "title": "The 2027 Reading Challenge",
+        "images": ["reading-challenge-2027-1.jpg", "reading-challenge-2027-2.jpg",
+                   "reading-challenge-2027-4.jpg", "reading-challenge-2027-3.jpg"],
+        "cover": "/assets/downloads/2027-reading-challenge-preview.jpg",
+        "scenes": [("FREE PRINTABLE", "The 2027 Reading Challenge"),
+                   ("52 PROMPTS", "One book a week, you choose which"),
+                   ("FOR EXAMPLE", "Set in the city where you live"),
+                   ("AND A PAGE FOR", "Your year in books")],
+        "end_line": "Free · the list is on our site",
+        "caption": ("Our 2027 reading challenge is up. It has 52 prompts, one for each week, like "
+                    "\"a book you own but never opened\" or \"set in the city where you live\". "
+                    "None of them tell you which book to read.\n\n"
+                    "The whole list is free on our site, and you can also get it as a printable PDF."),
+        "tags": "#readingchallenge #2027readingchallenge #readinggoals #booklover #bookish #bookstagram",
+    },
+    {
+        "id": 2, "slug": "content/free-literary-coloring-pages", "url": "/guides/free-literary-coloring-pages/",
+        "title": "Free literary coloring pages",
+        "images": ["free-literary-coloring-pages-3.jpg", "free-literary-coloring-pages-1.jpg",
+                   "free-literary-coloring-pages-2.jpg", "free-literary-coloring-pages-3.jpg"],
+        "cover": "/assets/downloads/free-literary-coloring-pages-preview.jpg",
+        "scenes": [("FREE TO PRINT", "Three coloring pages from classic books"),
+                   ("ALICE IN WONDERLAND", "“We're all mad here.”"),
+                   ("THE WIZARD OF OZ", "The Cowardly Lion"),
+                   ("ALICE IN WONDERLAND", "The Mad Hatter")],
+        "end_line": "Free PDF · print at home",
+        "caption": ("Three free coloring pages: the Cheshire Cat, the Cowardly Lion and the Mad Hatter, "
+                    "from the original drawings by John Tenniel and W. W. Denslow. "
+                    "Download the PDF and print them at home, in Letter or A4."),
+        "tags": "#coloringpages #adultcoloring #aliceinwonderland #wizardofoz #booklover #bookish",
+    },
+]
+
 
 def font(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(SOCIAL / "fonts" / name), size)
@@ -108,6 +152,20 @@ def pick_product(client: httpx.Client, state: list[dict], slug: str | None) -> d
         # never posted first, then the longest wait; ties broken by newest product
         pool = sorted(products, key=lambda p: (last.get(p["slug"], ""), -p["id"]))[:1]
     return client.get(f"{BASE}/api/products/by-slug/{pool[0]['slug']}").json()
+
+
+def pick_content(state: list[dict], slug: str | None) -> dict:
+    if slug:
+        pool = [c for c in CONTENT if c["slug"] in (slug, f"content/{slug}")]
+        if not pool:
+            raise SystemExit(f"no content {slug}")
+        return pool[0]
+    last = {e["slug"]: e["date"] for e in state}
+    return min(CONTENT, key=lambda c: (last.get(c["slug"], ""), c["id"]))
+
+
+def content_images(c: dict) -> list[Image.Image]:
+    return [Image.open(SOCIAL / "content" / name).convert("RGB") for name in c["images"]]
 
 
 def abs_url(u: str) -> str:
@@ -175,6 +233,10 @@ def category_line(slug: str) -> str:
 
 
 def captions(p: dict) -> tuple[str, str]:
+    if p.get("caption"):
+        link = f"{BASE}{p['url']}?utm_source=facebook&utm_medium=social&utm_campaign=daily_reel"
+        return (f"{p['caption']}\n\n{link}\n\n{p['tags']}",
+                f"{p['caption']}\n\nLink in bio → thebookswanderer.com\n\n{p['tags']}")
     tags = HASHTAGS.get(p.get("category_slug") or "", DEFAULT_TAGS)
     price = price_line(p)
     head = f"{p['title']}\n\n{(p.get('description') or '').strip()}\n\n{price[0].upper() + price[1:]} · {shipping_line(p)}"
@@ -248,9 +310,11 @@ class Reel:
             ("SHIPPING", shipping_line(p)),
             ("FOR READERS", category_line(p.get("category_slug") or "")),
         ]
-        order = [0, 1, 2, 3]
-        tail = order[1:]
-        self.rng.shuffle(tail)  # vary the middle of the reel from post to post
+        tail = [1, 2, 3]
+        if p.get("scenes"):  # content reels pair each line with its picture
+            scene_copy = p["scenes"]
+        else:
+            self.rng.shuffle(tail)  # vary the middle of the reel from post to post
         self.scenes = [(i * SCENE, images[i], *scene_copy[k]) for i, k in enumerate([0, *tail])]
         self.drift = [self.rng.choice((-1, 1)) for _ in range(4)]
         self.hero = images[0]
@@ -322,7 +386,7 @@ class Reel:
         for k, tx in enumerate(tl):
             line(tx, tf, y, TITLE_GREEN, 0.45 + 0.1 * k)
             y += int(tf.size * 1.2)
-        line(f"{price_line(self.p)}  ·  {shipping_line(self.p)}", font("Karla-700.ttf", 40), y + 50, GOLD_600, 0.8)
+        line(self.p.get("end_line") or f"{price_line(self.p)}  ·  {shipping_line(self.p)}", font("Karla-700.ttf", 40), y + 50, GOLD_600, 0.8)
         line("thebookswanderer.com", font("Karla-400.ttf", 40), y + 120, INK, 0.95)
         return f.convert("RGB")
 
@@ -465,6 +529,28 @@ def pinterest_round(slug: str, video: Path) -> dict:
         db.close()
 
 
+def pinterest_content(c: dict, video: Path) -> dict:
+    """A content reel goes up as one video pin on the shop board. Never fails the run."""
+    import asyncio
+
+    from services import pinterest as pin
+    from services import pinterest_jobs as jobs
+
+    if not pin.is_configured() or not jobs.auto_pin_enabled():
+        return {"skipped": "pinterest not configured or auto pins disabled"}
+    try:
+        r = asyncio.run(pin.create_video_pin(
+            board_id=(os.getenv("PINTEREST_BOARD_SHOP") or "").strip() or jobs._DEFAULT_BOARDS["shop"],
+            title=c["title"],
+            description=f"{c['caption']} {c['tags']}"[:500],
+            link=f"{BASE}{c['url']}?utm_source=pinterest&utm_medium=organic&utm_campaign=video_pin",
+            video_path=video, cover_image_url=abs_url(c["cover"]), alt_text=c["title"],
+        ))
+        return {"video": str(r.get("id") or "")}
+    except Exception as exc:  # noqa: BLE001
+        return {"video_error": str(exc)[:300]}
+
+
 # ── main ──────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -475,6 +561,8 @@ def main() -> None:
     ap.add_argument("--out", help="keep the rendered video here")
     ap.add_argument("--facebook-only", action="store_true",
                     help="retry Facebook for today's entry (same product and reel), leave Instagram/Pinterest alone")
+    ap.add_argument("--content", nargs="?", const="", metavar="SLUG",
+                    help="post a content reel instead of a product (any day; SLUG picks which)")
     args = ap.parse_args()
 
     now_ny = datetime.now(NY)
@@ -485,7 +573,7 @@ def main() -> None:
         return
     today = now_ny.date().isoformat()
     state = load_state()
-    if not args.dry_run and not args.slug and any(e["date"] == today and e.get("ok") for e in state):
+    if not args.dry_run and not args.slug and args.content is None and any(e["date"] == today and e.get("ok") for e in state):
         print(f"{today}: already posted, nothing to do")
         return
 
@@ -498,8 +586,16 @@ def main() -> None:
         args.slug = retry["slug"]
 
     client = httpx.Client(timeout=40, headers={"User-Agent": "TheBooksWanderer social bot"})
-    p = pick_product(client, state, args.slug)
-    images = product_images(client, p)
+    if args.slug and args.slug.startswith("content/"):
+        args.content = args.slug
+    if args.content is None and not args.slug and now_ny.weekday() == CONTENT_WEEKDAY:
+        args.content = ""
+    if args.content is not None:
+        p = pick_content(state, args.content or None)
+        images = content_images(p)
+    else:
+        p = pick_product(client, state, args.slug)
+        images = product_images(client, p)
     fb_text, ig_text = captions(p)
     seed = int(now_ny.strftime("%Y%m%d")) + p["id"]
     with tempfile.TemporaryDirectory() as tmp:
@@ -532,7 +628,7 @@ def main() -> None:
                 entry[f"{name}_error"] = str(exc)[:300]
                 print(f"  {name}: FAILED {exc}")
         try:
-            entry["pinterest"] = pinterest_round(p["slug"], video)
+            entry["pinterest"] = pinterest_content(p, video) if p.get("caption") else pinterest_round(p["slug"], video)
             print(f"  pinterest: {entry['pinterest']}")
         except Exception as exc:  # noqa: BLE001
             entry["pinterest"] = {"error": str(exc)[:300]}
