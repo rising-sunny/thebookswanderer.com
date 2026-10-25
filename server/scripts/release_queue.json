@@ -1,4 +1,5 @@
 [
   {"id": "fairy-tales-create", "script": "digital_products.py", "args": ["--apply", "color-the-fairy-tales-printed"]},
-  {"id": "fairy-tales-cert", "script": "print_release_cert.py", "args": []}
+  {"id": "fairy-tales-cert", "script": "print_release_cert.py", "args": []},
+  {"id": "fairy-tales-install", "script": "install_print_bundle.py", "args": ["color-the-fairy-tales-printed", "--activate"]}
 ]
