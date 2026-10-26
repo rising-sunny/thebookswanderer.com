@@ -28,6 +28,12 @@ def save_stl(path, verts, faces):
 
 if __name__ == "__main__":
     vol, step, origin = field()
+    # the sphere cut leaves loose crumbs at the edge; keep only the one connected piece
+    from scipy import ndimage as ndi
+    solid, n = ndi.label(vol < 0)
+    sizes = ndi.sum(np.ones_like(vol), solid, range(1, n + 1))
+    vol = np.where(solid == 1 + int(np.argmax(sizes)), vol, np.abs(vol) + step)
+    print(n, "pieces before, kept the largest")
     verts, faces, _, _ = measure.marching_cubes(vol, 0.0, spacing=(step,) * 3)
     verts += origin
     save_stl("gyroid-sphere.stl", verts, faces)
