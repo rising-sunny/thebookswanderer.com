@@ -13,7 +13,7 @@ import httpx
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database import Base
-from models import Order, OrderItem, Product, SlantSubmission
+from models import Order, OrderItem, Product, ProductVariant, SlantSubmission
 from services import shipping, slant3d as s, slant3d_submission as sub
 
 ENV = {"SLANT3D_API_KEY": "sl_offline", "SLANT3D_PLATFORM_ID": "4e24626a-75da-440f-95a5-9cfe079256d3",
@@ -53,7 +53,9 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("sl_offline", str(error.exception))
 
     def test_lines_come_from_the_manifest_only(self):
-        lines = s.lines(SLUG, 2)
+        lines = s.lines(SLUG, 2, "TBW-HYPERBOLOID-GOLD")
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(len(s.lines(SLUG, 1, "TBW-HYPERBOLOID-RAINBOW")), 1)
         self.assertEqual({l["type"] for l in lines}, {"PRINT"})
         self.assertEqual([l["quantity"] for l in lines], [2] * len(lines))
         for bad in (0, 11, True, "1"):
@@ -61,6 +63,10 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
                 s.lines(SLUG, bad)
         with self.assertRaises(s.Slant3DError):
             s.lines("not-reviewed", 1)
+        with self.assertRaises(s.Slant3DError):
+            s.lines(SLUG, 1)          # two colours: the SKU must say which
+        with self.assertRaises(s.Slant3DError):
+            s.lines(SLUG, 1, "TBW-OTHER")
 
     def test_customer_needs_shop_email_full_address_and_a_served_country(self):
         c = s.customer("Ann Reader", "1 Main St", "", "Boston", "MA", "02108", "us")
@@ -87,7 +93,7 @@ class CheckoutTests(unittest.IsolatedAsyncioTestCase):
         self.product = Product(slug=SLUG, title="Hyperboloid", supplier="slant3d", price_usd=39.99)
 
     async def test_us_shipping_is_included_and_unserved_countries_are_refused(self):
-        cart = [(self.product, None, 1)]
+        cart = [(self.product, SimpleNamespace(cj_sku="TBW-HYPERBOLOID-GOLD", price_usd=39.99), 1)]
         us = await shipping.quote(cart, "US", {"street1": "1 Main St", "city": "Boston"})
         self.assertEqual(us["shipping_total"], 0.0)
         gb = await shipping.quote(cart, "GB", {"street1": "1 High St", "city": "London"})
@@ -103,7 +109,7 @@ class SubmissionTests(unittest.IsolatedAsyncioTestCase):
         self.db = sessionmaker(bind=self.engine, autoflush=False)()
         self.addCleanup(self.engine.dispose); self.addCleanup(self.db.close)
         cust = s.customer("Ann Reader", "1 Main St", "", "Boston", "MA", "02108", "US")
-        self.claim = sub.prepare(self.db, "web-1", s.draft_payload("web-1", s.lines(SLUG, 1), cust), 18.0)
+        self.claim = sub.prepare(self.db, "web-1", s.draft_payload("web-1", s.lines(SLUG, 1, "TBW-HYPERBOLOID-GOLD"), cust), 18.0)
 
     async def test_draft_then_one_charge_and_the_claim_precedes_it(self):
         seen = []
@@ -161,11 +167,13 @@ class SubmissionTests(unittest.IsolatedAsyncioTestCase):
         import main
         product = Product(slug=SLUG, title="Hyperboloid", supplier="slant3d", price_usd=39.99)
         self.db.add(product); self.db.flush()
+        variant = ProductVariant(product_id=product.id, name="Gold on matte black", cj_sku="TBW-HYPERBOLOID-GOLD")
+        self.db.add(variant); self.db.flush()
         o = Order(status="paid", paypal_order_id="P1", customer_name="Ann Reader", email="ann@example.com",
                   shipping_address="1 Main St", shipping_city="Boston", shipping_province="MA",
                   shipping_zip="02108", shipping_country_code="US")
         self.db.add(o); self.db.flush()
-        self.db.add(OrderItem(order_id=o.id, product_id=product.id, quantity=1, unit_price=39.99)); self.db.commit()
+        self.db.add(OrderItem(order_id=o.id, product_id=product.id, variant_id=variant.id, quantity=1, unit_price=39.99)); self.db.commit()
         responses = [order(publicId="SLANT_1000000002"), order(publicId="SLANT_1000000002", status="PAID")]
         with patch.object(s, "request", AsyncMock(side_effect=responses)) as request, \
                 patch.object(main, "_submit_to_cj", AsyncMock()) as cj, \
@@ -188,15 +196,35 @@ class EtsyTests(unittest.TestCase):
         spec = s.spec(); spec["products"][0]["etsy_listing_id"] = "4600000001"
         receipt = {"receipt_id": 77, "name": "Ann Reader", "first_line": "1 Main St", "second_line": "",
                    "city": "Boston", "state": "MA", "zip": "02108", "country_iso": "US",
-                   "transactions": [{"listing_id": 4600000001, "quantity": 2}, {"listing_id": 123, "quantity": 1}]}
+                   "transactions": [{"listing_id": 4600000001, "quantity": 2, "sku": "TBW-HYPERBOLOID-RAINBOW"},
+                                    {"listing_id": 123, "quantity": 1, "sku": "OTHER"}]}
         with patch.object(s, "spec", return_value=spec):
             wanted = worker.receipt_lines(receipt)
-            self.assertEqual(wanted, [(SLUG, 2)])
+            self.assertEqual(wanted, [(SLUG, 2, "TBW-HYPERBOLOID-RAINBOW")])
             ref, payload, cap = worker.payload_for(receipt, wanted)
         self.assertEqual(ref, "etsy-77")
         self.assertEqual(payload["metadata"], {"tbw_ref": "etsy-77"})
         self.assertEqual(cap, spec["products"][0]["max_cost_us"] * 2)
-        self.assertTrue(all(i["quantity"] == 2 for i in payload["items"]))
+        self.assertEqual([(i["SKU"], i["quantity"]) for i in payload["items"]], [("TBW-HYPERBOLOID-RAINBOW", 2)])
+
+
+
+class PublicationTests(unittest.TestCase):
+    def test_stage_maps_each_colour_to_its_reviewed_sku(self):
+        import publish_slant3d_products as pub
+        engine = create_engine("sqlite://"); Base.metadata.create_all(engine)
+        db = sessionmaker(bind=engine, autoflush=False)()
+        data = s.product_spec(SLUG)
+        pub.check(data)
+        product = pub.stage(db, data, publish=True); db.commit()
+        self.assertEqual(product.supplier, "slant3d")
+        self.assertTrue(product.active)
+        self.assertEqual(sorted(v.cj_sku for v in product.variants), sorted(v["sku"] for v in data["variants"]))
+        pub.stage(db, data, publish=True); db.commit()
+        self.assertEqual(len(product.variants), len(data["variants"]))
+        for v in product.variants:
+            self.assertTrue(s.lines(SLUG, 1, v.cj_sku))
+        db.close(); engine.dispose()
 
 
 if __name__ == "__main__":

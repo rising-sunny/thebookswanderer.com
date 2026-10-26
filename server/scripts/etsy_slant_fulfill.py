@@ -46,24 +46,24 @@ def shop_id() -> str:
     return (os.getenv("ETSY_SHOP_ID") or "").strip()
 
 
-def receipt_lines(receipt: dict) -> list[tuple[str, int]]:
-    """(manifest slug, quantity) for each 3D-print line of a receipt."""
+def receipt_lines(receipt: dict) -> list[tuple[str, int, str]]:
+    """(manifest slug, quantity, variant SKU) for each 3D-print line of a receipt."""
     out = []
     for t in receipt.get("transactions") or []:
         product = slant3d.by_listing(t.get("listing_id"))
         if product:
-            out.append((product["slug"], int(t.get("quantity") or 1)))
+            out.append((product["slug"], int(t.get("quantity") or 1), str(t.get("sku") or "")))
     return out
 
 
 def payload_for(receipt: dict, wanted) -> tuple[str, dict, float]:
     ref = f"etsy-{receipt['receipt_id']}"
-    items = [line for slug, qty in wanted for line in slant3d.lines(slug, qty)]
+    items = [line for slug, qty, sku in wanted for line in slant3d.lines(slug, qty, sku)]
     cust = slant3d.customer(receipt.get("name", ""), receipt.get("first_line", ""), receipt.get("second_line", ""),
                             receipt.get("city", ""), receipt.get("state", ""), receipt.get("zip", ""),
                             receipt.get("country_iso", ""))
     country = receipt.get("country_iso", "")
-    return ref, slant3d.draft_payload(ref, items, cust), slant3d.max_cost(wanted, country)
+    return ref, slant3d.draft_payload(ref, items, cust), slant3d.max_cost([(s, q) for s, q, _ in wanted], country)
 
 
 async def alert(subject: str, text: str) -> None:
@@ -151,7 +151,7 @@ async def main() -> int:
                     await alert(f"⚠️ Etsy 3D order {ref} not sent to Slant 3D", f"{exc}. Check the address in Etsy and send it by hand.")
                     continue
                 if dry:
-                    print(f"  {ref}: would draft {json.dumps([s for s, _ in wanted])}")
+                    print(f"  {ref}: would draft {json.dumps([sku for _, _, sku in wanted])}")
                     continue
                 slant3d_submission.prepare(db, ref, payload, cap)
         for claim in db.query(SlantSubmission).filter(SlantSubmission.ref.like("etsy-%")).all():

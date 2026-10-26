@@ -75,13 +75,24 @@ def by_listing(listing_id) -> dict | None:
     return next((p for p in spec()["products"] if p.get("etsy_listing_id") and str(p["etsy_listing_id"]) == str(listing_id)), None)
 
 
-def lines(slug: str, quantity: int) -> list[dict]:
+def variant_spec(slug: str, sku: str = "") -> dict:
+    """The reviewed variant by SKU; a product with a single variant needs none."""
+    variants = product_spec(slug)["variants"]
+    if not sku and len(variants) == 1:
+        return variants[0]
+    for v in variants:
+        if v["sku"] == sku:
+            return v
+    raise Slant3DError("Unreviewed Slant 3D variant")
+
+
+def lines(slug: str, quantity: int, sku: str = "") -> list[dict]:
     """Order lines for one product: one PRINT item per part, from the manifest only."""
     if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= 10:
         raise Slant3DError("Invalid quantity")
     return [{"type": "PRINT", "quantity": quantity, "publicFileServiceId": part["file"],
              "filamentId": part["filament"], "name": part["name"], "SKU": part["sku"]}
-            for part in product_spec(slug)["parts"]]
+            for part in variant_spec(slug, sku)["parts"]]
 
 
 def customer(name, line1, line2, city, state, zip_code, country) -> dict:
@@ -112,9 +123,8 @@ def shipping(items, country: str) -> dict:
     rates = spec()["shipping"]
     if country.upper() not in rates["countries"]:
         raise Slant3DError("Slant 3D delivery unavailable")
-    for product, _variant, qty in items:
-        product_spec(product.slug)
-        lines(product.slug, qty)
+    for product, variant, qty in items:
+        lines(product.slug, qty, variant.cj_sku if variant else "")
     total = 0.0 if country.upper() == "US" else float(rates["international"])
     return {"supplier": SUPPLIER, "from": "Print on demand", "logistic_name": "Slant 3D Standard",
             "shipping_total": total, "eta_days": rates.get("eta_days")}

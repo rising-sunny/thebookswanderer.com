@@ -1,6 +1,12 @@
 {
   "shipping": {
-    "countries": ["US", "CA", "GB", "AU", "CL"],
+    "countries": [
+      "US",
+      "CA",
+      "GB",
+      "AU",
+      "CL"
+    ],
     "international": 14.99,
     "eta_days": null
   },
@@ -10,12 +16,56 @@
       "etsy_listing_id": "",
       "max_cost_us": 18.0,
       "max_cost_intl": 36.0,
-      "parts": [
-        {"name": "Hyperboloid lattice, gold", "sku": "TBW-HYPERBOLOID-LATTICE",
-         "file": "7ca37b31-3b65-42c0-9d0f-b0a8eee26849", "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"},
-        {"name": "Engraved plinth, matte black", "sku": "TBW-HYPERBOLOID-PLINTH",
-         "file": "9f16b26c-adb4-4d98-a942-b825e172497a", "filament": "97e187cd-3051-4463-9f0c-59e361afc10e"}
-      ]
+      "variants": [
+        {
+          "sku": "TBW-HYPERBOLOID-GOLD",
+          "name": "Gold on matte black",
+          "parts": [
+            {
+              "name": "Hyperboloid lattice, gold",
+              "sku": "TBW-HYPERBOLOID-LATTICE",
+              "file": "7ca37b31-3b65-42c0-9d0f-b0a8eee26849",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            },
+            {
+              "name": "Engraved plinth, matte black",
+              "sku": "TBW-HYPERBOLOID-PLINTH",
+              "file": "9f16b26c-adb4-4d98-a942-b825e172497a",
+              "filament": "97e187cd-3051-4463-9f0c-59e361afc10e"
+            }
+          ],
+          "image_url": "/assets/products/hyperboloid-sculpture/main.jpg"
+        },
+        {
+          "sku": "TBW-HYPERBOLOID-RAINBOW",
+          "name": "Silk rainbow",
+          "parts": [
+            {
+              "name": "Hyperboloid, silk rainbow",
+              "sku": "TBW-HYPERBOLOID-RAINBOW",
+              "file": "ff693f2d-21ee-4218-b013-255a299d518d",
+              "filament": "4e63aa18-a215-41f7-a2db-ed8828791fcb"
+            }
+          ],
+          "image_url": "/assets/products/hyperboloid-sculpture/rainbow.jpg"
+        }
+      ],
+      "title": "Hyperboloid Sculpture, 3D Printed Math Art with Its Equation Engraved Under the Base",
+      "title_es": "Escultura hiperboloide, arte matemático impreso en 3D con su ecuación grabada bajo la base",
+      "category": "mathrelaxing",
+      "price_usd": 39.99,
+      "cost_usd": 13.5,
+      "image_url": "/assets/products/hyperboloid-sculpture/main.jpg",
+      "gallery": [
+        "/assets/products/hyperboloid-sculpture/desk.jpg",
+        "/assets/products/hyperboloid-sculpture/equation.jpg",
+        "/assets/products/hyperboloid-sculpture/parts.jpg",
+        "/assets/products/hyperboloid-sculpture/rainbow.jpg",
+        "/assets/products/hyperboloid-sculpture/size.jpg"
+      ],
+      "description": "A curved shape made only of straight lines. Thirty-six straight rods, each turned a third of a circle, build a hyperboloid of one sheet: the shape of cooling towers and of the Shukhov radio tower in Moscow.\n\nUnder the base we engraved the exact equation of this piece: x²/16² + y²/16² − z²/(15√3)² = 1. The 16 is the radius of the waist in millimetres.\n\nTwo colours:\n• Gold on matte black: a gold lattice that sits in a separate matte black base, which carries the engraving.\n• Silk rainbow: one piece whose colour shifts from bottom to top, so no two prints look quite the same. This version has no engraving.\n\n• Gold on black: 10.7 cm (4.2 in) tall, base 8.2 cm (3.2 in)\n• Silk rainbow: 10.3 cm (4.1 in) tall, base 7.6 cm (3 in)\n• PLA, printed layer by layer; the fine layer lines show up close\n• Designed by us and printed to order by our production partner Slant 3D in the USA\n• Decorative only: not a toy, not for food, keep away from heat above 50 °C (120 °F)\n\nThe photos are digital renders made from the real print files. Colours can vary a little between filament batches.\n\nShipping to the United States is included. We also ship to Canada, the United Kingdom, Australia and Chile for a flat 14.99 USD, shown at checkout before you pay.",
+      "description_es": "Una forma curva hecha solo con líneas rectas. Treinta y seis varillas rectas, cada una girada un tercio de vuelta, forman un hiperboloide de una hoja: la forma de las torres de refrigeración y de la torre de radio de Shújov en Moscú.\n\nBajo la base grabamos la ecuación exacta de esta pieza: x²/16² + y²/16² − z²/(15√3)² = 1. El 16 es el radio de la cintura en milímetros.\n\nDos colores:\n• Dorado sobre negro mate: una estructura dorada que encaja en una base negra mate separada, que lleva el grabado.\n• Arcoíris satinado: una sola pieza cuyo color cambia de abajo hacia arriba, así que no hay dos iguales. Esta versión no lleva grabado.\n\n• Dorado sobre negro: 10,7 cm de alto, base de 8,2 cm\n• Arcoíris satinado: 10,3 cm de alto, base de 7,6 cm\n• PLA impreso capa por capa; de cerca se ven las finas líneas de capa\n• Diseñada por nosotros e impresa por encargo por nuestro socio de producción Slant 3D en Estados Unidos\n• Solo decorativa: no es un juguete ni sirve para alimentos; evita el calor sobre 50 °C\n\nLas fotos son renders digitales hechos con los archivos reales de impresión. Los colores pueden variar un poco según el lote de filamento.\n\nEl envío a Estados Unidos está incluido. También enviamos a Canadá, Reino Unido, Australia y Chile por una tarifa fija de 14,99 USD, que se muestra antes de pagar.",
+      "details_html": "<h3>A curve made of straight lines</h3><p>Thirty-six straight rods meet in a hyperboloid of one sheet. The equation of this exact piece is engraved under the gold version's base.</p><h3>What you receive</h3><p>Gold on matte black: two pieces, the lattice and its base, that fit together by hand. Silk rainbow: one piece. PLA, printed to order in the USA by Slant 3D.</p><h3>Care</h3><p>Dust with a soft brush. Decorative only; keep away from heat and direct sun in a hot car.</p>"
     }
   ]
 }

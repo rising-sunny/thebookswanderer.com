@@ -12,5 +12,6 @@
   {"id": "books-category", "script": "set_product_categories.py", "args": []},
   {"id": "austen-puzzles-create", "script": "digital_products.py", "args": ["--apply", "jane-austen-puzzle-book"]},
   {"id": "austen-puzzles-install", "script": "install_print_bundle.py", "args": ["jane-austen-puzzle-book", "--activate"]},
-  {"id": "austen-puzzles-etsy-lulu", "script": "register_etsy_lulu_books.py", "args": ["--send", "68"]}
+  {"id": "austen-puzzles-etsy-lulu", "script": "register_etsy_lulu_books.py", "args": ["--send", "68"]},
+  {"id": "hyperboloid-create", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]}
 ]

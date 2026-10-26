@@ -1655,7 +1655,8 @@ async def _submit_to_slant(order: Order, db: Session, items: list[OrderItem], pr
     lines, caps = [], []
     for it in items:
         slug = products_db[it.product_id].slug
-        lines += slant3d.lines(slug, it.quantity)
+        variant = db.get(ProductVariant, it.variant_id) if it.variant_id else None
+        lines += slant3d.lines(slug, it.quantity, variant.cj_sku if variant else "")
         caps.append((slug, it.quantity))
     cust = slant3d.customer(order.customer_name, order.shipping_address, order.shipping_address2 or "",
                             order.shipping_city, order.shipping_province, order.shipping_zip or "",
