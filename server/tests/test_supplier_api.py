@@ -74,7 +74,7 @@ class SupplierApi(unittest.TestCase):
 
     def test_orders_and_payments_stay_blocked_unless_enabled_on_the_vps(self):
         for supplier, path in [('printify', '/shops/99/orders.json'), ('cj', '/shopping/pay/payBalance'),
-                               ('lulu', '/print-jobs/'), ('prodigi', '/orders'),
+                               ('lulu', '/print-jobs/'), ('prodigi', '/orders'), ('slant3d', '/orders'),
                                ('printify', '/shops/99/orders/1/send_to_production.json'),
                                ('meta', '/act_123/campaigns'), ('meta', '/act_123/ads'),
                                ('pinterest', '/ad_accounts/1/campaigns'),
@@ -88,15 +88,18 @@ class SupplierApi(unittest.TestCase):
         with patch.object(cj, 'get_access_token', AsyncMock(return_value='cj-token')), \
                 patch.object(lulu, 'configured', return_value=True), \
                 patch.object(lulu, '_token', AsyncMock(return_value='lulu-token')), \
-                patch.dict(os.environ, {'PRODIGI_API_KEY_FILE': '', 'PRODIGI_API_KEY': 'prodigi-key', 'CREDENTIALS_DIRECTORY': ''}):
-            for supplier in ('cj', 'lulu', 'prodigi'):
+                patch.dict(os.environ, {'PRODIGI_API_KEY_FILE': '', 'PRODIGI_API_KEY': 'prodigi-key', 'CREDENTIALS_DIRECTORY': '',
+                                        'SLANT3D_API_KEY': 'sl_test'}):
+            for supplier in ('cj', 'lulu', 'prodigi', 'slant3d'):
                 self.assertEqual(self.call(supplier, {'method': 'GET', 'path': '/x'}).json()['status'], 200)
-        cj_req, lulu_req, prodigi_req = self.requests
+        cj_req, lulu_req, prodigi_req, slant_req = self.requests
         self.assertEqual(cj_req.headers['CJ-Access-Token'], 'cj-token')
         self.assertTrue(str(cj_req.url).startswith('https://developers.cjdropshipping.com/api2.0/v1/x'))
         self.assertEqual(lulu_req.headers['Authorization'], 'Bearer lulu-token')
         self.assertEqual(prodigi_req.headers['X-API-Key'], 'prodigi-key')
         self.assertEqual(str(prodigi_req.url), 'https://api.prodigi.com/v4.0/x')
+        self.assertEqual(slant_req.headers['Authorization'], 'Bearer sl_test')
+        self.assertEqual(str(slant_req.url), 'https://slant3dapi.com/v2/api/x')
 
     def test_supplier_failures_are_generic(self):
         with patch.object(cj, 'get_access_token', AsyncMock(side_effect=cj.CJError('secret detail'))):

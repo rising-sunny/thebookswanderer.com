@@ -16,16 +16,16 @@ import httpx
 
 from fastapi import HTTPException
 
-from services import cj, etsy, lulu, pinterest, printify, prodigi_store
+from services import cj, etsy, lulu, pinterest, printify, prodigi_store, slant3d
 
-SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "etsy", "meta", "pinterest")
+SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest")
 META_GRAPH = "https://graph.facebook.com/v21.0"
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 LIMIT = 60_000
 
 _PATH = re.compile(r"/[A-Za-z0-9._~/-]{0,300}(\?[A-Za-z0-9._~=&%,+:-]{0,500})?")
 # Paths that create orders, touch sales or spend money: CJ shopping/pay,
-# Printify orders, Lulu print jobs, Prodigi orders, Etsy receipts, and Meta
+# Printify orders, Lulu print jobs, Prodigi and Slant 3D orders, Etsy receipts, and Meta
 # or Pinterest ads.
 _MONEY = re.compile(
     r"order|pay|wallet|balance|checkout|print-jobs|send_to_production|receipts|transactions"
@@ -85,6 +85,9 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
     elif supplier == "prodigi":
         url = prodigi_store.BASE + path
         headers = {"X-API-Key": prodigi_store.key()}
+    elif supplier == "slant3d":
+        url = slant3d.BASE + path
+        headers = slant3d.headers()
     elif supplier == "etsy":
         url = etsy.BASE + path
         headers = {"x-api-key": etsy.api_key(), "Authorization": "Bearer " + await etsy.access_token(client)}
@@ -110,7 +113,8 @@ async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[
             response = await _send(client, supplier, method, path, body)
     except httpx.HTTPError:
         raise SupplierAPIError(f"{supplier} unavailable") from None
-    except (cj.CJError, lulu.LuluError, prodigi_store.ProdigiError, etsy.EtsyError, HTTPException):
+    except (cj.CJError, lulu.LuluError, prodigi_store.ProdigiError, slant3d.Slant3DError, etsy.EtsyError,
+            HTTPException):
         raise SupplierAPIError(f"{supplier} authentication failed or not connected") from None
     try:
         data = redact(response.json())
