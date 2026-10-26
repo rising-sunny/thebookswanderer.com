@@ -8,8 +8,6 @@ from reportlab.lib.utils import ImageReader
 sys.path.insert(0, "../pd")
 import build_pdf  # registers the fonts
 from cover import spaced, round_logo
-import mosaic
-from lowpoly2 import mm2px
 
 A4 = (595.28, 841.89)
 INK = (0.18, 0.16, 0.13)
@@ -36,13 +34,9 @@ def rule(c, cx, y, half, accent):
     c.setFillColorRGB(*accent); c.rect(cx - 2.5, y - 2.5, 5, 5, stroke=0, fill=1)
 
 
-def grid_picture(name, plate, cell=3.5):
-    """The finished grid cut from the solution page, with the blank background on cream."""
-    im = Image.open(f"out/{name}-{plate}-solution.png").convert("RGB")
-    cols, rows = int((210 - 16) // cell), int((297 - 62) // cell)
-    c = mm2px(cell); x0 = (im.width - cols * c) / 2
-    y0 = mm2px(27) + (mm2px(297 - 62) - rows * c) / 2
-    a = np.array(im.crop((int(x0), int(y0), int(x0 + cols * c), int(y0 + rows * c))))
+def grid_picture(name, plate):
+    """The finished grid as saved by mosaic.build, with the blank background on cream."""
+    a = np.array(Image.open(f"out/{name}-{plate}-art.png").convert("RGB"))
     a[(a == 255).all(-1)] = [int(v * 255) for v in PAPER]
     return Image.fromarray(a)
 

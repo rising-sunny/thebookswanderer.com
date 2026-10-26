@@ -16,13 +16,15 @@ from lowpoly import FONTS
 ART_W, ART_H = 186.0, 198.0      # art box, mm (set per page size in build)
 
 
-def grid(src, crop, cell_mm):
+def grid(src, crop, cell_mm, pad=False):
     im = Image.open(src).convert("RGB"); W0, H0 = im.size
     im = im.crop((int(crop[0] * W0), int(crop[1] * H0), int(crop[2] * W0), int(crop[3] * H0)))
     cols, rows = int(ART_W // cell_mm), int(ART_H // cell_mm)
-    # fit the crop to the grid's aspect, centred
     want = cols / rows
-    if im.width / im.height > want:
+    if pad:   # the whole crop fits, with blank paper around it
+        w, h = max(im.width, int(im.height * want)), max(im.height, int(im.width / want))
+        canvas = Image.new("RGB", (w, h), "white"); canvas.paste(im, ((w - im.width) // 2, (h - im.height) // 2)); im = canvas
+    elif im.width / im.height > want:   # otherwise trim the crop to the grid's aspect, centred
         w = int(im.height * want); im = im.crop(((im.width - w) // 2, 0, (im.width + w) // 2, im.height))
     else:
         h = int(im.width / want); im = im.crop((0, (im.height - h) // 2, im.width, (im.height + h) // 2))
@@ -45,13 +47,13 @@ def smooth(idx, passes=2):
     return idx
 
 
-def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=LETTER, art=(176, 219), gutter=2.0):
+def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=LETTER, art=(176, 219), gutter=2.0, pad=False):
     """Solution for a left-hand page, grid for a right-hand one; `gutter` moves each
     away from the spine so both stay inside Lulu's safety margins."""
     global ART_W, ART_H
     PAGE = page_size
     ART_W, ART_H = art
-    small, cols, rows = grid(src, crop, cell_mm)
+    small, cols, rows = grid(src, crop, cell_mm, pad)
     flat = small.reshape(-1, 3).astype(np.float32)
     idx, pal = palette(flat, np.ones(len(flat)), k, merge)
     idx = smooth(idx.reshape(rows, cols))

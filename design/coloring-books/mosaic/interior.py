@@ -86,7 +86,7 @@ def birds_page(c, n, v, plates, first):
     cx = centre(n); acc = v["accent"]
     heading(c, cx, H - 110, "The birds in this book", acc)
     y = H - 165
-    for k, (num, title, _) in enumerate(plates):
+    for k, (num, title, *_) in enumerate(plates):
         page = first + 2 * k
         c.setFillColorRGB(*INK); c.setFont("Serif", 12.5); c.drawString(cx - 70 * mm, y, title)
         c.setFillColorRGB(*GREY); c.setFont("SerifI", 11)
@@ -120,7 +120,7 @@ def build(name):
     how_to(c, n, v); done()
     test_page(c, n, v); done()
     first = n
-    for num, _, _ in plates:
+    for num, *_ in plates:
         assert n % 2 == 0
         plate_page(c, f"out/{name}-{num}-solution.png"); done()
         plate_page(c, f"out/{name}-{num}-color.png"); done()
