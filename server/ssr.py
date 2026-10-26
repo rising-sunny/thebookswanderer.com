@@ -1361,7 +1361,7 @@ HOME_EDIT_SLUGS = (
 )
 
 
-def _home_edit_card(p: dict[str, Any]) -> str:
+def _home_edit_card(p: dict[str, Any], new: bool = False) -> str:
     """The editorial home uses live product data, never the preview snapshot."""
     slug = p.get("slug") or ""
     title = p.get("title") or "Product"
@@ -1373,6 +1373,8 @@ def _home_edit_card(p: dict[str, Any]) -> str:
         price_text += f"–{float(upper):.2f}"
     category = p.get("category") or ""
     tag = '<span class="tag">The nature editions</span>' if slug in HOME_EDIT_SLUGS[:2] else ""
+    if new:
+        tag = '<span class="tag">New</span>'
     return (
         f'<a class="product" data-ssr-card="1" data-product-id="{_esc(p.get("id"))}" '
         f'href="/products/{_esc(slug)}">'
@@ -1384,12 +1386,18 @@ def _home_edit_card(p: dict[str, Any]) -> str:
     )
 
 
+HOME_NEW_COUNT = 3
+
+
 def _inject_home_edit(html_doc: str, products: list[dict[str, Any]]) -> str:
+    # products arrive newest first: the latest ones open the shelf, marked as new,
+    # and the curated pieces follow.
+    newest = products[:HOME_NEW_COUNT]
     by_slug = {p.get("slug"): p for p in products}
-    selected = [by_slug[slug] for slug in HOME_EDIT_SLUGS if slug in by_slug]
+    selected = newest + [by_slug[slug] for slug in HOME_EDIT_SLUGS if slug in by_slug and by_slug[slug] not in newest]
     # Retired products disappear, and other active pieces fill the small shelf.
-    selected += [p for p in products if p.get("slug") not in HOME_EDIT_SLUGS]
-    cards = "\n".join(_home_edit_card(p) for p in selected[:6])
+    selected += [p for p in products if p not in selected]
+    cards = "\n".join(_home_edit_card(p, new=p in newest) for p in selected[:6])
     if not cards:
         cards = '<p class="catalog-empty">Nothing on this shelf just yet. Explore the full collection.</p>'
     return html_doc.replace("<!-- home:products -->", cards, 1)

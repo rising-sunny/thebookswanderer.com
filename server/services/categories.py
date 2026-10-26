@@ -12,6 +12,29 @@ from typing import Any
 # `intro` paragraphs power collection landing pages (SEO body copy).
 CATEGORIES: list[dict[str, Any]] = [
     {
+        "slug": "books",
+        "name": "Books & journals",
+        "h1": "Printed books, coloring books and reading journals",
+        "description": "Coloring books, literary puzzle books and reading journals, printed to order.",
+        "meta_description": (
+            "Printed books from The Books Wanderer: coloring books made from old "
+            "illustrations, literary mysteries, reading journals and notebooks, printed to order."
+        ),
+        "intro": [
+            (
+                "These are the books we make ourselves. Coloring books built from public "
+                "domain art, from Walter Crane's fairy tales to Audubon's birds. Literary "
+                "puzzles. Journals for keeping track of what you read and what you think of it."
+            ),
+            (
+                "Each one is printed and bound to order by our book printer, so it ships "
+                "new. Prices are in USD, and shipping to the United States is included."
+            ),
+        ],
+        "tile": "linear-gradient(150deg, #5b3a29, #2e1c12)",
+        "sort_order": 0,
+    },
+    {
         "slug": "book-accessories",
         "name": "Book accessories",
         "h1": "Book accessories for everyday reading",
@@ -147,6 +170,8 @@ _LEGACY_MAP: dict[str, str] = {
     "journaling": "book-accessories",
     "collection": "book-accessories",
     "book accessories": "book-accessories",
+    "books": "books",
+    "books & journals": "books",
     "decor": "decor",
     "decoration": "decor",
     "desk decor": "decor",

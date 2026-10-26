@@ -1,5 +1,15 @@
 {
   "categories": {
+    "books": {
+      "name": "Libros y diarios",
+      "h1": "Libros impresos, libros para colorear y diarios de lectura",
+      "description": "Libros para colorear, misterios literarios y diarios de lectura, impresos por encargo.",
+      "meta_description": "Libros impresos de The Books Wanderer: libros para colorear hechos con ilustraciones antiguas, misterios literarios, diarios de lectura y cuadernos, impresos por encargo.",
+      "intro": [
+        "Estos son los libros que hacemos nosotros. Libros para colorear hechos con arte de dominio público, desde los cuentos de hadas de Walter Crane hasta las aves de Audubon. Acertijos literarios. Diarios para llevar la cuenta de lo que lees y de lo que piensas de ello.",
+        "Cada uno se imprime y encuaderna por encargo, así que llega nuevo. Los precios están en dólares (USD) y el envío a Estados Unidos está incluido."
+      ]
+    },
     "book-accessories": {
       "name": "Accesorios para libros",
       "h1": "Accesorios para leer todos los días",
@@ -689,6 +699,7 @@
     "Sakura A5 Book Cover": "Cubierta Sakura A5",
     "01 / PUT PEN TO PAPER": "01 / ENTRE LA TINTA Y EL PAPEL",
     "Notebooks & reading journals": "Cuadernos y diarios de lectura",
+    "Books & reading journals": "Libros y diarios de lectura",
     "02 / MAKE YOURSELF AT HOME": "02 / UN LUGAR PARA QUEDARSE",
     "The reading corner": "Tu rincón de lectura",
     "03 / JUST ONE MORE CHAPTER": "03 / UN CAPÍTULO MÁS",

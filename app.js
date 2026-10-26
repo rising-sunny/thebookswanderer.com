@@ -260,6 +260,13 @@
             console.warn("categories load failed", err);
             categoriesCache = [
                 {
+                    slug: "books",
+                    name: "Books & journals",
+                    description: "Coloring books, literary puzzle books and reading journals.",
+                    tile: "linear-gradient(150deg, #5b3a29, #2e1c12)",
+                    product_count: 0,
+                },
+                {
                     slug: "book-accessories",
                     name: "Book accessories",
                     description: "Page holders, bookmarks, clips for physical books.",
