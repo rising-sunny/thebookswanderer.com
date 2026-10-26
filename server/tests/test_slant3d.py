@@ -73,7 +73,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(c["details"]["email"], "shop@example.com")
         self.assertEqual(c["details"]["address"]["country"], "US")
         with self.assertRaises(s.Slant3DError):
-            s.customer("Ann Reader", "1 Main St", "", "Paris", "", "75001", "FR")
+            s.customer("Ann Reader", "1 Rua A", "", "Sao Paulo", "SP", "01000-000", "BR")
         with self.assertRaises(s.Slant3DError):
             s.customer("Ann Reader", "", "", "Boston", "MA", "02108", "US")
         with patch.dict(os.environ, {"SLANT3D_CONTACT_EMAIL": ""}):
@@ -99,7 +99,7 @@ class CheckoutTests(unittest.IsolatedAsyncioTestCase):
         gb = await shipping.quote(cart, "GB", {"street1": "1 High St", "city": "London"})
         self.assertEqual(gb["shipping_total"], s.spec()["shipping"]["international"])
         with self.assertRaises(shipping.QuoteError):
-            await shipping.quote(cart, "FR", {"street1": "1 Rue", "city": "Paris"})
+            await shipping.quote(cart, "BR", {"street1": "1 Rua A", "city": "Sao Paulo"})
 
 
 class SubmissionTests(unittest.IsolatedAsyncioTestCase):
