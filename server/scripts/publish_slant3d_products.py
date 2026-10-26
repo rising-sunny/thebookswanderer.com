@@ -37,6 +37,7 @@ def stage(db, data, *, publish=False):
     for field in FIELDS:
         setattr(product, field, data[field])
     product.gallery_json = json.dumps(data["gallery"])
+    product.video_url, product.video_poster = data.get("video_url", ""), data.get("video_poster", "")
     product.from_country = "US"
     product.cj_pid = product.cj_vid = product.cj_sku = ""
     product.active, product.draft = publish, not publish
@@ -54,7 +55,9 @@ def stage(db, data, *, publish=False):
 
 
 def check(data):
-    missing = [u for u in [data["image_url"], *data["gallery"], *(v["image_url"] for v in data["variants"])]
+    media = [data["image_url"], *data["gallery"], *(v["image_url"] for v in data["variants"])]
+    media += [data[k] for k in ("video_url", "video_poster") if data.get(k)]
+    missing = [u for u in media
                if not (ROOT.parent / u.lstrip("/")).is_file()]
     if missing:
         raise ValueError("Images missing: " + ", ".join(missing))

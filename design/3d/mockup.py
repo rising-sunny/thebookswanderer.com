@@ -193,6 +193,25 @@ elif SHOT == "parts":          # the two pieces side by side, before they fit to
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     camera((0.0, -0.38, 0.17), (0, 0, 0.04), 70)
 
+elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repeats every 360/18 degrees
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
+    parts = [stl(PLINTH, BLACK()), stl(LATTICE, GOLD(), loc=(0, 0, 0.004))] if SHOT == "spin-gold" else [stl(ONE, silk_rainbow())]
+    for o in parts:
+        o.parent = pivot
+    frames = 60
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 40)
+    camera((0.0, -0.40, 0.13), (0, 0, H * 0.47), 85)
+    first = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+    last = int(sys.argv[6]) if len(sys.argv) > 6 else frames
+    sc.render.use_persistent_data = True
+    for f in range(first, last + 1):           # constant speed: 20 degrees over the loop, last frame excluded
+        pivot.rotation_euler[2] = math.radians(20) * (f - 1) / frames
+        sc.render.filepath = HERE + f"mock/{SHOT}/f{f:04d}.png"
+        bpy.ops.render.render(write_still=True)
+    raise SystemExit
+
 sc.render.filepath = HERE + f"mock/{SHOT}.png"
 bpy.ops.render.render(write_still=True)
 print("saved", sc.render.filepath)
