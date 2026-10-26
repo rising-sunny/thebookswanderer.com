@@ -30,7 +30,7 @@ import httpx  # noqa: E402
 
 from services import etsy  # noqa: E402
 
-SCOPES = "listings_r listings_w listings_d shops_r shops_w transactions_r profile_r"
+SCOPES = "listings_r listings_w listings_d shops_r shops_w transactions_r transactions_w profile_r"
 redirect = (os.getenv("ETSY_REDIRECT_URI") or "https://thebookswanderer.com/etsy-oauth").strip()
 if not etsy.client_id():
     raise SystemExit("ETSY_API_KEY is missing from .env")

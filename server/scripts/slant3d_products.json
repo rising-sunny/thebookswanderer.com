@@ -1,0 +1,21 @@
+{
+  "shipping": {
+    "countries": ["US", "CA", "GB", "AU", "CL"],
+    "international": 14.99,
+    "eta_days": null
+  },
+  "products": [
+    {
+      "slug": "hyperboloid-sculpture",
+      "etsy_listing_id": "",
+      "max_cost_us": 18.0,
+      "max_cost_intl": 36.0,
+      "parts": [
+        {"name": "Hyperboloid lattice, gold", "sku": "TBW-HYPERBOLOID-LATTICE",
+         "file": "7ca37b31-3b65-42c0-9d0f-b0a8eee26849", "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"},
+        {"name": "Engraved plinth, matte black", "sku": "TBW-HYPERBOLOID-PLINTH",
+         "file": "9f16b26c-adb4-4d98-a942-b825e172497a", "filament": "97e187cd-3051-4463-9f0c-59e361afc10e"}
+      ]
+    }
+  ]
+}
