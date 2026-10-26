@@ -6,5 +6,7 @@
   {"id": "audubon-red-create", "script": "digital_products.py", "args": ["--apply", "audubons-birds-red-printed"]},
   {"id": "audubon-red-install", "script": "install_print_bundle.py", "args": ["audubons-birds-red-printed", "--activate"]},
   {"id": "audubon-blue-create", "script": "digital_products.py", "args": ["--apply", "audubons-birds-blue-printed"]},
-  {"id": "audubon-blue-install", "script": "install_print_bundle.py", "args": ["audubons-birds-blue-printed", "--activate"]}
+  {"id": "audubon-blue-install", "script": "install_print_bundle.py", "args": ["audubons-birds-blue-printed", "--activate"]},
+  {"id": "audubon-red-etsy-lulu", "script": "register_etsy_lulu_books.py", "args": ["--send", "66"]},
+  {"id": "audubon-blue-etsy-lulu", "script": "register_etsy_lulu_books.py", "args": ["--send", "67"]}
 ]
