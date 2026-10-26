@@ -434,14 +434,15 @@
                 if (src.includes("bedroom-mockup")) return "Bedroom — AI-generated styling mockup";
                 return "Detail of the code-generated artwork";
             }
+            if (product.supplier === "slant3d") return `Digital render ${i + 1}`;
             return `${product.supplier === "prodigi" ? "Artwork detail" : "Product in use, photo"} ${i + 1}`;
         };
         const lifestyleBox =
             lifestyle.length > 0
                 ? `
 <div class="pdp__variants pdp__lifestyle">
-  <h2 class="pdp__variants-title">${hasBotanicalMockups ? "Artwork & styling" : product.supplier === "prodigi" ? "Artwork details" : "In the reading nook"}</h2>
-  <p class="pdp__variants-label">${hasBotanicalMockups ? "Explore the artwork and room mockups — tap to enlarge" : product.supplier === "prodigi" ? "A closer look at the artwork — tap to enlarge" : "How it looks in real spaces — tap a photo to enlarge"}</p>
+  <h2 class="pdp__variants-title">${hasBotanicalMockups ? "Artwork & styling" : product.supplier === "prodigi" ? "Artwork details" : product.supplier === "slant3d" ? "Digital renders" : "In the reading nook"}</h2>
+  <p class="pdp__variants-label">${hasBotanicalMockups ? "Explore the artwork and room mockups — tap to enlarge" : product.supplier === "prodigi" ? "A closer look at the artwork — tap to enlarge" : product.supplier === "slant3d" ? "Rendered from the real print files, not photographs — tap to enlarge" : "How it looks in real spaces — tap a photo to enlarge"}</p>
   <div class="pdp__variant-grid pdp__lifestyle-grid" role="list">
     ${lifestyle
         .map(
@@ -465,7 +466,7 @@
             ? `
 <div class="pdp__variants pdp__video">
   <h2 class="pdp__variants-title">See it in motion</h2>
-  <p class="pdp__variants-label">Short demo — how the finger buckle holds the page</p>
+  <p class="pdp__variants-label">${product.supplier === "slant3d" ? "Digital render made from the real print files" : "Short demo — how the finger buckle holds the page"}</p>
   <div class="pdp__video-wrap">
     <video
       id="pdpVideo"
