@@ -201,5 +201,31 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "jane-austen-puzzle-book",
+    "supplier": "lulu",
+    "lulu_package": "0850X1100BWSTDPB060UW444MXX",
+    "title": "The Jane Austen Puzzle Book: Word Searches, Cryptograms, Crosswords and Quotes (Printed Paperback)",
+    "title_es": "The Jane Austen Puzzle Book: sopas de letras, criptogramas, crucigramas y citas (tapa blanda impresa)",
+    "price_usd": 22.99,
+    "cost_usd": 5.09,
+    "category": "books",
+    "description": "A puzzle book for readers of Jane Austen, with a chapter for each of her six novels: Pride and Prejudice, Emma, Sense and Sensibility, Persuasion, Northanger Abbey and Mansfield Park.\n\nEach chapter has nine puzzles: two word searches, two cryptograms, a crossword, Who said it?, missing words, anagrams and a short quiz. That makes 54 puzzles, with all the solutions at the back.\n\nEvery quotation is taken from the original text of the novels and checked word for word. The cover drawing is by Hugh Thomson, from the 1894 edition of Pride and Prejudice. The novels and the drawing are in the public domain; the puzzles, clues and layout are our own.\n\n• Paperback, 8.5 × 11 in, 76 pages, black and white inside, color cover\n• In English\n• Printed to order by Lulu\n\nShipping to the United States is included. We ship to every country Lulu delivers to; for other countries the extra shipping cost is shown at checkout before you pay.",
+    "description_es": "Un libro de acertijos para lectores de Jane Austen, con un capítulo para cada una de sus seis novelas: Pride and Prejudice, Emma, Sense and Sensibility, Persuasion, Northanger Abbey y Mansfield Park.\n\nCada capítulo trae nueve acertijos: dos sopas de letras, dos criptogramas, un crucigrama, ¿Quién lo dijo?, palabras que faltan, anagramas y un pequeño quiz. Son 54 acertijos, con todas las soluciones al final.\n\nTodas las citas vienen del texto original de las novelas y están revisadas palabra por palabra. El dibujo de la portada es de Hugh Thomson, de la edición de 1894 de Pride and Prejudice. Las novelas y el dibujo son de dominio público; los acertijos, las pistas y el diseño son nuestros.\n\n• Tapa blanda, 8,5 × 11 pulgadas (21,6 × 27,9 cm), 76 páginas, interior en blanco y negro, portada a color\n• En inglés\n• Impreso por encargo por Lulu\n\nEl envío a Estados Unidos está incluido. Enviamos a todos los países a los que llega Lulu; para otros países, el costo adicional de envío aparece en el checkout antes de pagar.",
+    "image_url": "/assets/products/jane-austen-puzzle-book/main_en.jpg",
+    "gallery": [
+      "/assets/products/jane-austen-puzzle-book/pages_en.jpg",
+      "/assets/products/jane-austen-puzzle-book/crossword_en.jpg",
+      "/assets/products/jane-austen-puzzle-book/quotes_en.jpg",
+      "/assets/products/jane-austen-puzzle-book/back_en.jpg"
+    ],
+    "variants": [
+      {
+        "name": "English",
+        "image_url": "/assets/products/jane-austen-puzzle-book/main_en.jpg"
+      }
+    ],
+    "active": true
   }
 ]
