@@ -33,7 +33,7 @@ async def main() -> int:
     async with httpx.AsyncClient(timeout=120) as client:
         headers = {"x-api-key": etsy.api_key(), "Authorization": "Bearer " + await etsy.access_token(client)}
         base = f"{etsy.BASE}/application/shops/{shop}/listings/{listing}/videos"
-        have = await client.get(base, headers=headers)
+        have = await client.get(f"{etsy.BASE}/application/listings/{listing}/videos", headers=headers)
         if have.status_code == 200 and have.json().get("count"):
             print(f"listing {listing} already has a video")
             return 0

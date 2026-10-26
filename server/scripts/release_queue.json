@@ -15,5 +15,7 @@
   {"id": "austen-puzzles-etsy-lulu", "script": "register_etsy_lulu_books.py", "args": ["--send", "68"]},
   {"id": "hyperboloid-create", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]},
   {"id": "hyperboloid-video", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]},
-  {"id": "hyperboloid-etsy-video", "script": "etsy_listing_video.py", "args": ["hyperboloid-sculpture"]}
+  {"id": "hyperboloid-etsy-video", "script": "etsy_listing_video.py", "args": ["hyperboloid-sculpture"]},
+  {"id": "hyperboloid-countries", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]},
+  {"id": "mandelbrot-create", "script": "publish_slant3d_products.py", "args": ["mandelbrot-mountain", "--publish"]}
 ]

@@ -48,7 +48,8 @@ def check(name, step=0.35):
     surf = solid & ~ndi.binary_erosion(solid)
     nz = g[2][surf] / (np.sqrt(g[0][surf] ** 2 + g[1][surf] ** 2 + g[2][surf] ** 2) + 1e-9)
     z_s = zs[np.argwhere(surf)[:, 2]]
-    bad = (nz < -0.75) & (z_s > zs[0] + 2 * step)
+    # Slant 3D flags surfaces facing more than ~55 degrees down (hyperboloid rods at 58 passed, cube faces at 54.7 failed)
+    bad = (nz < -0.56) & (z_s > zs[0] + 2 * step)
     # the crotch under each rod crossing faces down for a few voxels; that bridges fine.
     # A real problem is one wide patch, so the limit applies to the largest patch.
     patch = np.zeros_like(solid)
