@@ -45,10 +45,12 @@ def smooth(idx, passes=2):
     return idx
 
 
-def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=LETTER):
+def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=LETTER, art=(176, 219), gutter=2.0):
+    """Solution for a left-hand page, grid for a right-hand one; `gutter` moves each
+    away from the spine so both stay inside Lulu's safety margins."""
     global ART_W, ART_H
     PAGE = page_size
-    ART_W, ART_H = PAGE[0] - 16, PAGE[1] - 30 - 32
+    ART_W, ART_H = art
     small, cols, rows = grid(src, crop, cell_mm)
     flat = small.reshape(-1, 3).astype(np.float32)
     idx, pal = palette(flat, np.ones(len(flat)), k, merge)
@@ -71,7 +73,7 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
 
     PW, PH = int(mm2px(PAGE[0])), int(mm2px(PAGE[1]))
     c = mm2px(cell_mm)
-    x0 = (PW - cols * c) / 2; y0 = mm2px(27) + (mm2px(ART_H) - rows * c) / 2
+    top = 33
     serif = lambda s: ImageFont.truetype(f"{FONTS}/Playfair-600.ttf", s)
     italic = lambda s: ImageFont.truetype(f"{FONTS}/Playfair-500i.ttf", s)
     sans = lambda s: ImageFont.truetype(f"{FONTS}/Karla-700.ttf", s)
@@ -79,9 +81,11 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
     num = sans(pt(min(10, max(6.5, cell_mm * 1.6))))
     pages = []
     for mode in ("solution", "color"):
+        cx = PW / 2 + mm2px(-gutter if mode == "solution" else gutter)
+        x0 = cx - cols * c / 2; y0 = mm2px(top) + (mm2px(ART_H) - rows * c) / 2
         page = Image.new("RGB", (PW, PH), "white"); d = ImageDraw.Draw(page)
-        d.text((PW / 2, mm2px(14)), title, font=serif(pt(20)), fill=(30, 40, 35), anchor="mm")
-        d.text((PW / 2, mm2px(21)), latin, font=italic(pt(10.5)), fill=(110, 110, 105), anchor="mm")
+        d.text((cx, mm2px(20)), title, font=serif(pt(20)), fill=(30, 40, 35), anchor="mm")
+        d.text((cx, mm2px(27)), latin, font=italic(pt(10.5)), fill=(110, 110, 105), anchor="mm")
         for y in range(rows):
             for x in range(cols):
                 box = (x0 + x * c, y0 + y * c, x0 + (x + 1) * c, y0 + (y + 1) * c)
@@ -92,14 +96,16 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
                 else:
                     d.rectangle(box, outline=(165, 165, 165), width=2)
                     d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), str(idx[y, x] + 1), font=num, fill=(110, 110, 110), anchor="mm")
-        n = len(pal); sw = mm2px(9); gap = (mm2px(PAGE[0] - 30) - n * sw) / max(1, n - 1)
-        ky = mm2px(PAGE[1] - 30)
+        if mode == "solution":
+            page.crop((int(x0), int(y0), int(x0 + cols * c), int(y0 + rows * c))).save(f"{out}-art.png")
+        n = len(pal); sw = mm2px(9); gap = (mm2px(ART_W) - n * sw) / max(1, n - 1)
+        ky = mm2px(top + ART_H + 4)
         for i, col in enumerate(pal):
-            x = mm2px(15) + i * (sw + gap)
+            x = cx - mm2px(ART_W) / 2 + i * (sw + gap)
             d.rectangle((x, ky, x + sw, ky + sw), fill=tuple(int(v) for v in col), outline=(90, 90, 90), width=3)
             d.text((x + sw / 2, ky + sw + mm2px(4)), str(i + 1), font=sans(pt(11)), fill=(50, 50, 50), anchor="mm")
-        note = "The finished picture and its colours" if mode == "solution" else "Colour each square with the colour of its number"
-        d.text((PW / 2, mm2px(PAGE[1] - 11)), note, font=italic(pt(9)), fill=(120, 120, 115), anchor="mm")
+        note = "The finished picture and its colours" if mode == "solution" else "Color each square with the color of its number"
+        d.text((cx, ky + sw + mm2px(12)), note, font=italic(pt(9)), fill=(120, 120, 115), anchor="mm")
         page.save(f"{out}-{mode}.png", dpi=(DPI, DPI)); pages.append(page)
     return pages
 
