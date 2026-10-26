@@ -373,7 +373,13 @@ if __name__ == "__main__":
     pages = build()
     print(len(pages), "pages")
     ims = [pg.im.convert("L") for pg in pages]      # black-and-white interior
-    ims[0].save("austen-interior.pdf", save_all=True, append_images=ims[1:], resolution=DPI)
+    # sixteen shades of grey are plenty for black-and-white pages and keep the print file small
+    ims = [im.point(lambda v: round(v / 17) * 17) for im in ims]
+    import io, img2pdf
+    pngs = []
+    for im in ims:
+        buf = io.BytesIO(); im.save(buf, "PNG", optimize=True, dpi=(DPI, DPI)); pngs.append(buf.getvalue())
+    open("austen-interior.pdf", "wb").write(img2pdf.convert(pngs))
     for k in (0, 4, 5, 6, 7, 8, 9):
         ims[k].resize((637, 825)).save(f"prev-{k + 1:02d}.jpg", quality=85)
     for k in range(len(ims) - 9, len(ims)):
