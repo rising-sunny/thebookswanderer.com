@@ -126,11 +126,16 @@ def hyperboloid_lattice(p):
     return hyperboloid_strong(p, base=False)
 
 
-def plinth(p, R=32.0, clearance=0.25):
+def plinth(p, R=32.0, clearance=0.25, depth=0.6):
     rho, _, z = cyl(p)
     disc = np.maximum(rho - (R + 9), slab(z, 0, 7.0))
     groove = np.maximum(np.abs(rho - R) - (3.0 + clearance), slab(z, 4.0, 8.0))
-    return np.maximum(disc, -groove)
+    d = np.maximum(disc, -groove)
+    if depth:                       # the equation, cut into the underside
+        from engrave import text2d
+        cut = np.maximum(text2d(p[:, 0], p[:, 1]), slab(z, -1.0, depth))
+        d = np.maximum(d, -cut)
+    return d
 
 
 def hyperboloid_duo(p):

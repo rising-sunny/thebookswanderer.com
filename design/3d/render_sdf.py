@@ -3,7 +3,7 @@ import sys, numpy as np
 from PIL import Image
 from sculptures import DESIGNS
 
-def render(name, S=420, color=(196, 120, 72)):
+def render(name, S=420, color=(196, 120, 72), paint=None, S_size=None):
     f, box, _ = DESIGNS[name]
     x0, x1, y0, y1, z0, z1 = box
     c = np.array([(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2]); span = max(x1 - x0, z1 - z0) * 1.25
@@ -29,7 +29,14 @@ def render(name, S=420, color=(196, 120, 72)):
     diff = np.clip(n @ L, 0, 1)
     ao = np.clip(f(p + n * 2) / 2, 0, 1) * 0.5 + np.clip(f(p + n * 5) / 5, 0, 1) * 0.5
     shade = (0.2 + 0.8 * diff) * (0.4 + 0.6 * ao)
-    img = np.where(hit[:, None], shade[:, None] * np.array(color) / 255, np.array([244, 239, 228]) / 255)
+    if paint is None:
+        col = shade[:, None] * np.array(color) / 255
+    else:   # paint(p) gives a base colour and a gloss (0 matte, 1 silk/metal) per point
+        base, gloss = paint(p)
+        h = L - rd; h /= np.linalg.norm(h, axis=1, keepdims=True)
+        spec = np.clip(n @ h.T[:, 0] if h.ndim == 1 else (n * h).sum(1), 0, 1) ** 40 * gloss * (0.4 + 0.6 * ao)
+        col = shade[:, None] * base + spec[:, None] * (0.6 * base + 0.4)
+    img = np.where(hit[:, None], col, np.array([244, 239, 228]) / 255)
     return Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8).reshape(S, S, 3))
 
 if __name__ == "__main__":
