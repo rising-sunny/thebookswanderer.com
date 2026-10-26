@@ -32,5 +32,5 @@ if __name__ == "__main__":
         src = glob.glob(f"aud/plate-{n}-*.jpg")[0]
         pages += mosaic.build(src, crop, f"out/{name}-{n}", title,
                               f"After John James Audubon, Birds of America, plate {n}",
-                              cell_mm=4.5, page_size=mosaic.A4)
+                              cell_mm=float(sys.argv[2]) if len(sys.argv) > 2 else 3.5, page_size=mosaic.A4)
     pages[0].save(f"book-{name}.pdf", save_all=True, append_images=pages[1:], resolution=DPI)
