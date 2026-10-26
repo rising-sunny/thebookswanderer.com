@@ -14,6 +14,8 @@ LETTER = (215.9, 279.4)
 from lowpoly import FONTS
 
 ART_W, ART_H = 186.0, 198.0      # art box, mm (set per page size in build)
+# light greys, so pencil covers the grid and its numbers
+LINE, NUMBER = (201, 201, 201), (168, 168, 168)
 
 
 def grid(src, crop, cell_mm, pad=False):
@@ -68,9 +70,10 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
         lab_, _ = ndi.label(cand)
         edge = np.unique(np.concatenate([lab_[0], lab_[-1], lab_[:, 0], lab_[:, -1]]))
         bg = np.isin(lab_, edge[edge > 0])
-        idx = np.where(bg, -1, idx)
+        # the rest stays white too, but keeps its square so the shape still reads
+        idx = np.where(bg, -1, np.where(cand, -2, idx))
         used = np.unique(idx[idx >= 0]); remap = {u: i for i, u in enumerate(used)}
-        idx = np.vectorize(lambda v: remap.get(v, -1))(idx); pal = pal[used]
+        idx = np.vectorize(lambda v: remap.get(v, v))(idx); pal = pal[used]
     print(f"{title}: {cols} x {rows} = {cols * rows} squares of {cell_mm} mm, {len(pal)} colours")
 
     PW, PH = int(mm2px(PAGE[0])), int(mm2px(PAGE[1]))
@@ -91,13 +94,15 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
         for y in range(rows):
             for x in range(cols):
                 box = (x0 + x * c, y0 + y * c, x0 + (x + 1) * c, y0 + (y + 1) * c)
-                if idx[y, x] < 0:
+                if idx[y, x] == -1 or (idx[y, x] == -2 and mode == "solution"):
                     continue
-                if mode == "solution":
+                if idx[y, x] == -2:
+                    d.rectangle(box, outline=LINE, width=2)
+                elif mode == "solution":
                     d.rectangle(box, fill=tuple(int(v) for v in pal[idx[y, x]]))
                 else:
-                    d.rectangle(box, outline=(165, 165, 165), width=2)
-                    d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), str(idx[y, x] + 1), font=num, fill=(110, 110, 110), anchor="mm")
+                    d.rectangle(box, outline=LINE, width=2)
+                    d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), str(idx[y, x] + 1), font=num, fill=NUMBER, anchor="mm")
         if mode == "solution":
             page.crop((int(x0), int(y0), int(x0 + cols * c), int(y0 + rows * c))).save(f"{out}-art.png")
         n = len(pal); sw = mm2px(9); gap = (mm2px(ART_W) - n * sw) / max(1, n - 1)
@@ -106,7 +111,7 @@ def build(src, crop, out, title, latin, cell_mm=6.0, k=14, merge=7.0, page_size=
             x = cx - mm2px(ART_W) / 2 + i * (sw + gap)
             d.rectangle((x, ky, x + sw, ky + sw), fill=tuple(int(v) for v in col), outline=(90, 90, 90), width=3)
             d.text((x + sw / 2, ky + sw + mm2px(4)), str(i + 1), font=sans(pt(11)), fill=(50, 50, 50), anchor="mm")
-        note = "The finished picture and its colours" if mode == "solution" else "Color each square with the color of its number"
+        note = "The finished picture and its colors" if mode == "solution" else "Color each square with the color of its number"
         d.text((cx, ky + sw + mm2px(12)), note, font=italic(pt(9)), fill=(120, 120, 115), anchor="mm")
         page.save(f"{out}-{mode}.png", dpi=(DPI, DPI)); pages.append(page)
     return pages
