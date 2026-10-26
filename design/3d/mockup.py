@@ -13,7 +13,7 @@ sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = SAMPL
 sc.cycles.use_denoising = True
 sc.render.resolution_x = sc.render.resolution_y = int(sys.argv[3]) if len(sys.argv) > 3 else 2000
 sc.view_settings.exposure = float(sys.argv[4]) if len(sys.argv) > 4 else -4.5
-sc.view_settings.view_transform = "AgX"; sc.view_settings.look = "AgX - Medium High Contrast"
+sc.view_settings.view_transform = "AgX"; sc.view_settings.look = "AgX - Punchy"
 
 
 def node_mat(name):
@@ -154,6 +154,24 @@ def sweep(color):
     bpy.ops.object.shade_smooth()
 
 
+def height_ramp(stops_file, top_mm, metallic=0.35, rough=0.28):
+    """Colour by print height: each layer comes from one stretch of a gradient filament."""
+    import json
+    m, n, l, b = node_mat("gradient by height")
+    b.inputs["Metallic"].default_value = metallic; b.inputs["Roughness"].default_value = rough
+    sep = layer_lines(n, l, b)
+    div = n.new("ShaderNodeMath"); div.operation = "DIVIDE"; div.inputs[1].default_value = top_mm
+    ramp = n.new("ShaderNodeValToRGB"); cr = ramp.color_ramp
+    stops = json.load(open(HERE + stops_file))
+    cr.elements[0].position, cr.elements[0].color = stops[0][0], (*stops[0][1], 1)
+    cr.elements[1].position, cr.elements[1].color = stops[-1][0], (*stops[-1][1], 1)
+    for pos, c in stops[1:-1]:
+        cr.elements.new(pos).color = (*c, 1)
+    l.new(sep.outputs["Z"], div.inputs[0]); l.new(div.outputs[0], ramp.inputs[0])
+    l.new(ramp.outputs["Color"], b.inputs["Base Color"])
+    return m
+
+
 GOLD = lambda: pla("gold PLA", (0.80, 0.55, 0.20), metallic=0.75, rough=0.32)
 BLACK = lambda: pla("matte black PLA", (0.018, 0.018, 0.02), rough=0.62)
 LATTICE, PLINTH, ONE = "hyperboloid_lattice.stl", "plinth_engraved.stl", "hyperboloid_strong.stl"
@@ -211,6 +229,32 @@ elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repea
         sc.render.filepath = HERE + f"mock/{SHOT}/f{f:04d}.png"
         bpy.ops.render.render(write_still=True)
     raise SystemExit
+
+elif SHOT.startswith("look-"):        # quick look at any STL: look-<name> renders <name>.stl in gold
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    name = SHOT[5:]
+    o = stl(name + ".stl", GOLD())
+    if o.dimensions.y > o.dimensions.x:
+        o.rotation_euler[2] = math.pi / 2              # long side across the frame
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 40)
+    camera((0.0, -0.30, 0.26), (0, 0, 0.012), 60)
+elif SHOT in ("mandel-hero", "mandel-top"):
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    stl("mandelbrot_light.stl", height_ramp("mandel_ramp.json", 27.75))
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50)
+    if SHOT == "mandel-hero":
+        camera((0.12, -0.27, 0.17), (0, 0.004, 0.008), 60)
+    else:
+        camera((0.0, -0.10, 0.33), (0, 0.0, 0.0), 60)
+elif SHOT == "mandel-under":
+    world((1, 0.95, 0.9), 0.15)
+    bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
+    stl("mandelbrot_light.stl", height_ramp("mandel_ramp.json", 27.75), loc=(0, 0, 0.0278), rot=(0, math.pi, 0))
+    area("rake", (-0.35, 0.12, 0.09), 0.25, 110); area("soft", (0.2, -0.3, 0.5), 0.6, 40)
+    camera((0.0, -0.17, 0.24), (0, 0, 0.026), 70)
+    sc.camera.data.dof.aperture_fstop = 16
 
 sc.render.filepath = HERE + f"mock/{SHOT}.png"
 bpy.ops.render.render(write_still=True)

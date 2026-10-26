@@ -7,7 +7,8 @@ def render(name, S=420, color=(196, 120, 72), paint=None, S_size=None):
     f, box, _ = DESIGNS[name]
     x0, x1, y0, y1, z0, z1 = box
     c = np.array([(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2]); span = max(x1 - x0, z1 - z0) * 1.25
-    el = 0.32
+    import os
+    el = float(os.getenv('ELEV', '0.32'))
     fwd = np.array([0.0, np.cos(el), -np.sin(el)])      # looking a little down
     up = np.array([0.0, np.sin(el), np.cos(el)]); right = np.cross(fwd, up)
     u = np.linspace(-span / 2, span / 2, S); U, V = np.meshgrid(u, -u)
