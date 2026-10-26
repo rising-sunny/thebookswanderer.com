@@ -82,3 +82,65 @@ DESIGNS = {
     "gyroid": (gyroid, (-35, 35, -35, 35, 0, 80), "Gyroid column"),
     "rose": (rose, (-42, 42, -42, 42, 0, 110), "Twisted rose curve r = 1 + 0.16 cos 5θ"),
 }
+
+
+# Reinforced hyperboloid: thicker rods and a crown of arches joining the rod tips.
+# The arches rise at 45 degrees from each tip, so the crown prints without support.
+def _rods(p, R, H, n, twist, r):
+    d = np.full(len(p), 1e9)
+    for s in (1, -1):
+        for i in range(n):
+            t0 = TAU * i / n
+            a = np.array([R * np.cos(t0), R * np.sin(t0), 3.0])
+            b = np.array([R * np.cos(t0 + s * twist), R * np.sin(t0 + s * twist), H - 3.0])
+            d = np.minimum(d, capsule(p, a, b, r))
+    return d
+
+
+def smin(a, b, k):
+    """Smooth union: rounds the joint so stress does not gather in a sharp corner."""
+    h = np.clip(0.5 + 0.5 * (b - a) / k, 0, 1)
+    return b * (1 - h) + a * h - k * h * (1 - h)
+
+
+def crown(p, R, H, n, top=10.0, half=2.2):
+    rho, th, z = cyl(p)
+    step = TAU / n                                          # the rod tips sit every 360/n degrees
+    s = R * np.abs((th + step / 2) % step - step / 2)       # arc distance to the nearest tip
+    bottom = (H - 3.0) + s                                  # 45 degree arches between tips
+    return np.maximum(np.maximum(np.abs(rho - R) - half, bottom - z), z - (H + top - 3.0))
+
+
+def hyperboloid_strong(p, R=32.0, H=96.0, n=18, twist=TAU / 3, r=2.2, base=True):
+    rho, _, z = cyl(p)
+    d = smin(_rods(p, R, H, n, twist, r), crown(p, R, H, n), 1.2)
+    ring = np.maximum(np.abs(rho - R) - 3.0, slab(z, 0, 4.5))
+    if base:
+        plate = np.maximum(rho - (R + 6), slab(z, 0, 3.0))    # a wider, solid foot for stability
+        ring = np.minimum(ring, plate)
+    return smin(d, ring, 1.5)
+
+
+# Two-colour version: the lattice stands in a groove of a separate plinth.
+def hyperboloid_lattice(p):
+    return hyperboloid_strong(p, base=False)
+
+
+def plinth(p, R=32.0, clearance=0.25):
+    rho, _, z = cyl(p)
+    disc = np.maximum(rho - (R + 9), slab(z, 0, 7.0))
+    groove = np.maximum(np.abs(rho - R) - (3.0 + clearance), slab(z, 4.0, 8.0))
+    return np.maximum(disc, -groove)
+
+
+def hyperboloid_duo(p):
+    """Both pieces assembled, only to check the stability of the pair."""
+    return np.minimum(plinth(p), hyperboloid_lattice(p - np.array([0, 0, 4.0])))
+
+
+DESIGNS.update({
+    "hyperboloid_duo": (hyperboloid_duo, (-42, 42, -42, 42, 0, 110), "Two-colour pair, assembled"),
+    "hyperboloid_strong": (hyperboloid_strong, (-39, 39, -39, 39, 0, 106), "Hyperboloid, reinforced"),
+    "hyperboloid_lattice": (hyperboloid_lattice, (-36, 36, -36, 36, 0, 106), "Hyperboloid lattice (two-colour)"),
+    "plinth": (plinth, (-42, 42, -42, 42, 0, 7), "Plinth (two-colour)"),
+})
