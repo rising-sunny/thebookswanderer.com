@@ -56,8 +56,15 @@ def check(supplier: str, method: str, path: str) -> None:
         raise ValueError("Unsupported method")
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
-    if method != "GET" and _MONEY.search(path.split("?")[0]) and not orders_enabled():
+    if method != "GET" and _MONEY.search(path.split("?")[0]) and not orders_enabled() \
+            and not _unpaid_draft(supplier, method, path):
         raise PermissionError("Orders and payments are disabled")
+
+
+def _unpaid_draft(supplier: str, method: str, path: str) -> bool:
+    """A Slant 3D draft order only prices print and shipping; the charge comes
+    with POST /orders/{id}, which stays blocked."""
+    return supplier == "slant3d" and method == "POST" and path.split("?")[0] == "/orders"
 
 
 def redact(value: Any) -> Any:
