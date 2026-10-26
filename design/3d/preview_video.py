@@ -49,9 +49,16 @@ def fade_in_out(n, i, edge=10):
     return min(1.0, i / edge, (n - 1 - i) / edge)
 
 
-segments = [(loop("spin-gold", 2), "Gold on matte black"),
-            (zoom(M / "underside.png", 3 * FPS), "Its own equation, engraved underneath"),
-            (loop("spin-rainbow", 2), "Silk rainbow")]
+import os
+if os.getenv("PIECE") == "mandel":
+    OUT = M / "video-mandel"; OUT.mkdir(exist_ok=True)
+    segments = [(loop("mandel-spin", 1), "Escape time as height"),
+                (zoom(M / "mandel-under.png", 3 * FPS), "z → z² + c, engraved underneath"),
+                (zoom(M / "mandel-sunset.png", int(2.5 * FPS), 1.0, 1.06), "Matte sunset")]
+else:
+    segments = [(loop("spin-gold", 2), "Gold on matte black"),
+                (zoom(M / "underside.png", 3 * FPS), "Its own equation, engraved underneath"),
+                (loop("spin-rainbow", 2), "Silk rainbow")]
 frames, X = [], 8                        # X frames of cross-fade between segments
 for k, (seg, text) in enumerate(segments):
     seg = [caption(im.copy(), text, fade_in_out(len(seg), i, 12)) for i, im in enumerate(seg)]

@@ -239,15 +239,44 @@ elif SHOT.startswith("look-"):        # quick look at any STL: look-<name> rende
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     area("top", (0.0, 0.1, 0.6), 0.5, 40)
     camera((0.0, -0.30, 0.26), (0, 0, 0.012), 60)
-elif SHOT in ("mandel-hero", "mandel-top"):
+elif SHOT in ("mandel-hero", "mandel-top", "mandel-sunset"):
     world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
-    stl("mandelbrot_light.stl", height_ramp("mandel_ramp.json", 27.75))
+    ramp = "mandel_ramp_sunset.json" if SHOT == "mandel-sunset" else "mandel_ramp.json"
+    stl("mandelbrot_light.stl", height_ramp(ramp, 27.75, metallic=0.0 if SHOT == "mandel-sunset" else 0.35,
+                                            rough=0.6 if SHOT == "mandel-sunset" else 0.28))
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     area("top", (0.0, 0.1, 0.6), 0.5, 50)
-    if SHOT == "mandel-hero":
+    if SHOT in ("mandel-hero", "mandel-sunset"):
         camera((0.12, -0.27, 0.17), (0, 0.004, 0.008), 60)
     else:
         camera((0.0, -0.10, 0.33), (0, 0.0, 0.0), 60)
+elif SHOT == "mandel-desk":
+    world((0.95, 0.88, 0.78), 0.25)
+    bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
+    bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0.45, 1.5), rotation=(math.pi / 2, 0, 0))
+    bpy.context.object.data.materials.append(flat("plaster", (0.72, 0.66, 0.58), 0.95))
+    stl("mandelbrot_light.stl", height_ramp("mandel_ramp.json", 27.75), rot=(0, 0, 0.35))
+    book(0.16, 0.24, 0.03, (-0.2, 0.12, 0), flat("green cloth", (0.06, 0.16, 0.10), 0.8), 0.25)
+    book(0.15, 0.22, 0.026, (-0.195, 0.125, 0.03), flat("red cloth", (0.32, 0.05, 0.04), 0.8), 0.12)
+    area("key", (-0.5, -0.45, 0.6), 0.6, 120); area("fill", (0.6, -0.4, 0.3), 0.8, 35)
+    area("rim", (0.25, 0.35, 0.45), 0.3, 40, (1, 0.9, 0.75))
+    camera((0.14, -0.21, 0.14), (-0.005, 0.004, 0.008), 55)
+elif SHOT == "mandel-spin":                 # one slow full turn, 96 frames
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
+    stl("mandelbrot_light.stl", height_ramp("mandel_ramp.json", 27.75)).parent = pivot
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50)
+    camera((0.0, -0.26, 0.19), (0, 0.0, 0.006), 60)
+    frames = 96
+    first = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+    last = int(sys.argv[6]) if len(sys.argv) > 6 else frames
+    sc.render.use_persistent_data = True
+    for f in range(first, last + 1):
+        pivot.rotation_euler[2] = math.tau * (f - 1) / frames
+        sc.render.filepath = HERE + f"mock/{SHOT}/f{f:04d}.png"
+        bpy.ops.render.render(write_still=True)
+    raise SystemExit
 elif SHOT == "mandel-under":
     world((1, 0.95, 0.9), 0.15)
     bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
