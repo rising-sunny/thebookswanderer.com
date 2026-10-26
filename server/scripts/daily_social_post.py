@@ -73,6 +73,7 @@ INK = (36, 41, 31)
 TITLE_GREEN = (27, 55, 40)
 
 HASHTAGS = {
+    "books": "#coloringbook #readingjournal #booklover #bookish #adultcoloring #bookstagram",
     "book-accessories": "#bookaccessories #bookmarks #booklover #bookish #readingtime #bookstagram",
     "decor": "#readingnook #bookshelfdecor #booklover #bookish #cozyreading #bookstagram",
     "ereader-accessories": "#kindle #kindleaccessories #ereader #booklover #bookish #bookstagram",

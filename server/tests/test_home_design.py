@@ -48,7 +48,9 @@ class HomepageTests(unittest.TestCase):
         self.assertIn('/assets/live-0.jpg', page)
         self.assertNotIn('US$27.99', page)  # never the prototype price snapshot
         self.assertNotIn('PRIVATE DRAFT', page)
-        self.assertNotIn('Extra live piece', page)
+        # the newest products open the shelf, marked as new
+        self.assertLess(page.index('Extra live piece'), page.index('Live title 0'))
+        self.assertIn('<span class="tag">New</span>', page)
         self.assertNotIn('US$0.01', page)
 
     def test_retired_product_is_replaced_and_price_changes_are_immediate(self):

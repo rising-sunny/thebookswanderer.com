@@ -28,6 +28,12 @@ ASSIGNMENTS: dict[str, str] = {
     "wooden-reading-tracker": "decor",
     # E-reader
     "kindle-magnetic-sleeve": "ereader-accessories",
+    # Printed books, coloring books and journals
+    **{slug: "books" for slug in (
+        "reading-passport-printed", "reading-passport-hardcover", "color-the-classics-printed",
+        "color-the-fairy-tales-printed", "audubons-birds-red-printed", "audubons-birds-blue-printed",
+        "the-lost-manuscript", "book-club-companion", "commonplace-book", "reading-society-notebook",
+    )},
 }
 
 

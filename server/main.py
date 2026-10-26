@@ -752,6 +752,7 @@ _GOOGLE_CATEGORY_BY_SLUG = (
     ("book-clips", "93"),
 )
 _GOOGLE_CATEGORY_BY_SHOP = {
+    "books": "784",                     # Media > Books
     "book-accessories": "6174",         # Office Supplies > Book Accessories
     "decor": "696",                     # Home & Garden > Decor
     "ereader-accessories": "4736",      # ... > E-Book Reader Accessories

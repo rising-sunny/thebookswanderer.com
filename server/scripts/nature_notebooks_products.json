@@ -10,7 +10,7 @@
       "variant_name": "English paperback · Owl cover",
       "price_usd": 24.99,
       "cost_usd": 5.99,
-      "category": "book-accessories",
+      "category": "books",
       "image_url": "/assets/products/commonplace-book/main_en.jpg",
       "gallery": [
         "/assets/products/commonplace-book/open_en.jpg",
@@ -30,7 +30,7 @@
       "title": "The Reading Society Notebook — Lake Suwa",
       "variant_name": "Lake Suwa · 150 lined pages",
       "price_usd": 27.99,
-      "category": "book-accessories",
+      "category": "books",
       "image_url": "/assets/products/reading-society-notebook/main_en.jpg",
       "gallery": [
         "/assets/products/reading-society-notebook/back_en.jpg",
