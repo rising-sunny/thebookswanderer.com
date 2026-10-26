@@ -17,5 +17,6 @@
   {"id": "hyperboloid-video", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]},
   {"id": "hyperboloid-etsy-video", "script": "etsy_listing_video.py", "args": ["hyperboloid-sculpture"]},
   {"id": "hyperboloid-countries", "script": "publish_slant3d_products.py", "args": ["hyperboloid-sculpture", "--publish"]},
-  {"id": "mandelbrot-create", "script": "publish_slant3d_products.py", "args": ["mandelbrot-mountain", "--publish"]}
+  {"id": "mandelbrot-create", "script": "publish_slant3d_products.py", "args": ["mandelbrot-mountain", "--publish"]},
+  {"id": "mandelbrot-etsy-video", "script": "etsy_listing_video.py", "args": ["mandelbrot-mountain"]}
 ]
