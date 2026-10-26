@@ -74,7 +74,7 @@ class SupplierApi(unittest.TestCase):
 
     def test_orders_and_payments_stay_blocked_unless_enabled_on_the_vps(self):
         for supplier, path in [('printify', '/shops/99/orders.json'), ('cj', '/shopping/pay/payBalance'),
-                               ('lulu', '/print-jobs/'), ('prodigi', '/orders'), ('slant3d', '/orders'),
+                               ('lulu', '/print-jobs/'), ('prodigi', '/orders'), ('slant3d', '/orders/SLANT_1'),
                                ('printify', '/shops/99/orders/1/send_to_production.json'),
                                ('meta', '/act_123/campaigns'), ('meta', '/act_123/ads'),
                                ('pinterest', '/ad_accounts/1/campaigns'),
@@ -82,6 +82,14 @@ class SupplierApi(unittest.TestCase):
             self.assertEqual(self.call(supplier, {'method': 'POST', 'path': path, 'body': {}}, preview=True).status_code, 403)
         with patch.dict(os.environ, {'TBW_SUPPLIER_ORDERS_ENABLED': '1'}):
             self.assertEqual(self.call('prodigi', {'method': 'POST', 'path': '/orders', 'body': {}}, preview=True).status_code, 200)
+        self.assertEqual(self.requests, [])
+
+    def test_slant3d_drafts_are_allowed_but_processing_stays_blocked(self):
+        draft = {'method': 'POST', 'path': '/orders', 'body': {'items': []}}
+        self.assertEqual(self.call('slant3d', draft, preview=True).status_code, 200)
+        for method, path in (('POST', '/orders/SLANT_1'), ('DELETE', '/orders/SLANT_1'), ('POST', '/orders/batch')):
+            self.assertEqual(self.call('slant3d', {'method': method, 'path': path, 'body': {}}, preview=True).status_code, 403)
+        self.assertEqual(self.call('prodigi', draft, preview=True).status_code, 403)
         self.assertEqual(self.requests, [])
 
     def test_each_supplier_uses_its_own_auth(self):
