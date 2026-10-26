@@ -15,7 +15,7 @@ import time
 import httpx
 from functools import lru_cache
 
-from services import cj, digital, lulu, printify, prodigi_store
+from services import cj, digital, lulu, printify, prodigi_store, slant3d
 from services.countries import COUNTRY_CODES
 
 IMPORT_NOTE = "Import duties or taxes collected by your country on arrival are not included in this total."
@@ -186,6 +186,12 @@ async def _quote(cart, country, address=None, *, free_us=True):
             # Prodigi's quote is country-level, so require complete address fields at checkout.
             if not all(address.get(k) for k in ("street1", "city", "state", "postcode")):
                 is_estimate = True
+            retail = leg["shipping_total"]
+        elif supplier == slant3d.SUPPLIER:
+            try:
+                leg = slant3d.shipping(items, country)
+            except slant3d.Slant3DError:
+                raise unavailable(names) from None
             retail = leg["shipping_total"]
         elif supplier == "lulu":
             lines = [lulu_line(p, v, q) for p, v, q in items]

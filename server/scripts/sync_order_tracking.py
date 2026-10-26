@@ -30,7 +30,8 @@ load_dotenv(ROOT / ".env")
 
 from database import SessionLocal  # noqa: E402
 from models import Order, OrderItem, Product  # noqa: E402
-from services import cj, digital, lulu, printify, prodigi_store  # noqa: E402
+from services import cj, digital, lulu, printify, prodigi_store, slant3d, slant3d_submission  # noqa: E402
+from models import SlantSubmission  # noqa: E402
 from services import email as email_service  # noqa: E402
 
 # A CJ order is created unpaid (CJ_PAY_TYPE=3) and a Printify one on hold
@@ -84,6 +85,9 @@ def legs_for(order: Order, items: list[OrderItem], products: dict[int, Product])
     art_items = [i for i in items if sup(i) == "prodigi"]
     if art_items:
         legs.append(Leg("prodigi", order.prodigi_order_id or "unsubmitted", art_items))
+    prints = [i for i in items if sup(i) == slant3d.SUPPLIER]
+    if prints:
+        legs.append(Leg(slant3d.SUPPLIER, order.slant_order_id or f"web-{order.id}", prints))
     return legs
 
 
@@ -91,6 +95,8 @@ def all_legs_submitted(order, items, products) -> bool:
     """A shipped leg cannot hide another supplier that never accepted its lines."""
     suppliers = {getattr(products.get(i.product_id), 'supplier', '') or 'cj' for i in items}
     if 'prodigi' in suppliers and not order.prodigi_order_id:
+        return False
+    if slant3d.SUPPLIER in suppliers and not order.slant_order_id:
         return False
     if 'lulu' in suppliers and not order.lulu_job_id:
         return False
@@ -194,9 +200,50 @@ async def check_prodigi(leg: Leg) -> None:
         leg.status = "OTHER"
 
 
+async def check_slant(leg: Leg) -> None:
+    if leg.ref.startswith("web-"):
+        # Not processed yet: settle an unclear charge, then process a draft that is still a draft.
+        db = SessionLocal()
+        try:
+            claim = db.get(SlantSubmission, leg.ref)
+            if claim and claim.state == "uncertain":
+                await slant3d_submission.reconcile(db, claim)
+            if claim and claim.state == "drafted" and slant3d.ready():
+                try:
+                    await slant3d_submission.submit(db, claim)
+                except slant3d.Slant3DError:
+                    pass
+            state = claim.state if claim else "missing"
+            if claim and state == "submitted":
+                order = db.get(Order, int(leg.ref.split("-", 1)[1]))
+                order.slant_order_id = claim.draft_id
+                db.commit()
+                leg.ref = claim.draft_id
+        finally:
+            db.close()
+        if state != "submitted":
+            leg.raw, leg.status = "UNSUBMITTED-" + state.upper(), "PROBLEM"
+            leg.help = ("Check this order in the Slant 3D dashboard (metadata tbw_ref). A draft over the cost cap "
+                        "or a failed payment needs a decision; do not create a duplicate order.")
+            return
+    order = await slant3d.request("GET", "/orders/" + leg.ref)
+    leg.raw = str(order.get("status") or "")
+    leg.carrier, leg.number, url = slant3d.tracking(order)
+    leg.url = url or track_url(leg.number)
+    if leg.raw in ("SHIPPED", "DELIVERED"):
+        leg.status = "SHIPPED"
+    elif leg.raw in ("CANCELED", "PAYMENT_ERROR"):
+        leg.status, leg.help = "PROBLEM", "Review this order in the Slant 3D dashboard (payment card or cancellation)."
+    elif leg.raw == "IN_REVIEW":
+        leg.status, leg.help = "WAITING", "Slant 3D is reviewing the print files; check the dashboard if it lasts."
+    else:
+        leg.status = "OTHER"
+
+
 CHECK = {"cj": (check_cj, cj.is_configured), "printify": (check_printify, printify.configured),
          "lulu": (check_lulu, lulu.configured),
-         "prodigi": (check_prodigi, prodigi_store.configured)}
+         "prodigi": (check_prodigi, prodigi_store.configured),
+         slant3d.SUPPLIER: (check_slant, slant3d.configured)}
 
 
 def noted(order: Order, text: str) -> bool:

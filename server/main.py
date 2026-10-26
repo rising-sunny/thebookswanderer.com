@@ -41,6 +41,7 @@ from services import printify as printify_service  # noqa: E402
 from services import lulu as lulu_service  # noqa: E402
 from services import lulu_submission  # noqa: E402
 from services import prodigi_store, prodigi_submission  # noqa: E402
+from services import slant3d, slant3d_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from services import crosslist, supplier_api  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
@@ -1166,6 +1167,8 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
             raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
         if p.supplier == "prodigi" and not prodigi_store.ready():
             raise HTTPException(503, "This print is temporarily unavailable. Please try again later.")
+        if p.supplier == slant3d.SUPPLIER and not slant3d.ready():
+            raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
         if p.supplier == lulu_service.SUPPLIER and not (lulu_service.configured() and _lulu_files(p, v)):
             log.error("checkout blocked: print files or Lulu keys missing for %s", p.slug)
             raise HTTPException(503, f"{p.title} is temporarily unavailable. Please try again later.")
@@ -1498,10 +1501,11 @@ async def _fulfil(order: Order, db: Session) -> None:
     pod = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") == "printify"]
     books = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == lulu_service.SUPPLIER]
     art = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == "prodigi"]
-    unknown = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") not in {"cj", "digital", "printify", "lulu", "prodigi"}]
+    prints = [i for i in items if getattr(products_db.get(i.product_id), "supplier", "") == slant3d.SUPPLIER]
+    unknown = [i for i in items if (getattr(products_db.get(i.product_id), "supplier", "") or "cj") not in {"cj", "digital", "printify", "lulu", "prodigi", slant3d.SUPPLIER}]
     if unknown:
         raise RuntimeError("Unsupported supplier; order held")
-    cj_items = [i for i in items if i not in pod and i not in digital and i not in books and i not in art]
+    cj_items = [i for i in items if i not in pod and i not in digital and i not in books and i not in art and i not in prints]
     # Downloads first: they need no supplier, so a CJ hiccup never holds
     # back a file the buyer has already paid for.
     if digital:
@@ -1515,8 +1519,10 @@ async def _fulfil(order: Order, db: Session) -> None:
 
     if art:
         await prodigi_submission.submit(db, order)
+    if prints:
+        await _submit_to_slant(order, db, prints, products_db)
 
-    shipped = cj_items or pod or books or art
+    shipped = cj_items or pod or books or art or prints
     order.status = "cj_submitted" if shipped else "delivered"
     db.commit()
     if shipped:
@@ -1640,6 +1646,26 @@ async def _submit_to_lulu(order: Order, db: Session, items: list[OrderItem], pro
         await lulu_submission.submit(db, order, lines, address, shipping_level=match.group(1))
     else:
         await lulu_submission.submit(db, order, lines, address)
+
+
+async def _submit_to_slant(order: Order, db: Session, items: list[OrderItem], products_db: dict) -> None:
+    """3D prints: one Slant 3D order with every part of every line, processed once."""
+    if order.slant_order_id:
+        return
+    lines, caps = [], []
+    for it in items:
+        slug = products_db[it.product_id].slug
+        variant = db.get(ProductVariant, it.variant_id) if it.variant_id else None
+        lines += slant3d.lines(slug, it.quantity, variant.cj_sku if variant else "")
+        caps.append((slug, it.quantity))
+    cust = slant3d.customer(order.customer_name, order.shipping_address, order.shipping_address2 or "",
+                            order.shipping_city, order.shipping_province, order.shipping_zip or "",
+                            order.shipping_country_code)
+    ref = f"web-{order.id}"
+    claim = slant3d_submission.prepare(db, ref, slant3d.draft_payload(ref, lines, cust),
+                                       slant3d.max_cost(caps, order.shipping_country_code))
+    order.slant_order_id = await slant3d_submission.submit(db, claim)
+    db.commit()
 
 
 async def _submit_to_cj(order: Order, db: Session, items: list[OrderItem], mixed: bool = False) -> None:
@@ -2024,6 +2050,11 @@ def _publish_problems(product: Product) -> list[str]:
         problems.append("Printify product or variant ids missing")
     if supplier == "prodigi":
         problems.append("Prodigi products are set up by hand, not through drafts")
+    if supplier == slant3d.SUPPLIER:
+        try:
+            slant3d.product_spec(product.slug)
+        except (slant3d.Slant3DError, OSError, ValueError, KeyError):
+            problems.append("add the print files and filaments to scripts/slant3d_products.json")
     return problems
 
 

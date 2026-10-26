@@ -198,6 +198,7 @@ class Order(Base):
     printify_order_id: Mapped[str] = mapped_column(String(80), default="")
     lulu_job_id: Mapped[str] = mapped_column(String(80), default="")
     prodigi_order_id: Mapped[str] = mapped_column(String(120), default="")
+    slant_order_id: Mapped[str] = mapped_column(String(40), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
     # Abandoned-checkout reminder: set once so nobody is emailed twice.
@@ -236,6 +237,22 @@ class ProdigiSubmission(Base):
     order_ref: Mapped[str] = mapped_column(String(120), default="")
     error_kind: Mapped[str] = mapped_column(String(80), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class SlantSubmission(Base):
+    """One Slant 3D order per store order ("web-<id>") or Etsy receipt ("etsy-<receipt>").
+    The draft is free; processing charges the card, so it is claimed before the POST."""
+    __tablename__ = "slant_submissions"
+    ref: Mapped[str] = mapped_column(String(40), primary_key=True)
+    state: Mapped[str] = mapped_column(String(24), default="prepared")
+    payload_json: Mapped[str] = mapped_column(Text, default="")
+    max_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    draft_id: Mapped[str] = mapped_column(String(40), default="")
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    tracking: Mapped[str] = mapped_column(String(300), default="")
+    error_kind: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
 class OrderItem(Base):

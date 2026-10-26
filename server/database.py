@@ -33,6 +33,7 @@ def init_db() -> None:
         DownloadToken,
         LuluSubmission,
         ProdigiSubmission,
+        SlantSubmission,
         EmailOptOut,
         LiveEvent,
         NewsletterSubscriber,
@@ -129,6 +130,9 @@ def init_db() -> None:
         if "lulu_job_id" not in rcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN lulu_job_id VARCHAR(80) DEFAULT ''"))
+        if "slant_order_id" not in rcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN slant_order_id VARCHAR(40) DEFAULT ''"))
     if "newsletter_subscribers" in insp.get_table_names():
         ncols = {c["name"] for c in insp.get_columns("newsletter_subscribers")}
         with engine.begin() as conn:
