@@ -50,7 +50,13 @@ def fade_in_out(n, i, edge=10):
 
 
 import os
-if os.getenv("PIECE") == "mandel":
+if os.getenv("PIECE") == "horn":
+    OUT = M / "video-horn"; OUT.mkdir(exist_ok=True)
+    segments = [(loop("horn-spin", 1), "y = 1/x, turned about its axis"),
+                (zoom(M / "horn-top.png", int(2.5 * FPS), 1.0, 1.08), "Volume π, surface infinite"),
+                (zoom(M / "horn-tunnel.png", int(2.5 * FPS), 1.0, 1.08), "A tunnel inside, narrowing like the horn"),
+                (zoom(M / "horn-gold.png", int(2.5 * FPS), 1.0, 1.05), "Gold on black")]
+elif os.getenv("PIECE") == "mandel":
     OUT = M / "video-mandel"; OUT.mkdir(exist_ok=True)
     segments = [(loop("mandel-spin", 1), "Escape time as height"),
                 (zoom(M / "mandel-under.png", 3 * FPS), "z → z² + c, engraved underneath"),
