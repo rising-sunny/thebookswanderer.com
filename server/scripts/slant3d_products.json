@@ -128,6 +128,70 @@
           ]
         }
       ]
+    },
+    {
+      "slug": "gabriels-horn",
+      "etsy_listing_id": "",
+      "max_cost_us": 18.0,
+      "max_cost_intl": 36.0,
+      "title": "Gabriel's Horn, 3D Printed Math Sculpture of y = 1/x on an Engraved Plinth",
+      "title_es": "Cuerno de Gabriel, escultura matemática impresa en 3D de y = 1/x sobre un pedestal grabado",
+      "category": "mathrelaxing",
+      "price_usd": 39.99,
+      "cost_usd": 13.5,
+      "image_url": "/assets/products/gabriels-horn/main.jpg",
+      "gallery": [
+        "/assets/products/gabriels-horn/desk.jpg",
+        "/assets/products/gabriels-horn/ring.jpg",
+        "/assets/products/gabriels-horn/tunnel.jpg",
+        "/assets/products/gabriels-horn/gold.jpg",
+        "/assets/products/gabriels-horn/size.jpg"
+      ],
+      "video_url": "/assets/products/gabriels-horn/preview.mp4",
+      "video_poster": "/assets/products/gabriels-horn/preview-poster.jpg",
+      "description": "Turn the curve y = 1/x around its axis, from x = 1 onwards, and you get Gabriel's horn, also called Torricelli's trumpet. It holds a famous paradox: its volume is finite, exactly π, but its surface is infinite. You could fill it with paint, yet never paint it.\n\nThe horn stands on a matte black plinth. Round the plinth runs the engraving GABRIEL'S HORN · y = 1/x, x ≥ 1 · V = π · A = ∞.\n\nLift the horn: a tunnel runs up inside it from the base and narrows towards the tip, like the horn itself.\n\nTwo colours:\n• Silk rainbow on black: the colour climbs from blue at the bell to magenta at the tip.\n• Gold on black.\n\n• Horn 9.7 cm (3.8 in) tall, bell 7.8 cm (3.1 in); plinth 10.4 cm (4.1 in) across; about 10.2 cm (4 in) tall assembled\n• Two pieces, the horn sits in a pocket in the plinth; about 70 g\n• PLA, printed layer by layer; the fine layer lines show up close\n• Designed by us and printed to order by our production partner Slant 3D in the USA\n• Decorative only: not a toy, not for food, keep away from heat above 50 °C (120 °F)\n\nThe photos are digital renders made from the real print files. Colours can vary a little between filament batches.\n\nShipping to the United States is included. We also ship to Canada, the United Kingdom, Ireland, Germany, France, Spain, the Netherlands, Australia, New Zealand, Japan, Mexico and Chile for a flat 14.99 USD, shown at checkout before you pay.",
+      "description_es": "Si giras la curva y = 1/x alrededor de su eje, desde x = 1 en adelante, obtienes el cuerno de Gabriel, también llamado trompeta de Torricelli. Encierra una paradoja famosa: su volumen es finito, exactamente π, pero su superficie es infinita. Podrías llenarlo de pintura, pero nunca pintarlo.\n\nEl cuerno se apoya en un pedestal negro mate. Alrededor del pedestal va grabado GABRIEL'S HORN · y = 1/x, x ≥ 1 · V = π · A = ∞.\n\nLevanta el cuerno: por dentro sube un túnel desde la base que se angosta hacia la punta, igual que el cuerno.\n\nDos colores:\n• Arcoíris satinado sobre negro: el color sube del azul en la campana al magenta en la punta.\n• Dorado sobre negro.\n\n• Cuerno de 9,7 cm de alto y campana de 7,8 cm; pedestal de 10,4 cm de diámetro; unos 10,2 cm de alto armado\n• Dos piezas, el cuerno encaja en el pedestal; unos 70 g\n• PLA impreso capa por capa; de cerca se ven las finas líneas de capa\n• Diseñada por nosotros e impresa por encargo por nuestro socio de producción Slant 3D en Estados Unidos\n• Solo decorativa: no es un juguete ni sirve para alimentos; evita el calor sobre 50 °C\n\nLas fotos son renders digitales hechos con los archivos reales de impresión. Los colores pueden variar un poco según el lote de filamento.\n\nEl envío a Estados Unidos está incluido. También enviamos a Canadá, Reino Unido, Irlanda, Alemania, Francia, España, Países Bajos, Australia, Nueva Zelanda, Japón, México y Chile por una tarifa fija de 14,99 USD, que se muestra antes de pagar.",
+      "details_html": "<h3>Finite volume, infinite surface</h3><p>y = 1/x turned about its axis encloses a volume of π but has an infinite surface. The plinth carries the name and the equations; a tunnel inside the horn narrows towards the tip.</p><h3>What you receive</h3><p>The horn and its engraved matte black plinth, two pieces that fit together by hand. PLA, printed to order in the USA by Slant 3D.</p><h3>Care</h3><p>Dust with a soft brush. Decorative only; keep away from heat and direct sun in a hot car.</p>",
+      "variants": [
+        {
+          "sku": "TBW-GABRIEL-RAINBOW",
+          "name": "Silk rainbow on black",
+          "image_url": "/assets/products/gabriels-horn/main.jpg",
+          "parts": [
+            {
+              "name": "Gabriel's horn, silk rainbow",
+              "sku": "TBW-GABRIEL-HORN-RAINBOW",
+              "file": "2c15f6f9-2911-4558-b0f6-951a8cb0fc66",
+              "filament": "4e63aa18-a215-41f7-a2db-ed8828791fcb"
+            },
+            {
+              "name": "Engraved plinth, matte black",
+              "sku": "TBW-GABRIEL-PLINTH",
+              "file": "a0c33feb-39d8-4c4d-9bdd-8aae28330c2a",
+              "filament": "97e187cd-3051-4463-9f0c-59e361afc10e"
+            }
+          ]
+        },
+        {
+          "sku": "TBW-GABRIEL-GOLD",
+          "name": "Gold on black",
+          "image_url": "/assets/products/gabriels-horn/gold.jpg",
+          "parts": [
+            {
+              "name": "Gabriel's horn, gold",
+              "sku": "TBW-GABRIEL-HORN-GOLD",
+              "file": "2c15f6f9-2911-4558-b0f6-951a8cb0fc66",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            },
+            {
+              "name": "Engraved plinth, matte black",
+              "sku": "TBW-GABRIEL-PLINTH",
+              "file": "a0c33feb-39d8-4c4d-9bdd-8aae28330c2a",
+              "filament": "97e187cd-3051-4463-9f0c-59e361afc10e"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
