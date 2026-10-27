@@ -236,7 +236,7 @@ elif SHOT == "horn-desk":
     bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0.45, 1.5), rotation=(math.pi / 2, 0, 0))
     bpy.context.object.data.materials.append(flat("plaster", (0.72, 0.66, 0.58), 0.95))
     stl("gabriel_plinth_light.stl", BLACK())
-    stl("gabriel_horn_hollow_light.stl", GOLD(), loc=(0, 0, 0.0045))
+    stl("gabriel_horn_exact.stl", GOLD(), loc=(0, 0, 0.0045))
     book(0.16, 0.24, 0.03, (-0.2, 0.08, 0), flat("green cloth", (0.06, 0.16, 0.10), 0.8), 0.25)
     book(0.15, 0.22, 0.026, (-0.195, 0.085, 0.03), flat("red cloth", (0.32, 0.05, 0.04), 0.8), 0.12)
     area("key", (-0.5, -0.45, 0.6), 0.6, 120); area("fill", (0.6, -0.4, 0.3), 0.8, 35)
@@ -246,7 +246,7 @@ elif SHOT == "horn-spin":              # the whole piece turns once, so the engr
     world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
     bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
     stl("gabriel_plinth_light.stl", BLACK()).parent = pivot
-    stl("gabriel_horn_hollow_light.stl", height_ramp("linear_ramp.json", 97.2), loc=(0, 0, 0.0045)).parent = pivot
+    stl("gabriel_horn_exact.stl", height_ramp("linear_ramp.json", 97.2), loc=(0, 0, 0.0045)).parent = pivot
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     area("top", (0.0, 0.1, 0.6), 0.5, 50)
     camera((0.0, -0.36, 0.20), (0, 0, 0.040), 70)
@@ -262,7 +262,7 @@ elif SHOT == "horn-spin":              # the whole piece turns once, so the engr
 elif SHOT == "horn-tunnel":           # the horn lifted off its plinth and tipped, to show the tunnel
     world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
     stl("gabriel_plinth_light.stl", BLACK(), loc=(0.07, 0.03, 0))
-    stl("gabriel_horn_hollow_light.stl", height_ramp("linear_ramp.json", 97.2), loc=(-0.035, 0.0, 0.045),
+    stl("gabriel_horn_exact.stl", height_ramp("linear_ramp.json", 97.2), loc=(-0.035, 0.0, 0.045),
         rot=(math.radians(-115), 0, math.radians(15)))
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     area("top", (0.0, 0.1, 0.6), 0.5, 50); area("in", (-0.05, -0.25, 0.05), 0.2, 25)
@@ -271,7 +271,7 @@ elif SHOT in ("horn-rainbow", "horn-gold", "horn-top"):
     world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
     stl("gabriel_plinth_light.stl", BLACK())
     horn_mat = GOLD() if SHOT == "horn-gold" else height_ramp("linear_ramp.json", 97.2)
-    stl("gabriel_horn_hollow_light.stl", horn_mat, loc=(0, 0, 0.0045))
+    stl("gabriel_horn_exact.stl", horn_mat, loc=(0, 0, 0.0045))
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     area("top", (0.0, 0.1, 0.6), 0.5, 50)
     if SHOT == "horn-top":                 # the ring of text, seen from the front and above
