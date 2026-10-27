@@ -230,6 +230,63 @@ elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repea
         bpy.ops.render.render(write_still=True)
     raise SystemExit
 
+elif SHOT == "horn-desk":
+    world((0.95, 0.88, 0.78), 0.25)
+    bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
+    bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0.45, 1.5), rotation=(math.pi / 2, 0, 0))
+    bpy.context.object.data.materials.append(flat("plaster", (0.72, 0.66, 0.58), 0.95))
+    stl("gabriel_plinth_light.stl", BLACK())
+    stl("gabriel_horn_exact.stl", GOLD(), loc=(0, 0, 0.0045))
+    book(0.16, 0.24, 0.03, (-0.2, 0.08, 0), flat("green cloth", (0.06, 0.16, 0.10), 0.8), 0.25)
+    book(0.15, 0.22, 0.026, (-0.195, 0.085, 0.03), flat("red cloth", (0.32, 0.05, 0.04), 0.8), 0.12)
+    area("key", (-0.5, -0.45, 0.6), 0.6, 120); area("fill", (0.6, -0.4, 0.3), 0.8, 35)
+    area("rim", (0.25, 0.35, 0.45), 0.3, 40, (1, 0.9, 0.75))
+    camera((0.13, -0.21, 0.11), (-0.012, 0.004, 0.045), 55)
+elif SHOT == "horn-spin":              # the whole piece turns once, so the engraved ring passes in front
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
+    stl("gabriel_plinth_light.stl", BLACK()).parent = pivot
+    stl("gabriel_horn_exact.stl", height_ramp("linear_ramp.json", 97.2), loc=(0, 0, 0.0045)).parent = pivot
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50)
+    camera((0.0, -0.36, 0.20), (0, 0, 0.040), 70)
+    frames = 96
+    first = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+    last = int(sys.argv[6]) if len(sys.argv) > 6 else frames
+    sc.render.use_persistent_data = True
+    for f in range(first, last + 1):
+        pivot.rotation_euler[2] = math.tau * (f - 1) / frames
+        sc.render.filepath = HERE + f"mock/{SHOT}/f{f:04d}.png"
+        bpy.ops.render.render(write_still=True)
+    raise SystemExit
+elif SHOT == "horn-tunnel":           # the horn lifted off its plinth and tipped, to show the tunnel
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    stl("gabriel_plinth_light.stl", BLACK(), loc=(0.07, 0.03, 0))
+    stl("gabriel_horn_exact.stl", height_ramp("linear_ramp.json", 97.2), loc=(-0.035, 0.0, 0.045),
+        rot=(math.radians(-115), 0, math.radians(15)))
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50); area("in", (-0.05, -0.25, 0.05), 0.2, 25)
+    camera((0.02, -0.36, 0.16), (0.0, 0.0, 0.035), 60)
+elif SHOT in ("horn-rainbow", "horn-gold", "horn-top"):
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    stl("gabriel_plinth_light.stl", BLACK())
+    horn_mat = GOLD() if SHOT == "horn-gold" else height_ramp("linear_ramp.json", 97.2)
+    stl("gabriel_horn_exact.stl", horn_mat, loc=(0, 0, 0.0045))
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50)
+    if SHOT == "horn-top":                 # the ring of text, seen from the front and above
+        camera((0.0, -0.15, 0.11), (0, -0.035, 0.008), 70)
+    else:
+        camera((0.0, -0.44, 0.15), (0, 0, 0.047), 80)
+elif SHOT.startswith("lookc-"):       # colour by height with a linear rainbow ramp
+    world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
+    o = stl(SHOT[6:] + ".stl", height_ramp("linear_ramp.json", float(sys.argv[5]) if len(sys.argv) > 5 else 25.0))
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    area("top", (0.0, 0.1, 0.6), 0.5, 50)
+    if o.dimensions.z > 0.05:                      # a tall piece: studio framing
+        camera((0.0, -0.40, 0.13), (0, 0, o.dimensions.z * 0.47), 85)
+    else:
+        camera((0.10, -0.24, 0.20), (0, 0.004, 0.006), 60)
 elif SHOT.startswith("look-"):        # quick look at any STL: look-<name> renders <name>.stl in gold
     world((1, 1, 1), 0.4); sweep((0.86, 0.83, 0.78))
     name = SHOT[5:]
