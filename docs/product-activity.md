@@ -38,6 +38,26 @@ An unavailable source produces an error, never a false empty result.
 
 ## Deploy on the existing VPS installation
 
+From the prepared Windows worktree, the focused PowerShell helper can install
+the tested application revision without merging unrelated local commits:
+
+```powershell
+& 'C:\repos\thebookswanderer.com-publication-history\deploy\upgrade-product-activity.ps1'
+```
+
+It uses the configured SSH access to `root@5.78.125.169`, downloads the pinned
+reviewed revision on the VPS, checks that its two storefront hunks apply,
+and runs both existing installer prechecks before changing storefront code.
+It backs up the two source files, preserves their ownership/mode, applies only
+those hunks and restarts the store. A failed store restart/health check restores
+the prior source. Each connector installer handles its own rollback; if a
+later upgrade fails, the successful earlier services remain upgraded. Stop
+and inspect the reported failure before retrying. Credentials and production
+databases remain on the VPS. This helper does not run the store's broad setup
+script or its pending release queue.
+
+Alternatively, use the normal deployment sequence below.
+
 The normal storefront deployment must first include this change's `main.py`
 and `models.py`. On its startup, `init_db()` creates the additive receipt table;
 it does not rewrite or backfill existing products. The CI deployment checks
