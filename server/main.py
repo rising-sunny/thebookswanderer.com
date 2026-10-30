@@ -2208,6 +2208,71 @@ async def internal_unpublish_product(
 # ── Internal: supplier reads for the restricted admin API ─────────────
 
 
+class EtsyListingsIn(BaseModel):
+    state: str = Field(default="active", pattern=r"^(active|inactive|draft|sold_out|expired)$")
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+def _etsy_timestamp(value) -> str | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        stamp = float(value)
+        if stamp <= 0:
+            return None
+        return datetime.fromtimestamp(stamp, timezone.utc).isoformat().replace("+00:00", "Z")
+    except (ValueError, TypeError, OverflowError, OSError):
+        return None
+
+
+@app.post("/api/internal/suppliers/etsy/listings")
+async def internal_etsy_listings(body: EtsyListingsIn, request: Request):
+    """A read-only, whitelisted snapshot of the configured shop, never raw API data."""
+    _internal_ok(request)
+    shop = crosslist.etsy_shop_id()
+    if not shop.isdigit():
+        raise HTTPException(503, "Etsy shop is not configured")
+    try:
+        data = await crosslist._etsy("GET", f"/application/shops/{shop}/listings", params={
+            "state": body.state, "limit": body.limit, "offset": body.offset,
+            "sort_on": "created", "sort_order": "desc",
+        })
+    except crosslist.CrossListError:
+        raise HTTPException(502, "Etsy listing query failed") from None
+    if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+        raise HTTPException(502, "Invalid Etsy listing response")
+    items = []
+    for row in data["results"]:
+        if not isinstance(row, dict):
+            raise HTTPException(502, "Invalid Etsy listing response")
+        listing_id = str(row.get("listing_id") or "")
+        # Never expose a result for another shop or untrusted supplier URLs.
+        if not listing_id.isdigit() or str(row.get("shop_id") or "") != shop:
+            raise HTTPException(502, "Invalid Etsy listing response")
+        items.append({
+            "listing_id": listing_id, "title": str(row.get("title") or "")[:300],
+            "platform": "etsy", "state": str(row.get("state") or ""),
+            "url": f"https://www.etsy.com/listing/{listing_id}",
+            "original_created_at": _etsy_timestamp(row.get("original_creation_timestamp")),
+            "created_or_renewed_at": _etsy_timestamp(row.get("creation_timestamp") or row.get("created_timestamp")),
+            "updated_at": _etsy_timestamp(row.get("last_modified_timestamp") or row.get("updated_timestamp")),
+            "state_changed_at": _etsy_timestamp(row.get("state_timestamp")),
+            "first_published_at": None,
+        })
+    try:
+        total = max(0, int(data["count"]))
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(502, "Invalid Etsy listing count") from None
+    if not items and body.offset < total:
+        raise HTTPException(502, "Incomplete Etsy listing response")
+    return {"platform": "etsy", "shop_id": shop, "state": body.state,
+            "listings": items, "total": total, "limit": body.limit, "offset": body.offset,
+            "has_more": body.offset + len(items) < total,
+            "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "coverage": "Current listings in the requested state, not a full event history. Creation/renewal and last state change do not prove first publication. Deleted listings are unavailable."}
+
+
 def _cents(value) -> float | None:
     try:
         return round(float(value) / 100, 2)
