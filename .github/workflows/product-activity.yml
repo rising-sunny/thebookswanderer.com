@@ -1,0 +1,39 @@
+name: Product activity checks
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'deploy/admin-api/**'
+      - 'deploy/mcp/**'
+      - '.github/workflows/product-activity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  store-and-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q -r server/requirements.txt
+      - run: python -m unittest discover -s server/tests -v
+        env:
+          DATABASE_URL: 'sqlite:///${{ runner.temp }}/tbw-activity-tests.db'
+      - run: python -m unittest discover -s deploy/admin-api -v
+
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q -r deploy/mcp/requirements.lock
+      - run: python -m unittest discover -s deploy/mcp -v

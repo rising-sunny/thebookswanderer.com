@@ -318,5 +318,87 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[1].content),
                          {"taxonomy_id": 2078, "price_usd": None, "extra": None, "code": "ABC123"})
 
+    def activity_fixture(self):
+        with sqlite3.connect(self.store) as db:
+            db.execute("ALTER TABLE products ADD COLUMN created_at TEXT")
+            db.execute("ALTER TABLE products ADD COLUMN etsy_listing_id TEXT")
+            db.execute("UPDATE products SET created_at='2026-10-29 02:59:59', etsy_listing_id='42'")
+            db.execute("""CREATE TABLE product_publication_events (
+                id INTEGER PRIMARY KEY, product_id INTEGER, product_slug TEXT,
+                product_title TEXT, platform TEXT, event_type TEXT, occurred_at TEXT, source TEXT)""")
+            db.executemany("INSERT INTO product_publication_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
+                (1, 0, '', '', 'store', 'tracking_started', '2026-10-28 00:00:00', 'schema_created'),
+                (2, 1, 'existing', 'Original title', 'store', 'published', '2026-10-29 03:00:00', 'visibility_change'),
+                (3, 1, 'existing', 'Original title', 'store', 'unpublished', '2026-10-30 03:00:00', 'visibility_change'),
+            ])
+            db.execute("""CREATE TABLE pinterest_pins (id INTEGER, product_id INTEGER,
+                product_slug TEXT, pin_id TEXT, status TEXT, created_at TEXT, error TEXT)""")
+            db.executemany("INSERT INTO pinterest_pins VALUES (?,1,'existing',?,?,?,?)", [
+                (1, '123', 'active', '2026-10-29 23:00:00', ''),
+                (2, '', 'failed', '2026-10-29 23:00:00', 'never return this error'),
+                (3, '123', 'duplicate', '2026-10-29 23:00:00', ''),
+            ])
+        self.before = hashlib.sha256(self.store.read_bytes()).hexdigest()
+
+    def test_product_dates_and_activity_use_local_day_and_no_creation_inference(self):
+        self.activity_fixture()
+        product = self.client.get('/products', headers=self.headers).json()['products'][0]
+        self.assertEqual(product['created_at'], '2026-10-29T02:59:59Z')
+        self.assertEqual(product['etsy_listing_id'], '42')
+        self.assertIsNone(product['published_at'])
+        self.assertEqual(product['last_recorded_publication_at'], '2026-10-29T03:00:00Z')
+        response = self.client.get('/products/activity?day=2026-10-29&limit=1', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual((data['start_utc'], data['end_utc_exclusive']),
+                         ('2026-10-29T03:00:00Z', '2026-10-30T03:00:00Z'))
+        self.assertEqual(data['total'], 2)
+        self.assertTrue(data['has_more'])
+        self.assertEqual(data['events'][0]['event_type'], 'published')
+        self.assertEqual(data['events'][0]['title'], 'Original title')
+        page = self.client.get('/products/activity?day=2026-10-29&limit=1&offset=1', headers=self.headers).json()
+        self.assertFalse(page['has_more'])
+        self.assertEqual(page['events'][0]['event_type'], 'pin_recorded')
+        self.assertNotIn('never return this error', str(page))
+        self.assertEqual(page['coverage']['store_tracking_started_at'], '2026-10-28T00:00:00Z')
+
+    def test_activity_validates_and_reports_missing_tracking(self):
+        self.assertEqual(self.client.get('/products/activity?day=2026-10-29').status_code, 401)
+        for query in ('day=bad', 'day=2026-02-30', 'day=2026-10-29&timezone=Missing/Zone',
+                      'day=2026-10-29&platform=etsy', 'day=2026-10-29&limit=101', 'day=9999-12-31'):
+            self.assertEqual(self.client.get('/products/activity?' + query, headers=self.headers).status_code, 422)
+        data = self.client.get('/products/activity?day=2026-10-29', headers=self.headers).json()
+        self.assertEqual(data['events'], [])
+        self.assertFalse(data['coverage']['store_ledger_available'])
+        self.assertIsNone(data['coverage']['store_tracking_started_at'])
+
+    def test_activity_filters_and_santiago_dst_window(self):
+        self.activity_fixture()
+        data = self.client.get('/products/activity?day=2026-10-29&platform=store', headers=self.headers).json()
+        self.assertEqual([e['event_type'] for e in data['events']], ['published'])
+        data = self.client.get('/products/activity?day=2026-10-29&product_id=999', headers=self.headers).json()
+        self.assertEqual(data['total'], 0)
+        data = self.client.get('/products/activity?day=2026-09-06', headers=self.headers).json()
+        self.assertEqual((data['start_utc'], data['end_utc_exclusive']),
+                         ('2026-09-06T04:00:00Z', '2026-09-07T03:00:00Z'))
+
+    def test_etsy_listing_metadata_uses_authenticated_read_proxy(self):
+        draft_key = self.key.parent / 'draft'
+        draft_key.write_text('d' * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={'listings': [], 'total': 0})
+        with patch.object(admin, 'store_transport', httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {'TBW_DRAFT_KEY_FILE': str(draft_key)}):
+            self.assertEqual(self.client.get('/suppliers/etsy/listings').status_code, 401)
+            response = self.client.get('/suppliers/etsy/listings?state=draft&limit=2&offset=3', headers=self.headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(self.client.get('/suppliers/etsy/listings?state=all', headers=self.headers).status_code, 422)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].url.path, '/api/internal/suppliers/etsy/listings')
+        self.assertEqual(calls[0].headers['Authorization'], 'Bearer ' + 'd' * 40)
+        self.assertEqual(json.loads(calls[0].content), {'state': 'draft', 'limit': 2, 'offset': 3})
+
 if __name__ == "__main__":
     unittest.main()

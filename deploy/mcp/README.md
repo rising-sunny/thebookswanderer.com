@@ -31,6 +31,28 @@ The bridge calls only the local restricted administrative API on port 8878.
 Provider keys are not loaded by the MCP service.
 The MCP listener will bind to 127.0.0.1:8879.
 
+## Product dates and publication activity
+
+`tbw_list_products` adds UTC `created_at`, linked Etsy/Printify IDs and
+`last_recorded_publication_at`. `published_at` stays null because a row's
+creation date does not prove its first publication date.
+
+`tbw_product_activity(day="2026-10-29", timezone="America/Santiago")` reads
+creation events, transactional store publication/unpublication receipts and
+successful Pinterest receipt times. It returns day boundaries in UTC, total,
+pagination, and coverage. Days follow the requested IANA timezone, including
+DST. Creation and pin receipt events must not be described as first product
+publication. A missing or empty ledger is not proof of no publications.
+
+`tbw_list_etsy_listings` reads a page from the connected shop in one requested
+state (active by default). It exposes original creation, creation/renewal,
+last update and last state-change times separately. None is guaranteed to be
+first publication; `first_published_at` is null. Follow `has_more`, and query
+other states when needed. Deleted listings and a full Etsy event history
+cannot be reconstructed from a current listing snapshot.
+
+See [the upgrade and verification runbook](../../docs/product-activity.md).
+
 Tests use fake credentials, temporary encrypted stores, mocked GitHub
 verification and mocked local API responses. No external requests are made.
 Run test_tbw_mcp.py with the isolated MCP virtualenv.

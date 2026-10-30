@@ -5,7 +5,11 @@ import re
 import sqlite3
 import sys
 from contextlib import closing
+from datetime import date, datetime, time, timedelta, timezone as utc_timezone
 from pathlib import Path
+from typing import Literal
+from urllib.parse import quote
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
@@ -140,6 +144,7 @@ def health():
         "capabilities": [
             "products:read", "cj:read", "products:draft", "products:publish",
             "printify:read", "prodigi:read", "shipping:quote", "suppliers:api", "crosslist",
+            "products:activity", "etsy:listings:read",
         ],
         "order_submission_enabled": False,
         # Drafts only, each with the code from its publication preview.
@@ -150,11 +155,127 @@ def health():
 def products(limit: int = Query(default=50, ge=1, le=100),
              offset: int = Query(default=0, ge=0)):
     with closing(store()) as db:
-        rows = db.execute("""
-            SELECT id, slug, title, supplier, price_usd, active, draft
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(products)")}
+        extra = ", ".join(name if name in columns else f"NULL AS {name}" for name in (
+            "created_at", "etsy_listing_id", "printify_product_id", "printify_twin_id",
+        ))
+        rows = db.execute(f"""
+            SELECT id, slug, title, supplier, price_usd, active, draft, {extra}
             FROM products ORDER BY id LIMIT ? OFFSET ?
         """, (limit, offset)).fetchall()
-    return {"products": [dict(row) for row in rows], "limit": limit, "offset": offset}
+        ledger = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='product_publication_events'").fetchone()
+        latest = {}
+        if ledger and rows:
+            marks = ",".join("?" for row in rows)
+            latest = {(row["product_id"], row["product_slug"]): row["published_at"] for row in db.execute(
+                f"""SELECT product_id, product_slug, MAX(occurred_at) AS published_at
+                    FROM product_publication_events WHERE event_type='published'
+                    AND product_id IN ({marks}) GROUP BY product_id, product_slug""",
+                [row["id"] for row in rows],
+            )}
+    items = [dict(row) for row in rows]
+    for item in items:
+        item["created_at"] = iso_timestamp(item["created_at"])
+        item["published_at"] = None  # Never substitute the creation date.
+        item["last_recorded_publication_at"] = iso_timestamp(latest.get((item["id"], item["slug"])))
+    return {"products": items, "limit": limit, "offset": offset,
+            "date_note": "created_at is row creation, not publication; use product activity for publication receipts."}
+
+
+def iso_timestamp(value):
+    """Store DateTime columns are UTC, including SQLite's naive encoding."""
+    if not value:
+        return None
+    try:
+        stamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=utc_timezone.utc)
+    return stamp.astimezone(utc_timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def activity_window(day, timezone):
+    try:
+        zone = ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(422, "Unknown IANA timezone") from None
+    try:
+        start = datetime.combine(day, time.min, zone)
+        end = datetime.combine(day + timedelta(days=1), time.min, zone)
+    except OverflowError:
+        raise HTTPException(422, "Day is outside the supported date range") from None
+    return start.astimezone(utc_timezone.utc), end.astimezone(utc_timezone.utc)
+
+
+@app.get("/products/activity")
+def product_activity(day: date,
+                     timezone: str = Query(default="America/Santiago", max_length=80),
+                     platform: Literal["all", "store", "pinterest"] = "all",
+                     product_id: int | None = Query(default=None, ge=1),
+                     limit: int = Query(default=50, ge=1, le=100),
+                     offset: int = Query(default=0, ge=0)):
+    start, end = activity_window(day, timezone)
+    with closing(store()) as db:
+        tables = {row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        pcols = {row["name"] for row in db.execute("PRAGMA table_info(products)")}
+        sources = []
+        if platform in {"all", "store"} and "created_at" in pcols:
+            sources.append("""SELECT 'created:' || id AS event_id, id AS product_id,
+                slug, title, 'store' AS platform, 'product_created' AS event_type,
+                created_at AS occurred_at, 'products.created_at' AS source,
+                NULL AS external_id FROM products""")
+        if platform in {"all", "store"} and "product_publication_events" in tables:
+            sources.append("""SELECT 'publication:' || id AS event_id, product_id,
+                product_slug AS slug, product_title AS title, platform, event_type,
+                occurred_at, source, NULL AS external_id FROM product_publication_events
+                WHERE event_type IN ('published', 'unpublished')""")
+        if platform in {"all", "pinterest"} and "pinterest_pins" in tables:
+            sources.append("""SELECT 'pin:' || pin.id AS event_id, pin.product_id,
+                pin.product_slug AS slug, p.title, 'pinterest' AS platform,
+                'pin_recorded' AS event_type, pin.created_at AS occurred_at,
+                'pinterest_pins.created_at' AS source, pin.pin_id AS external_id
+                FROM pinterest_pins pin LEFT JOIN products p ON p.id = pin.product_id
+                WHERE pin.status = 'active' AND pin.pin_id != ''""")
+        started = None
+        if "product_publication_events" in tables:
+            row = db.execute("""SELECT MIN(occurred_at) AS started FROM product_publication_events
+                WHERE event_type = 'tracking_started'""").fetchone()
+            started = iso_timestamp(row["started"])
+        events, total = [], 0
+        if sources:
+            query = " FROM (" + " UNION ALL ".join(sources) + ") WHERE julianday(occurred_at) >= julianday(?) AND julianday(occurred_at) < julianday(?)"
+            params = [start.isoformat(), end.isoformat()]
+            if product_id is not None:
+                query += " AND product_id = ?"
+                params.append(product_id)
+            total = db.execute("SELECT COUNT(*)" + query, params).fetchone()[0]
+            rows = db.execute("SELECT *" + query + " ORDER BY julianday(occurred_at), event_id LIMIT ? OFFSET ?",
+                              [*params, limit, offset]).fetchall()
+            events = [dict(row) for row in rows]
+    for item in events:
+        item["occurred_at"] = iso_timestamp(item["occurred_at"])
+        item["url"] = ("https://www.pinterest.com/pin/" + item["external_id"] + "/"
+                       if item["platform"] == "pinterest" and str(item["external_id"]).isdigit()
+                       else "https://thebookswanderer.com/products/" + quote(str(item["slug"]), safe="-_.~"))
+    return {"day": day.isoformat(), "timezone": timezone,
+            "start_utc": iso_timestamp(start), "end_utc_exclusive": iso_timestamp(end),
+            "events": events, "total": total, "limit": limit, "offset": offset,
+            "has_more": offset + len(events) < total,
+            "coverage": {"store_tracking_started_at": started,
+                         "store_ledger_available": "product_publication_events" in tables,
+                         "pinterest_receipts_available": "pinterest_pins" in tables,
+                         "limitations": ["Creation is not publication. Earlier store publication dates are unknown.",
+                                         "Store receipts cover ORM visibility changes after tracking was installed; bulk SQL changes bypass tracking.",
+                                         "Pinterest times are local receipt times, not first product publication dates.",
+                                         "Etsy and other platforms are not included; query their listing metadata separately."]}}
+
+
+@app.get("/suppliers/etsy/listings")
+async def etsy_listings(state: Literal["active", "inactive", "draft", "sold_out", "expired"] = "active",
+                        limit: int = Query(default=50, ge=1, le=100),
+                        offset: int = Query(default=0, ge=0)):
+    return await store_call("/suppliers/etsy/listings", {"state": state, "limit": limit, "offset": offset})
 
 @app.get("/suppliers/cj/search")
 async def cj_search(q: str = Query(min_length=2, max_length=100),

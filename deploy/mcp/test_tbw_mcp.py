@@ -152,6 +152,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 tools = await client.list_tools()
             self.assertEqual({tool.name for tool in tools}, {
                 "tbw_health", "tbw_list_products",
+                "tbw_product_activity", "tbw_list_etsy_listings",
                 "tbw_search_cj", "tbw_get_cj_product",
                 "tbw_preview_draft", "tbw_create_draft", "tbw_update_draft",
                 "tbw_preview_publish", "tbw_publish_draft", "tbw_delete_draft",
@@ -296,6 +297,31 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                         "response_types": ["code"],
                     })
                     self.assertEqual(response.status_code < 300, allowed, uri)
+
+    async def test_activity_tools_forward_read_filters_and_validate_inputs(self):
+        requests = []
+        def handler(request):
+            requests.append(request)
+            return httpx2.Response(200, json={"events": []})
+        with tempfile.TemporaryDirectory() as temporary:
+            server = create_server(config(), 'a' * 40, temporary, httpx2.MockTransport(handler))
+            async with Client(server) as client:
+                await client.call_tool('tbw_product_activity', {'day': '2026-10-29', 'product_id': 7, 'limit': 2})
+                await client.call_tool('tbw_list_etsy_listings', {'state': 'inactive', 'offset': 3})
+                for tool, body in [
+                    ('tbw_product_activity', {'day': '2026-02-30'}),
+                    ('tbw_product_activity', {'day': '2026-10-29', 'product_id': 0}),
+                    ('tbw_list_etsy_listings', {'state': 'all'}),
+                    ('tbw_list_etsy_listings', {'limit': 101}),
+                ]:
+                    with self.assertRaises(Exception):
+                        await client.call_tool(tool, body)
+        self.assertEqual([(r.method, r.url.path) for r in requests],
+                         [('GET', '/products/activity'), ('GET', '/suppliers/etsy/listings')])
+        self.assertEqual(dict(requests[0].url.params), {
+            'day': '2026-10-29', 'timezone': 'America/Santiago', 'platform': 'all',
+            'product_id': '7', 'limit': '2', 'offset': '0',
+        })
 
 if __name__ == "__main__":
     unittest.main()

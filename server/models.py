@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, event, inspect, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -129,6 +129,70 @@ class Product(Base):
             "variants": [v.to_public() for v in variants],
             "default_variant_id": variants[0].id if variants else None,
         }
+
+
+class ProductPublicationEvent(Base):
+    """Publication receipts from ORM changes, retained when a product is deleted.
+
+    Existing products are deliberately not backfilled: created_at does not
+    prove when a draft first became visible. Direct SQL/bulk updates bypass
+    mapper events and are outside this ledger's coverage.
+    """
+
+    __tablename__ = "product_publication_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(Integer, index=True, default=0)
+    product_slug: Mapped[str] = mapped_column(String(120), default="")
+    product_title: Mapped[str] = mapped_column(String(300), default="")
+    platform: Mapped[str] = mapped_column(String(30), default="store")
+    event_type: Mapped[str] = mapped_column(String(30))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, index=True)
+    source: Mapped[str] = mapped_column(String(60))
+
+
+@event.listens_for(ProductPublicationEvent.__table__, "after_create")
+def _publication_tracking_started(table, connection, **kwargs):
+    connection.execute(table.insert().values(
+        product_id=0, product_slug="", product_title="", platform="store",
+        event_type="tracking_started", occurred_at=_utcnow(), source="schema_created",
+    ))
+
+
+def _publication_receipt(connection, product, event_type, source):
+    # Use the caller's transaction, so a rollback also removes its receipt.
+    connection.execute(ProductPublicationEvent.__table__.insert().values(
+        product_id=product.id, product_slug=product.slug,
+        product_title=product.title, platform="store", event_type=event_type,
+        occurred_at=_utcnow(), source=source,
+    ))
+
+
+@event.listens_for(Product, "after_insert")
+def _product_inserted(mapper, connection, product):
+    if product.active and not product.draft:
+        _publication_receipt(connection, product, "published", "product_insert")
+
+
+@event.listens_for(Product, "before_update")
+def _product_visibility_changed(mapper, connection, product):
+    state = inspect(product)
+    if not any(state.attrs[name].history.has_changes() for name in ("active", "draft")):
+        return
+    previous = connection.execute(
+        select(Product.active, Product.draft).where(Product.id == product.id)
+    ).first()
+    was_visible = previous is not None and bool(previous.active) and not previous.draft
+    is_visible = bool(product.active) and not product.draft
+    if was_visible != is_visible:
+        _publication_receipt(connection, product,
+                             "published" if is_visible else "unpublished", "visibility_change")
+
+
+@event.listens_for(Product, "after_delete")
+def _product_removed(mapper, connection, product):
+    if product.active and not product.draft:
+        _publication_receipt(connection, product, "unpublished", "product_delete")
 
 
 class ProductVariant(Base):

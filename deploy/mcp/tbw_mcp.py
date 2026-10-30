@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -76,8 +77,8 @@ class AdminBridge:
 
     async def request(self, method, path, *, payload=None, params=None):
         allowed = (method == "GET" and (
-            path in {"/health", "/products", "/suppliers/cj/search",
-                     "/suppliers/printify/products"}
+            path in {"/health", "/products", "/products/activity", "/suppliers/cj/search",
+                     "/suppliers/printify/products", "/suppliers/etsy/listings"}
             or re.fullmatch(r"/suppliers/cj/products/[A-Za-z0-9-]{1,64}", path)
             or re.fullmatch(r"/suppliers/printify/products/[A-Za-z0-9]{1,64}", path)
             or re.fullmatch(r"/suppliers/prodigi/products/[A-Za-z0-9_-]{1,100}", path)
@@ -188,10 +189,50 @@ def create_server(config, admin_key, state_directory, transport=None):
         limit: Annotated[int, Field(ge=1, le=100)] = 50,
         offset: Annotated[int, Field(ge=0)] = 0,
     ) -> dict:
-        """Read store products, including inactive ones. Does not change products."""
+        """Read products, UTC row creation dates and linked platform IDs, including
+        inactive products. Row creation is not publication; use product activity
+        for store publication receipts and Etsy listings for Etsy metadata.
+        """
         return await bridge.request(
             "GET", "/products", params={"limit": limit, "offset": offset}
         )
+
+    @server.tool(annotations=READ)
+    async def tbw_product_activity(
+        day: date,
+        timezone: Annotated[str, Field(min_length=1, max_length=80)] = "America/Santiago",
+        platform: Literal["all", "store", "pinterest"] = "all",
+        product_id: Annotated[int | None, Field(ge=1)] = None,
+        limit: Annotated[int, Field(ge=1, le=100)] = 50,
+        offset: Annotated[int, Field(ge=0)] = 0,
+    ) -> dict:
+        """Read product activity for a local calendar day (YYYY-MM-DD), using an
+        IANA timezone, default Santiago. Separates product creation, recorded
+        store publication/unpublication and Pinterest receipt times. Inspect
+        coverage and paginate has_more; no events is not proof of no publication
+        before tracking or on other platforms. Does not write or publish.
+        """
+        params = {"day": day.isoformat(), "timezone": timezone, "platform": platform,
+                  "limit": limit, "offset": offset}
+        if product_id is not None:
+            params["product_id"] = product_id
+        return await bridge.request("GET", "/products/activity", params=params)
+
+    @server.tool(annotations=SUPPLIER)
+    async def tbw_list_etsy_listings(
+        state: Literal["active", "inactive", "draft", "sold_out", "expired"] = "active",
+        limit: Annotated[int, Field(ge=1, le=100)] = 50,
+        offset: Annotated[int, Field(ge=0)] = 0,
+    ) -> dict:
+        """Read listing IDs, titles, current states and UTC dates from the
+        connected Etsy shop. Creation, renewal and last state change are
+        distinct metadata, not a complete publication history or a guaranteed
+        first publication date. Paginate has_more and check each state for full
+        shop coverage. Provider keys stay on the VPS. Never publishes.
+        """
+        return await bridge.request("GET", "/suppliers/etsy/listings", params={
+            "state": state, "limit": limit, "offset": offset,
+        })
 
     @server.tool(annotations=SUPPLIER)
     async def tbw_search_cj(
