@@ -2713,7 +2713,7 @@ def newsletter_subscribe(body: NewsletterIn, background: BackgroundTasks, db: Se
 
     # Quien pidió no recibir correos no vuelve a entrar por aquí.
     if db.query(EmailOptOut).filter(EmailOptOut.email == normalized).one_or_none():
-        return {"ok": True, "already": True}
+        return {"ok": True, "already": True, "email_status": "not_queued"}
 
     existing = (
         db.query(NewsletterSubscriber)
@@ -2726,7 +2726,8 @@ def newsletter_subscribe(body: NewsletterIn, background: BackgroundTasks, db: Se
         db.commit()
         if not existing.welcome_step:
             background.add_task(_send_welcome_step, existing.id, 1)
-        return {"ok": True, "already": True}
+        return {"ok": True, "already": True,
+                "email_status": "queued" if not existing.welcome_step else "not_queued"}
 
     source = re.sub(r"[^a-z0-9-]", "", (body.source or "homepage").lower())[:40] or "homepage"
     sub = NewsletterSubscriber(email=normalized, lang=lang, source=source)
@@ -2734,7 +2735,7 @@ def newsletter_subscribe(body: NewsletterIn, background: BackgroundTasks, db: Se
     db.commit()
     # The free Reading Challenge goes out straight away.
     background.add_task(_send_welcome_step, sub.id, 1)
-    return {"ok": True, "already": False}
+    return {"ok": True, "already": False, "email_status": "queued"}
 
 
 @app.get("/api/unsubscribe", response_class=HTMLResponse)
