@@ -159,7 +159,8 @@
             add_to_cart: "AddToCart",
             checkout_start: "InitiateCheckout",
             payment_redirect: "AddPaymentInfo",
-            purchase: "Purchase",
+            purchase_return: "Purchase",
+            purchase: "Purchase", // Compatibility with cached checkout scripts.
         };
 
         function fireMeta(type, data) {
@@ -237,6 +238,23 @@
 
         // Auto pageview (skip pure success shells that re-track purchase below)
         window.tbwTrack("pageview");
+
+        // Only challenge product links; no email or link query strings enter analytics.
+        if (/^\/(reading-challenge-2027|reto-de-lectura-2027)\/$/.test(location.pathname)) {
+            document.addEventListener("click", function (event) {
+                try {
+                    var link = event.target.closest("a[href]");
+                    if (!link || !link.closest("main")) return;
+                    var target = new URL(link.href, location.href);
+                    var product = target.pathname.match(/^\/(?:es\/)?products\/([a-z0-9-]+)\/?$/);
+                    if (target.origin !== location.origin || !product) return;
+                    window.tbwTrack("challenge_product_click", {
+                        product_slug: product[1],
+                        extra: { lang: document.documentElement.lang === "es" ? "es" : "en" },
+                    });
+                } catch (_) { /* Measurement must never interrupt navigation. */ }
+            });
+        }
 
         // --- Consent banner -------------------------------------------------
         function decide(value) {

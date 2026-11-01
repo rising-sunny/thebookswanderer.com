@@ -69,6 +69,9 @@ VALID_EVENTS = {
     "checkout_start",
     "payment_redirect",
     "purchase",
+    "purchase_return",
+    "challenge_request",
+    "challenge_product_click",
     "cart_open",
     "cart_load_error",
 }
@@ -236,6 +239,10 @@ async def track(request: Request, db: Session = Depends(get_db)):
     if payload.type not in VALID_EVENTS:
         return JSONResponse({"ok": False, "error": "unknown event"}, status_code=400)
 
+    # Old cached checkout scripts also use purchase. Client events never confirm payment.
+    if payload.type == "purchase":
+        payload.type = "purchase_return"
+
     ua = request.headers.get("user-agent", "")
     ua_class = _classify_ua(ua)
     ip = geo.extract_client_ip(request) or ""
@@ -400,6 +407,11 @@ def _normalize_source(source: Optional[str], referrer_domain: Optional[str], med
     return (candidates[0], "🌐")
 
 
+def _confirmed_purchase():
+    """Browser returns (including legacy purchase rows) are not paid orders."""
+    return (LiveEvent.event_type == "purchase") & (LiveEvent.ua_class == "server")
+
+
 def _build_snapshot(db: Session) -> dict:
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -418,13 +430,13 @@ def _build_snapshot(db: Session) -> dict:
         func.max(LiveEvent.ts).label("last_ts"),
     ).filter(
         LiveEvent.ts >= funnel_cutoff,
-        LiveEvent.event_type.notin_(("cart_open", "cart_load_error")),
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click")),
     ).group_by(LiveEvent.session_id).subquery()
 
     funnel_rows = db.query(LiveEvent).join(
         sub, (LiveEvent.session_id == sub.c.session_id) & (LiveEvent.ts == sub.c.last_ts)
     ).filter(
-        LiveEvent.event_type.notin_(("cart_open", "cart_load_error")),
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click")),
     ).all()
 
     active_carts = 0
@@ -434,7 +446,7 @@ def _build_snapshot(db: Session) -> dict:
     cart_sessions = []
     checkout_sessions = []
     for ev in funnel_rows:
-        if ev.event_type == "purchase":
+        if ev.event_type in ("purchase", "purchase_return"):
             continue
         if ev.event_type in ("add_to_cart", "cart_view"):
             active_carts += 1
@@ -455,9 +467,9 @@ def _build_snapshot(db: Session) -> dict:
         .filter(LiveEvent.ts >= today_start,
                 func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)).scalar() or 0
     today_purchases = db.query(func.count(LiveEvent.id)) \
-        .filter(LiveEvent.ts >= today_start, LiveEvent.event_type == "purchase").scalar() or 0
+        .filter(LiveEvent.ts >= today_start, _confirmed_purchase()).scalar() or 0
     today_revenue = db.query(func.coalesce(func.sum(LiveEvent.value_usd), 0)) \
-        .filter(LiveEvent.ts >= today_start, LiveEvent.event_type == "purchase").scalar() or 0
+        .filter(LiveEvent.ts >= today_start, _confirmed_purchase()).scalar() or 0
 
     # Top pages today (pageviews) — query string stripped so the homepage
     # doesn't fragment across dozens of ?ttclid=/?utm= variants.
@@ -714,10 +726,10 @@ def _history_payload(db: Session, days: int) -> dict:
             func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN),
         ).scalar() or 0
         pur = db.query(func.count(LiveEvent.id)).filter(
-            LiveEvent.event_type == "purchase", LiveEvent.ts >= t0, LiveEvent.ts < t1,
+            _confirmed_purchase(), LiveEvent.ts >= t0, LiveEvent.ts < t1,
         ).scalar() or 0
         rev = db.query(func.coalesce(func.sum(LiveEvent.value_usd), 0)).filter(
-            LiveEvent.event_type == "purchase", LiveEvent.ts >= t0, LiveEvent.ts < t1,
+            _confirmed_purchase(), LiveEvent.ts >= t0, LiveEvent.ts < t1,
         ).scalar() or 0
         return {"pageviews": pv, "sessions": ses, "purchases": pur, "revenue": round(float(rev), 2)}
 
@@ -729,8 +741,8 @@ def _history_payload(db: Session, days: int) -> dict:
         func.date(LiveEvent.ts).label("d"),
         func.sum(case((LiveEvent.event_type == "pageview", 1), else_=0)).label("pv"),
         func.count(func.distinct(LiveEvent.session_id)).label("ses"),
-        func.sum(case((LiveEvent.event_type == "purchase", 1), else_=0)).label("pur"),
-        func.sum(case((LiveEvent.event_type == "purchase", LiveEvent.value_usd), else_=0)).label("rev"),
+        func.sum(case((_confirmed_purchase(), 1), else_=0)).label("pur"),
+        func.sum(case((_confirmed_purchase(), LiveEvent.value_usd), else_=0)).label("rev"),
     ).filter(LiveEvent.ts >= start, LiveEvent.ts < end,
              func.coalesce(LiveEvent.ua_class, "").notin_(_NOT_HUMAN)) \
      .group_by(func.date(LiveEvent.ts)).all()
@@ -742,7 +754,7 @@ def _history_payload(db: Session, days: int) -> dict:
         func.date(LiveEvent.ts).label("d"),
         func.count(LiveEvent.id).label("pur"),
         func.coalesce(func.sum(LiveEvent.value_usd), 0).label("rev"),
-    ).filter(LiveEvent.event_type == "purchase",
+    ).filter(_confirmed_purchase(),
              LiveEvent.ts >= start, LiveEvent.ts < end) \
      .group_by(func.date(LiveEvent.ts)).all()
     purchase_by_day = {str(r.d): (r.pur, float(r.rev)) for r in raw_purchase}
@@ -820,11 +832,11 @@ def _history_payload(db: Session, days: int) -> dict:
         LiveEvent.product_slug,
         func.sum(case((LiveEvent.event_type == "product_view", 1), else_=0)).label("views"),
         func.sum(case((LiveEvent.event_type == "add_to_cart", 1), else_=0)).label("carts"),
-        func.sum(case((LiveEvent.event_type == "purchase", 1), else_=0)).label("sales"),
-        func.sum(case((LiveEvent.event_type == "purchase", LiveEvent.value_usd), else_=0)).label("rev"),
+        func.sum(case((_confirmed_purchase(), 1), else_=0)).label("sales"),
+        func.sum(case((_confirmed_purchase(), LiveEvent.value_usd), else_=0)).label("rev"),
     ).filter(LiveEvent.ts >= start, LiveEvent.ts < end, LiveEvent.product_slug.isnot(None)) \
      .group_by(LiveEvent.product_slug) \
-     .order_by(func.sum(case((LiveEvent.event_type == "purchase", LiveEvent.value_usd), else_=0)).desc(),
+     .order_by(func.sum(case((_confirmed_purchase(), LiveEvent.value_usd), else_=0)).desc(),
                func.sum(case((LiveEvent.event_type == "product_view", 1), else_=0)).desc()) \
      .limit(10).all()
 

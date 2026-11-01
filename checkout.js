@@ -572,7 +572,7 @@
                         status === "already_paid" ||
                         status === "paid_cj_pending")
                 ) {
-                    window.tbwTrack("purchase", {
+                    window.tbwTrack("purchase_return", {
                         extra: { order_id: orderId || null, status },
                     });
                 }
