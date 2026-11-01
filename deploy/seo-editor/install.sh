@@ -14,6 +14,8 @@ install -d -m 755 /opt/tbw-seo-editor
 install -d -m 711 /etc/tbw-seo-editor
 install -d -o tbw-editor -g www-data -m 700 /var/lib/tbw-seo-editor
 install -m 644 "$SEO_SOURCE/editor.py" /opt/tbw-seo-editor/editor.py
+install -m 644 "$SEO_SOURCE/photo-catalog.json" /opt/tbw-seo-editor/photo-catalog.json
+install -m 644 "$SEO_SOURCE/slower-pace-revision.json" /opt/tbw-seo-editor/slower-pace-revision.json
 if [ ! -f /etc/tbw-seo-editor/config.json ]; then
     install -m 644 "$SEO_SOURCE/config.example.json" /etc/tbw-seo-editor/config.json
 fi

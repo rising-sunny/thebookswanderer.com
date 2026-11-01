@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 
 spec=importlib.util.spec_from_file_location('editor',Path(__file__).with_name('editor.py'))
 e=importlib.util.module_from_spec(spec); spec.loader.exec_module(e)
+REAL_PREPARE=e.prepare_photo
 NOW=datetime(2026,11,2,15,tzinfo=timezone.utc)
 TOPICS=[{'title':t,'slug':s,'lang':l} for t,s,l in [
  ('Build a thoughtful monthly reading reflection','monthly-reading-reflection','en'),
@@ -18,7 +19,8 @@ TOPICS=[{'title':t,'slug':s,'lang':l} for t,s,l in [
  ('Ideas para conversar sobre tus próximas lecturas','conversar-proximas-lecturas','es')]]
 def article(title='A practical routine for recording memorable passages'):
  return {'title':title,'description':'A practical guide to choosing a sustainable reading routine and keeping useful notes for your next reading session.',
-         'sections':[{'heading':'Reading section '+str(i), 'paragraphs':[' '.join('word'+str(i*150+j) for j in range(150))], 'sources':['1','2']} for i in range(4)]}
+         'examples':[{'heading':'A concrete example '+str(i),'text':'This is an illustrative reading plan: choose three possible books now, record one finished book and review the next choices later.'+str(i)} for i in range(2)],
+         'sections':[{'heading':'Reading section '+str(i), 'paragraphs':[' '.join('word'+str(i*150+j) for j in range(150))], 'sources':['1']} for i in range(4)]}
 
 class Fixture(unittest.TestCase):
  def setUp(self):
@@ -31,6 +33,7 @@ class Fixture(unittest.TestCase):
   self.cfg=dict(enabled=True,model='deepseek-flash',monthly_usd=5,input_usd_per_million=.3,output_usd_per_million=1.2,site_root=str(self.site),report_path=str(self.report))
   (self.state/'deepseek-key').write_text('fixture-not-a-real-key')
   self.env=patch.dict(os.environ,{'CREDENTIALS_DIRECTORY':str(self.state)}); self.env.start(); self.addCleanup(self.env.stop)
+  self.photo_patch=patch.object(e,'prepare_photo',return_value=None); self.photo_patch.start(); self.addCleanup(self.photo_patch.stop)
   self.calls=[]; self.approve=True
   owner=self
   class Fake:
@@ -38,9 +41,12 @@ class Fixture(unittest.TestCase):
    def ask(self,purpose,prompt,limit=4000):
     owner.calls.append(purpose)
     if purpose.endswith(':plan'): return {'topics':copy.deepcopy(TOPICS)}
-    if purpose.endswith(':review'): return {'approved':owner.approve,'findings':[] if owner.approve else ['unsupported']}
+    if purpose.endswith(':review'): return {'approved':owner.approve,'findings':[] if owner.approve else ['unsupported'],'checks':{k:owner.approve for k in e.REVIEW_CHECKS},'added_value':['A new concrete example offers a usable plan not included in the supplied source material.','A second worked example illustrates how to adjust the plan after changing the reading target.']}
     count=sum(p.endswith(':write') for p in owner.calls)
-    return article(TOPICS[count-1]['title'])
+    result=article(TOPICS[count-1]['title'])
+    if TOPICS[count-1]['lang']=='es':
+     for section in result['sections']: section['sources']=['2']
+    return result
   self.Fake=Fake
  def refresh(self,now):
   self.report.write_text(json.dumps({'generated_at':now.isoformat(),'stale':False,'periods':{'current':{'start':'2026-10-01','end':'2026-10-28','top_queries':[{'query':'reading routine','impressions':5}],'top_pages':[]}}}))
@@ -152,6 +158,70 @@ class Fixture(unittest.TestCase):
   with patch.object(e.os,'access',return_value=False):
    with self.assertRaisesRegex(e.Stop,'publication_directory_not_writable'): self.run_job()
   self.assertEqual(self.calls,[])
+ def test_resources_are_unique_and_in_article_language(self):
+  src,_=e.sources(self.site); a=article()
+  for section in a['sections']: section['sources']=['1','2']
+  output=e.render(a,TOPICS[0],src)
+  self.assertEqual(output.count('href="'+src[0]['url']+'"'),1)
+  self.assertNotIn('href="'+src[1]['url']+'"',output)
+  self.assertNotIn('Notas de lectura</a>',output)
+ def test_validation_blocks_cross_language_reference(self):
+  src,_=e.sources(self.site); a=article(); a['sections'][0]['sources']=['2']
+  with self.assertRaisesRegex(e.Stop,'invalid_sources'): e.validate_article(a,TOPICS[0],src,[])
+ def test_worked_examples_required_for_new_articles(self):
+  a=article(); a['examples']=[]
+  with self.assertRaisesRegex(e.Stop,'missing_worked_examples'): e.validate_article(a,TOPICS[0],e.sources(self.site)[0],[])
+ def test_bare_approval_no_longer_passes_editorial_review(self):
+  self.assertFalse(e.valid_review({'approved':True,'findings':[]}))
+  checks={k:True for k in e.REVIEW_CHECKS}; checks['consistent']=False
+  self.assertFalse(e.valid_review({'approved':True,'findings':[],'checks':checks,'added_value':['A concrete new example of reading planning absent from the source.']*2}))
+ def old_publication(self):
+  manifest=json.loads(Path(e.__file__).with_name('slower-pace-revision.json').read_text())
+  old=article(manifest['expected_title']); topic=manifest['topic']; src,_=e.sources(self.site)
+  content=e.render(old,topic,src)
+  e.publish(self.site,manifest['slug'],content)
+  db=e.connect(self.state)
+  with db: db.execute('INSERT INTO jobs(week,month,topic,status,slug,hash) VALUES(?,?,?,?,?,?)',('2026-W44','2026-11',json.dumps(topic),'published',manifest['slug'],e.digest(content)))
+  return self.site/'guides'/manifest['slug']/'index.html',content
+ def test_curated_revision_preserves_url_backup_and_api_budget(self):
+  path,before=self.old_publication()
+  result=e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)
+  self.assertEqual(result['status'],'revised'); self.assertEqual(self.calls,[])
+  output=path.read_text(); self.assertIn('12- or 26-Book',output)
+  self.assertEqual(output.count('href="'+e.BASE+'/reading-challenge-2027/"'),1)
+  self.assertNotIn('Gifts for Kindle',output); self.assertNotIn('El reto',output)
+  self.assertEqual((self.state/'revisions/slower-pace-editorial-v2/before.html').read_text(),before)
+  self.assertEqual(e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)['status'],'already_revised')
+ def test_revision_rejects_concurrent_public_edit(self):
+  path,_=self.old_publication(); path.write_text(path.read_text()+'new owner edit')
+  with self.assertRaisesRegex(e.Stop,'publication_conflict'): e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)
+ def test_revision_can_resume_prepared_write_failure(self):
+  path,_=self.old_publication(); real=e.atomic
+  def fail(destination,content):
+   if destination==path: raise PermissionError('fixture')
+   return real(destination,content)
+  with patch.object(e,'atomic',side_effect=fail):
+   with self.assertRaises(PermissionError): e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)
+  self.assertEqual(e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)['status'],'revised')
+  self.assertEqual(self.calls,[])
+ def test_photo_download_uses_curated_cc0_and_records_hash(self):
+  response=MagicMock(); response.headers.get_content_type.return_value='image/jpeg'
+  response.read.return_value=b'\xff\xd8'+b'fixture'*40+b'\xff\xd9'
+  with patch.object(e,'build_opener') as opener:
+   opener.return_value.open.return_value.__enter__.return_value=response
+   photo=REAL_PREPARE(TOPICS[0],self.state)
+  self.assertEqual(photo['license'],'CC0-1.0'); self.assertTrue(photo['real_photo'])
+  self.assertEqual(photo['sha256'],e.digest_bytes(Path(photo['cache_path']).read_bytes()))
+  output=e.render(article(),TOPICS[0],e.sources(self.site)[0],photo)
+  self.assertIn('src="photo.jpg"',output); self.assertIn('CC0 1.0',output); self.assertIn('freestocks.org',output)
+ def test_photo_failure_is_optional(self):
+  with patch.object(e,'build_opener') as opener:
+   opener.return_value.open.side_effect=TimeoutError('fixture')
+   self.assertIsNone(REAL_PREPARE(TOPICS[0],self.state))
+ def test_no_unrelated_photo_is_downloaded(self):
+  with patch.object(e,'build_opener') as opener:
+   self.assertIsNone(REAL_PREPARE({'title':'Algebraic topology','slug':'topology-exercises'},self.state))
+   opener.assert_not_called()
  def test_api_timeout_reserves_and_does_not_retry(self):
   db=e.connect(self.state); api=e.DeepSeek(self.cfg,db,'2026-11','fixture-not-a-real-key')
   with patch.object(e,'build_opener') as opener:

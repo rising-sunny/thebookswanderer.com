@@ -156,3 +156,65 @@ la revisión guardada aprobada, valida el artículo y fuentes, compara el HTML c
 el hash reservado antes del fallo, y escribe únicamente si la URL no existe.
 Si ya existe contenido distinto, se detiene. No borrar la base ni las reservas.
 Después comprobar `--status` y la URL pública antes de activar el timer.
+
+## Calidad editorial y fotografías reales
+
+Las nuevas generaciones requieren dos o tres ejemplos desarrollados. La
+revisión declara comprobaciones explícitas de soporte factual, aportación
+nueva, coherencia de instrucciones, idioma y referencias pertinentes; explica
+al menos dos aportaciones concretas respecto de las fuentes. Una aprobación
+booleana sin estas comprobaciones queda retenida. Esto mejora el filtro, pero
+no es una garantía automática de originalidad o veracidad.
+
+El generador solo recibe fuentes en el idioma del artículo. Basta una fuente
+pertinente; no se exige añadir otra por cantidad. El HTML presenta una lista
+única de recursos al final, sin repetir enlaces tras cada apartado. La revisión
+recibe extractos de hasta 6.000 caracteres por fuente; sigue teniendo límites
+de cobertura, no realiza investigación externa.
+
+`photo-catalog.json` es un catálogo preseleccionado con procedencia y licencias revisadas; el modelo no
+puede suministrar URLs ni licencias. Incluye dos fotografías de freestocks.org
+de 2016 con metadatos de cámara Canon EOS 6D e historial de licencia CC0
+revisado por Wikimedia Commons. Las fichas permanentes de Commons documentan
+procedencia, fecha y licencia. No se generan imágenes ni se buscan imágenes
+arbitrarias con IA. La selección por etiquetas es conservadora; si no hay
+coincidencia, licencia aprobada o descarga válida, se publica solo el texto.
+
+Las miniaturas JPEG de 960 píxeles se descargan desde un único host permitido
+sin redirecciones, con límite de 2 MB y timeout. No hay peticiones pagadas por
+imágenes. Se guardan en caché privada con hash, y una copia local se publica
+como `photo.jpg` dentro del directorio del artículo: el navegador del lector
+no descarga imágenes de terceros. Se incluye texto alternativo en el idioma
+del artículo, autor, fuente, enlace CC0 y aviso de redimensionado. El artefacto
+privado conserva la procedencia, URL, licencia y hash. El catálogo inicial
+es pequeño y requiere revisión explícita para ampliarlo; las etiquetas y EXIF
+no constituyen un detector universal de imágenes generadas por IA.
+
+## Aplicar la corrección solicitada del primer artículo
+
+El propietario pidió corregir el artículo publicado sobre el reto de 12/26
+libros. `slower-pace-preview.md` permite revisar el texto; el manifiesto
+`slower-pace-revision.json` se instala junto al worker. Tras instalar esta
+versión, ejecutar en el VPS:
+
+```sh
+sudo -u tbw-editor python3 /opt/tbw-seo-editor/editor.py --apply-slower-pace-revision
+```
+
+No utiliza DeepSeek ni su clave y no modifica cuotas. Toma el bloqueo del
+worker, verifica URL, título original, estado publicado y hash del archivo
+actual. Vuelve a validar el nuevo texto y la disponibilidad de su fuente.
+Conserva la URL y guarda HTML anterior, HTML nuevo y manifiesto en
+`/var/lib/tbw-seo-editor/revisions/slower-pace-editorial-v2/`. Si puede descargar
+una fotografía aprobada la incorpora, guardando también su procedencia. Si
+la imagen falla, la corrección de texto continúa sin imagen. El resultado
+informa qué foto se usó, o null.
+
+La actualización del HTML es atómica; el registro de revisión permite reanudar
+un fallo después de preparar el cambio sin regeneración. Una edición ajena
+que cambie el hash se respeta y exige inspección. Una segunda ejecución informa
+`already_revised` sin repetir el cambio. Se actualizan el hash y el título en
+el historial editorial y su índice, sin modificar el borrador/revisión inicial.
+La instalación por sí sola no aplica esta corrección. Los trabajos pendientes
+de versiones anteriores pueden necesitar revisión si su HTML guardado no
+coincide con el renderizador actualizado: no borrar sus hashes ni reservas.
