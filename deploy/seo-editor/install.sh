@@ -10,7 +10,8 @@ fi
 # Membership grants read access to the existing public report, if group-readable.
 usermod -a -G www-data tbw-editor
 install -d -m 755 /opt/tbw-seo-editor
-install -d -m 700 /etc/tbw-seo-editor
+# The worker needs traversal to config.json; the key itself stays root-only 0600.
+install -d -m 711 /etc/tbw-seo-editor
 install -d -o tbw-editor -g www-data -m 700 /var/lib/tbw-seo-editor
 install -m 644 "$SEO_SOURCE/editor.py" /opt/tbw-seo-editor/editor.py
 if [ ! -f /etc/tbw-seo-editor/config.json ]; then
@@ -19,6 +20,8 @@ fi
 # Keep credentials, existing configuration and editorial state on upgrades.
 chgrp www-data /var/www/thebookswanderer.com/guides
 chmod g+ws /var/www/thebookswanderer.com/guides
+find /var/www/thebookswanderer.com/guides -mindepth 1 -maxdepth 1 -type d -name 'editor-*' \
+    -exec chown -R --no-dereference tbw-editor:www-data {} +
 install -m 644 "$SEO_SOURCE/tbw-seo-editor.service" /etc/systemd/system/
 install -m 644 "$SEO_SOURCE/tbw-seo-editor.timer" /etc/systemd/system/
 systemctl daemon-reload

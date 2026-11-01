@@ -33,6 +33,14 @@ if ! grep -q '^CJ_API_KEY=.\+' .env; then
 fi
 
 chown -R www-data:www-data "$REMOTE_PATH"
+# scp refreshes guides permissions and the recursive chown above changes generated
+# ownership. Restore the installed editor's publication area after every deploy.
+if id tbw-editor >/dev/null 2>&1; then
+  chgrp www-data "$REMOTE_PATH/guides"
+  chmod g+ws "$REMOTE_PATH/guides"
+  find "$REMOTE_PATH/guides" -mindepth 1 -maxdepth 1 -type d -name 'editor-*' \
+    -exec chown -R --no-dereference tbw-editor:www-data {} +
+fi
 chmod 640 "$REMOTE_PATH/server/.env" || true
 chmod 755 "$REMOTE_PATH/server/data"
 # www-data needs write for sqlite

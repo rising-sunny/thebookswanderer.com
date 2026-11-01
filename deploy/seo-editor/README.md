@@ -87,7 +87,10 @@ sudo bash -c 'umask 077; read -r -s -p "DeepSeek API key: " TBW_DS_KEY; printf "
 Editar `/etc/tbw-seo-editor/config.json` en el VPS y cambiar `enabled` a `true`
 cuando se hayan comprobado modelo, presupuesto, permisos y lectura del informe.
 Mantener el archivo root-owned y solo editable por root. La clave debe ser
-root-owned, modo 600. systemd la entrega al worker mediante LoadCredential;
+root-owned, modo 600. El directorio `/etc/tbw-seo-editor` utiliza modo 711
+para que el worker lea `config.json` (644) sin poder listar la carpeta ni leer
+la clave. Para corregir una instalación inicial con modo 700, ejecutar
+`chmod 711 /etc/tbw-seo-editor`. systemd la entrega al worker mediante LoadCredential;
 no se comparte con el servicio de la tienda.
 
 Primera ejecución (puede consumir API y publicar un artículo):
@@ -132,3 +135,24 @@ en los backups del VPS y preservarlos si se cambia a un despliegue con borrado.
 
 Solo temporales, fuentes ficticias y DeepSeek simulado. No requieren credencial,
 red, datos de producción ni dependencias de la tienda.
+
+## Recuperar una publicación bloqueada por permisos
+
+El despliegue de la tienda copia `guides/` y cambia recursivamente su propietario.
+`remote-setup.sh` restaura ahora escritura de grupo en la carpeta raíz y el
+propietario `tbw-editor` de los subdirectorios generados `editor-*`. El instalador
+aplica lo mismo sin tocar contenidos. No basta con arreglar solo la raíz: el
+índice editorial también necesita conservar su propietario tras despliegues.
+
+Para un trabajo en estado `publishing`, actualizar el worker e instalarlo, y
+ejecutar antes de volver a iniciar el servicio:
+
+```sh
+sudo -u tbw-editor python3 /opt/tbw-seo-editor/editor.py --recover-publications
+```
+
+Toma el mismo bloqueo del servicio. No lee la clave ni llama a DeepSeek. Exige
+la revisión guardada aprobada, valida el artículo y fuentes, compara el HTML con
+el hash reservado antes del fallo, y escribe únicamente si la URL no existe.
+Si ya existe contenido distinto, se detiene. No borrar la base ni las reservas.
+Después comprobar `--status` y la URL pública antes de activar el timer.

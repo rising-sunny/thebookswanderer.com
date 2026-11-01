@@ -130,6 +130,28 @@ class Fixture(unittest.TestCase):
   data=json.loads((self.state/'performance.json').read_text())
   self.assertEqual(data['articles'][0]['coverage'],'not_in_export_top_pages')
   self.assertIsNone(data['articles'][0]['metrics'])
+ def pending_publication(self):
+  with patch.object(e,'publish',side_effect=PermissionError('fixture')):
+   with self.assertRaisesRegex(e.Stop,'permission_denied'): self.run_job()
+ def test_recover_reviewed_artifact_without_new_model_calls(self):
+  self.pending_publication(); calls=len(self.calls)
+  result=e.recover_publications(self.cfg,self.state,lambda src:None)
+  self.assertEqual(len(result['urls']),1); self.assertEqual(len(self.calls),calls)
+  self.assertEqual(e.recover_publications(self.cfg,self.state,lambda src:None)['urls'],[])
+ def test_recovery_rejects_modified_artifact(self):
+  self.pending_publication(); path=self.state/'2026-W45.json'
+  # NOW is Monday Nov 2, ISO week 45.
+  data=json.loads(path.read_text()); data['article']['title']='Modified artifact with unreviewed content'
+  path.write_text(json.dumps(data))
+  with self.assertRaisesRegex(e.Stop,'artifact_hash_mismatch'): e.recover_publications(self.cfg,self.state,lambda src:None)
+ def test_recovery_rechecks_review(self):
+  self.pending_publication(); path=self.state/'2026-W45-review.json'
+  path.write_text('{"approved":false,"findings":["fixture"]}')
+  with self.assertRaisesRegex(e.Stop,'editorial_review_failed'): e.recover_publications(self.cfg,self.state,lambda src:None)
+ def test_unwritable_guides_blocks_before_paid_call(self):
+  with patch.object(e.os,'access',return_value=False):
+   with self.assertRaisesRegex(e.Stop,'publication_directory_not_writable'): self.run_job()
+  self.assertEqual(self.calls,[])
  def test_api_timeout_reserves_and_does_not_retry(self):
   db=e.connect(self.state); api=e.DeepSeek(self.cfg,db,'2026-11','fixture-not-a-real-key')
   with patch.object(e,'build_opener') as opener:

@@ -246,6 +246,34 @@ def check_links(src):
                 response.read(1)
         except Exception: raise Stop('source_not_available') from None
 
+def recover_publications(cfg,state,link_checker=check_links):
+    """Explicit recovery of reviewed, hash-pinned artifacts; never calls the model."""
+    site=Path(cfg['site_root']); db=connect(state); recovered=[]
+    for row in db.execute("SELECT * FROM jobs WHERE status='publishing'").fetchall():
+        artifact=Path(row['artifact'])
+        if artifact.resolve().parent!=state.resolve() or artifact.is_symlink(): raise Stop('invalid_artifact_path')
+        saved=json.loads(artifact.read_text())
+        review=json.loads((state/(row['week']+'-review.json')).read_text())
+        if review.get('approved') is not True or review.get('findings')!=[]: raise Stop('editorial_review_failed')
+        topic=saved['topic']; article=saved['article']; src=saved['sources']
+        if row['slug']!='editor-'+topic['slug']: raise Stop('artifact_slug_mismatch')
+        content=render(article,topic,src)
+        if digest(content)!=row['hash']: raise Stop('artifact_hash_mismatch')
+        target=site/'guides'/row['slug']/'index.html'
+        if target.exists():
+            if target.is_symlink() or digest(target.read_text())!=row['hash']: raise Stop('publication_conflict')
+        else:
+            current,titles=sources(site)
+            if src!=current: raise Stop('sources_changed')
+            validate_article(article,topic,src,titles)
+            refs={v for section in article['sections'] for v in section['sources']}
+            link_checker([s for s in src if s['id'] in refs])
+            publish(site,row['slug'],content)
+        with db: db.execute("UPDATE jobs SET status='published',reason='recovered' WHERE week=?",(row['week'],))
+        recovered.append(BASE+'/guides/'+row['slug']+'/')
+    if db.execute("SELECT 1 FROM jobs WHERE status='published'").fetchone(): hub(site,db)
+    return {'status':'recovered','urls':recovered}
+
 def run(cfg,state,now,provider_factory=DeepSeek,link_checker=check_links):
     site=Path(cfg['site_root']); db=connect(state)
     # Reconcile crash after filesystem publication, without a second API request.
@@ -260,6 +288,7 @@ def run(cfg,state,now,provider_factory=DeepSeek,link_checker=check_links):
     if cfg.get('input_usd_per_million',0)<.3 or cfg.get('output_usd_per_million',0)<1.2: raise Stop('invalid_price_assumptions')
     hp=site/'guides/editor-reading-notes/index.html'
     if hp.is_symlink() or hp.parent.is_symlink() or (hp.exists() and 'data-tbw-editor-hub' not in hp.read_text()): raise Stop('existing_hub')
+    if not os.access(site/'guides',os.W_OK|os.X_OK): raise Stop('publication_directory_not_writable')
     summary=tracking(db,state,Path(cfg['report_path']),now)
     local=now.astimezone(ZoneInfo('America/Santiago')); month=local.strftime('%Y-%m'); week=local.strftime('%G-W%V')
     if db.execute('SELECT 1 FROM jobs WHERE week=?',(week,)).fetchone(): return {'status':'already_attempted'}
@@ -300,23 +329,25 @@ def run(cfg,state,now,provider_factory=DeepSeek,link_checker=check_links):
         return {'status':'published','url':BASE+'/guides/'+slug+'/'}
     except Exception as exc:
         # Do not erase publishing state: next run reconciles its content hash.
-        with db: db.execute("UPDATE jobs SET status='held',reason=? WHERE week=? AND status='generating'",(str(exc) if isinstance(exc,Stop) else 'internal_error',week))
-        raise Stop(str(exc) if isinstance(exc,Stop) else 'internal_error') from None
+        with db: db.execute("UPDATE jobs SET status='held',reason=? WHERE week=? AND status='generating'",(str(exc) if isinstance(exc,Stop) else ('permission_denied' if isinstance(exc,PermissionError) else 'internal_error'),week))
+        raise Stop(str(exc) if isinstance(exc,Stop) else ('permission_denied' if isinstance(exc,PermissionError) else 'internal_error')) from None
 
 def main():
-    parser=argparse.ArgumentParser(); parser.add_argument('--config',default='/etc/tbw-seo-editor/config.json'); parser.add_argument('--status',action='store_true'); args=parser.parse_args()
+    parser=argparse.ArgumentParser(); parser.add_argument('--config',default='/etc/tbw-seo-editor/config.json'); parser.add_argument('--status',action='store_true'); parser.add_argument('--recover-publications',action='store_true'); args=parser.parse_args()
     os.umask(0o077)
     try:
         cfg=json.loads(Path(args.config).read_text()); state=Path('/var/lib/tbw-seo-editor'); state.mkdir(exist_ok=True)
         with (state/'run.lock').open('a') as lock:
             try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError: print('{"status":"locked"}'); return 0
+            if args.recover_publications:
+                print(json.dumps(recover_publications(cfg,state))); return 0
             if args.status:
                 db=connect(state)
                 print(json.dumps({'jobs':[dict(r) for r in db.execute('SELECT week,month,status,slug,reason FROM jobs')],
                     'budget_reservations':[dict(r) for r in db.execute('SELECT month,count(*) AS calls,sum(reserved) AS reserved_usd FROM calls GROUP BY month')]})); return 0
             print(json.dumps(run(cfg,state,datetime.now(timezone.utc)))); return 0
     except Exception as exc:
-        print(json.dumps({'status':'stopped','reason':str(exc) if isinstance(exc,Stop) else 'configuration_or_internal_error'})); return 1
+        print(json.dumps({'status':'stopped','reason':str(exc) if isinstance(exc,Stop) else ('permission_denied' if isinstance(exc,PermissionError) else 'configuration_or_internal_error')})); return 1
 
 if __name__=='__main__': sys.exit(main())
