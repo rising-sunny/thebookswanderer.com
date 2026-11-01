@@ -1,0 +1,23 @@
+[Unit]
+Description=The Books Wanderer autonomous editorial pilot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tbw-editor
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/tbw-seo-editor/editor.py
+LoadCredential=deepseek-key:/etc/tbw-seo-editor/deepseek-key
+StateDirectory=tbw-seo-editor
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tbw-seo-editor /var/www/thebookswanderer.com/guides
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+TimeoutStartSec=600
+MemoryMax=256M

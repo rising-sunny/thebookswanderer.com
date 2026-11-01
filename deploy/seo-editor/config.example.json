@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "model": "deepseek-flash",
+  "monthly_usd": 5,
+  "input_usd_per_million": 0.3,
+  "output_usd_per_million": 1.2,
+  "site_root": "/var/www/thebookswanderer.com",
+  "report_path": "/var/lib/tbw-seo-reports/latest.json"
+}

@@ -1,0 +1,20 @@
+name: SEO editor checks
+on:
+  pull_request:
+    paths:
+      - 'deploy/seo-editor/**'
+      - '.github/workflows/seo-editor-checks.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s deploy/seo-editor -p 'test_*.py' -v
+      - run: sh -n deploy/seo-editor/install.sh
+      - run: systemd-analyze verify deploy/seo-editor/tbw-seo-editor.service deploy/seo-editor/tbw-seo-editor.timer
