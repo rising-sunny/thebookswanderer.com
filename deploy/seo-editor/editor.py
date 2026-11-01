@@ -251,12 +251,11 @@ def render(article,topic,src,photo=None):
     if links: body+='<aside><h2>'+('Related reading' if lang=='en' else 'Lecturas relacionadas')+'</h2><ul>'+''.join(links)+'</ul></aside>'
     figure=photo_figure(photo,lang) if photo else ''
     nav='Reading notes' if lang=='en' else 'Notas de lectura'
-    note='Prepared with AI assistance and automated editorial checks.' if lang=='en' else 'Preparado con asistencia de IA y controles editoriales automáticos.'
     return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(article['title'])} | The Books Wanderer</title><meta name="description" content="{e(article['description'],quote=True)}">
 <link rel="canonical" href="{canonical}"><link rel="stylesheet" href="/styles.css"></head><body>
 <header class="container"><a href="/">The Books Wanderer</a></header><main class="legal"><article class="container legal__inner">
-<h1>{e(article['title'])}</h1>{figure}{body}<p>{note}</p><a href="/guides/editor-reading-notes/">{nav}</a>
+<h1>{e(article['title'])}</h1>{figure}{body}<a href="/guides/editor-reading-notes/">{nav}</a>
 </article></main><footer class="container"><a href="/privacy.html">Privacy</a> · <a href="/contact.html">Contact</a></footer>
 <script src="/track.js?v=challenge-measurement-20261101" defer></script></body></html>'''
 
@@ -437,6 +436,10 @@ def apply_slower_pace_revision(cfg,state,link_checker=check_links):
     if target.is_symlink() or target.parent.is_symlink() or not target.is_file(): raise Stop('missing_revision_target')
     current=target.read_text()
     if previous:
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='notice_removals'").fetchone():
+            removal=db.execute('SELECT * FROM notice_removals WHERE slug=?',(slug,)).fetchone()
+            if removal and removal['status']=='applied' and removal['old_hash']==previous['new_hash'] and digest(current)==removal['new_hash']:
+                return {'status':'already_revised','url':BASE+'/guides/'+slug+'/'}
         if digest(current)==previous['new_hash']:
             with db:
                 db.execute("UPDATE jobs SET hash=?,topic=? WHERE slug=?",(previous['new_hash'],json.dumps(manifest['topic']),slug))
@@ -484,14 +487,51 @@ def apply_slower_pace_revision(cfg,state,link_checker=check_links):
     hub(site,db)
     return {'status':'revised','url':BASE+'/guides/'+slug+'/','photo':photo['id'] if photo else None}
 
+def remove_editorial_notice(cfg,state):
+    """Remove the owner's unwanted footer only, preserving the article and audit trail."""
+    slug='editor-reading-challenge-slower-pace-26-or-12-books'
+    db=connect(state); target=Path(cfg['site_root'])/'guides'/slug/'index.html'
+    if target.is_symlink() or target.parent.is_symlink() or not target.is_file(): raise Stop('missing_revision_target')
+    db.execute('CREATE TABLE IF NOT EXISTS notice_removals(slug TEXT PRIMARY KEY,old_hash TEXT,new_hash TEXT,status TEXT)')
+    row=db.execute("SELECT hash FROM jobs WHERE slug=? AND status='published'",(slug,)).fetchone()
+    if not row: raise Stop('missing_published_job')
+    current=target.read_text(); previous=db.execute('SELECT * FROM notice_removals WHERE slug=?',(slug,)).fetchone()
+    backup=state/'notice-removals'/slug
+    if previous:
+        if digest(current)==previous['new_hash']:
+            with db:
+                db.execute('UPDATE jobs SET hash=? WHERE slug=?',(previous['new_hash'],slug))
+                db.execute("UPDATE notice_removals SET status='applied' WHERE slug=?",(slug,))
+            return {'status':'already_removed'}
+        if digest(current)!=previous['old_hash'] or previous['status']!='prepared': raise Stop('publication_conflict')
+        after=(backup/'after.html').read_text()
+        if digest(after)!=previous['new_hash']: raise Stop('revision_backup_mismatch')
+    else:
+        if digest(current)!=row['hash']: raise Stop('publication_conflict')
+        after=current
+        for text in ('Prepared with AI assistance and automated editorial checks.',
+                     'Preparado con asistencia de IA y controles editoriales automáticos.'):
+            after=after.replace('<p>'+text+'</p>','')
+        if after==current: return {'status':'already_absent'}
+        atomic(backup/'before.html',current); atomic(backup/'after.html',after)
+        with db: db.execute('INSERT INTO notice_removals VALUES(?,?,?,?)',(slug,digest(current),digest(after),'prepared'))
+    if digest(target.read_text())!=digest(current): raise Stop('publication_changed')
+    atomic(target,after); os.chmod(target,0o644)
+    with db:
+        db.execute('UPDATE jobs SET hash=? WHERE slug=?',(digest(after),slug))
+        db.execute("UPDATE notice_removals SET status='applied' WHERE slug=?",(slug,))
+    return {'status':'removed','url':BASE+'/guides/'+slug+'/'}
+
 def main():
-    parser=argparse.ArgumentParser(); parser.add_argument('--config',default='/etc/tbw-seo-editor/config.json'); parser.add_argument('--status',action='store_true'); parser.add_argument('--recover-publications',action='store_true'); parser.add_argument('--apply-slower-pace-revision',action='store_true'); args=parser.parse_args()
+    parser=argparse.ArgumentParser(); parser.add_argument('--config',default='/etc/tbw-seo-editor/config.json'); parser.add_argument('--status',action='store_true'); parser.add_argument('--recover-publications',action='store_true'); parser.add_argument('--apply-slower-pace-revision',action='store_true'); parser.add_argument('--remove-editorial-notice',action='store_true'); args=parser.parse_args()
     os.umask(0o077)
     try:
         cfg=json.loads(Path(args.config).read_text()); state=Path('/var/lib/tbw-seo-editor'); state.mkdir(exist_ok=True)
         with (state/'run.lock').open('a') as lock:
             try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError: print('{"status":"locked"}'); return 0
+            if args.remove_editorial_notice:
+                print(json.dumps(remove_editorial_notice(cfg,state))); return 0
             if args.apply_slower_pace_revision:
                 print(json.dumps(apply_slower_pace_revision(cfg,state))); return 0
             if args.recover_publications:

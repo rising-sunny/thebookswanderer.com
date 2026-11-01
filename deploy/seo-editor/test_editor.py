@@ -222,6 +222,32 @@ class Fixture(unittest.TestCase):
   with patch.object(e,'build_opener') as opener:
    self.assertIsNone(REAL_PREPARE({'title':'Algebraic topology','slug':'topology-exercises'},self.state))
    opener.assert_not_called()
+ def test_remove_notice_preserves_exact_rest_of_page_and_ledger(self):
+  path,body=self.old_publication()
+  with_notice=body.replace('</article>','<p>Prepared with AI assistance and automated editorial checks.</p></article>')
+  path.write_text(with_notice)
+  db=e.connect(self.state)
+  with db: db.execute('UPDATE jobs SET hash=?',(e.digest(with_notice),))
+  self.assertEqual(e.remove_editorial_notice(self.cfg,self.state)['status'],'removed')
+  self.assertEqual(path.read_text(),body)
+  self.assertEqual(db.execute('SELECT hash FROM jobs').fetchone()[0],e.digest(body))
+  self.assertEqual(e.remove_editorial_notice(self.cfg,self.state)['status'],'already_removed')
+  self.assertEqual(self.calls,[])
+ def test_notice_removal_does_not_undo_prior_article_revision(self):
+  path,_=self.old_publication(); e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)
+  text=path.read_text().replace('</article>','<p>Prepared with AI assistance and automated editorial checks.</p></article>')
+  path.write_text(text); db=e.connect(self.state)
+  with db:
+   db.execute('UPDATE jobs SET hash=?',(e.digest(text),))
+   db.execute('UPDATE revisions SET new_hash=?',(e.digest(text),))
+  e.remove_editorial_notice(self.cfg,self.state)
+  final=path.read_text()
+  self.assertEqual(e.apply_slower_pace_revision(self.cfg,self.state,lambda src:None)['status'],'already_revised')
+  self.assertEqual(path.read_text(),final)
+  self.assertEqual(db.execute('SELECT hash FROM jobs').fetchone()[0],e.digest(final))
+ def test_notice_removal_respects_untracked_owner_edit(self):
+  path,_=self.old_publication(); path.write_text(path.read_text()+'owner edit')
+  with self.assertRaisesRegex(e.Stop,'publication_conflict'): e.remove_editorial_notice(self.cfg,self.state)
  def test_api_timeout_reserves_and_does_not_retry(self):
   db=e.connect(self.state); api=e.DeepSeek(self.cfg,db,'2026-11','fixture-not-a-real-key')
   with patch.object(e,'build_opener') as opener:
