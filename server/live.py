@@ -69,6 +69,8 @@ VALID_EVENTS = {
     "checkout_start",
     "payment_redirect",
     "purchase",
+    "cart_open",
+    "cart_load_error",
 }
 
 
@@ -414,10 +416,15 @@ def _build_snapshot(db: Session) -> dict:
     sub = db.query(
         LiveEvent.session_id,
         func.max(LiveEvent.ts).label("last_ts"),
-    ).filter(LiveEvent.ts >= funnel_cutoff).group_by(LiveEvent.session_id).subquery()
+    ).filter(
+        LiveEvent.ts >= funnel_cutoff,
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error")),
+    ).group_by(LiveEvent.session_id).subquery()
 
     funnel_rows = db.query(LiveEvent).join(
         sub, (LiveEvent.session_id == sub.c.session_id) & (LiveEvent.ts == sub.c.last_ts)
+    ).filter(
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error")),
     ).all()
 
     active_carts = 0
