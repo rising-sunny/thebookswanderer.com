@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly VPS editorial pilot, maximum four attempts per calendar month
+
+[Timer]
+OnCalendar=Mon *-*-* 10:00:00 America/Santiago
+Persistent=true
+RandomizedDelaySec=120
+Unit=tbw-seo-editor.service
+
+[Install]
+WantedBy=timers.target
