@@ -87,7 +87,10 @@ sudo bash -c 'umask 077; read -r -s -p "DeepSeek API key: " TBW_DS_KEY; printf "
 Editar `/etc/tbw-seo-editor/config.json` en el VPS y cambiar `enabled` a `true`
 cuando se hayan comprobado modelo, presupuesto, permisos y lectura del informe.
 Mantener el archivo root-owned y solo editable por root. La clave debe ser
-root-owned, modo 600. systemd la entrega al worker mediante LoadCredential;
+root-owned, modo 600. El directorio `/etc/tbw-seo-editor` utiliza modo 711
+para que el worker lea `config.json` (644) sin poder listar la carpeta ni leer
+la clave. Para corregir una instalación inicial con modo 700, ejecutar
+`chmod 711 /etc/tbw-seo-editor`. systemd la entrega al worker mediante LoadCredential;
 no se comparte con el servicio de la tienda.
 
 Primera ejecución (puede consumir API y publicar un artículo):
