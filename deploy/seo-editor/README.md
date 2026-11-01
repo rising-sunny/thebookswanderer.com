@@ -218,3 +218,21 @@ el historial editorial y su índice, sin modificar el borrador/revisión inicial
 La instalación por sí sola no aplica esta corrección. Los trabajos pendientes
 de versiones anteriores pueden necesitar revisión si su HTML guardado no
 coincide con el renderizador actualizado: no borrar sus hashes ni reservas.
+
+## Retirar la nota editorial solicitada por el dueño
+
+El renderizador ya no añade la frase sobre asistencia de IA y controles
+automáticos en inglés o español. El registro interno de generación, revisión
+y licencia de fotografías se conserva. Para retirarla del primer artículo ya
+publicado, después de actualizar el worker en el VPS:
+
+```sh
+sudo -u tbw-editor python3 /opt/tbw-seo-editor/editor.py --remove-editorial-notice
+```
+
+Solo elimina el párrafo exacto de esa URL, comprueba el hash publicado, guarda
+una copia anterior/nueva en `notice-removals/` dentro del estado privado y
+actualiza el hash del trabajo. Toma el bloqueo habitual, no llama a DeepSeek y
+es idempotente. No modifica fotos, créditos, contenido del artículo ni cuotas.
+Una edición ajena al historial exige inspección. La instalación por sí sola
+no cambia el artículo existente.
