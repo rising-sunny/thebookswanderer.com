@@ -20,5 +20,6 @@
   {"id": "mandelbrot-create", "script": "publish_slant3d_products.py", "args": ["mandelbrot-mountain", "--publish"]},
   {"id": "mandelbrot-etsy-video", "script": "etsy_listing_video.py", "args": ["mandelbrot-mountain"]},
   {"id": "gabriel-create", "script": "publish_slant3d_products.py", "args": ["gabriels-horn", "--publish"]},
-  {"id": "gabriel-etsy-video", "script": "etsy_listing_video.py", "args": ["gabriels-horn"]}
+  {"id": "gabriel-etsy-video", "script": "etsy_listing_video.py", "args": ["gabriels-horn"]},
+  {"id": "annotated-pp-import", "script": "import_printify_products.py", "args": ["--slug", "annotated-pride-and-prejudice-sweatshirt", "--slug", "annotated-pride-and-prejudice-mug", "--no-pin"]}
 ]
