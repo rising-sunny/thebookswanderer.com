@@ -714,3 +714,18 @@ def gabriel_horn_hollow(p):
 
 
 DESIGNS["gabriel_horn_hollow"] = (gabriel_horn_hollow, (-40, 40, -40, 40, 0, 98), "Gabriel's horn with its tunnel")
+
+
+# --- Fractal Christmas ornaments (flat, 2.4 mm plate with a raised rim or raised construction lines) ---
+def _ornament(name):
+    import ornaments as O
+    def build(X, Y):
+        from scipy.ndimage import map_coordinates
+        h = O.height(name)
+        col = (X + O.SIZE / 2) * O.PX; row = (O.SIZE / 2 - Y) * O.PX
+        return map_coordinates(h, [row, col], order=0, mode="constant", cval=0.0)
+    return lambda p: _relief(p, "orn-" + name, build, 84.0, 84.0, step=0.05)
+
+
+for _o in ("koch", "sierpinski", "pythagoras", "pentaflake"):
+    DESIGNS["ornament_" + _o] = (_ornament(_o), (-42, 42, -42, 42, 0, 4), "Fractal ornament: " + _o)

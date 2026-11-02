@@ -230,6 +230,76 @@ elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repea
         bpy.ops.render.render(write_still=True)
     raise SystemExit
 
+elif SHOT in ("mug-left", "mug-right"):
+    # an 11 oz white ceramic mug with the wrap; the print covers 229 mm of its 257 mm round
+    world((1, 1, 1), 0.45); sweep((0.86, 0.83, 0.78))
+    R, Hm = 0.041, 0.095
+    bpy.ops.mesh.primitive_cylinder_add(radius=R, depth=Hm, vertices=256, location=(0, 0, Hm / 2))
+    mug = bpy.context.object
+    bpy.ops.object.shade_smooth()
+    m, n, l, bsdf = node_mat("ceramic print")
+    bsdf.inputs["Roughness"].default_value = 0.18; bsdf.inputs["Coat Weight"].default_value = 0.6
+    tc = n.new("ShaderNodeTexCoord"); sep = n.new("ShaderNodeSeparateXYZ"); l.new(tc.outputs["Object"], sep.inputs[0])
+    at = n.new("ShaderNodeMath"); at.operation = "ARCTAN2"; l.new(sep.outputs["Y"], at.inputs[0]); l.new(sep.outputs["X"], at.inputs[1])
+    u = n.new("ShaderNodeMath"); u.operation = "MULTIPLY_ADD"; u.inputs[1].default_value = 1 / (2 * math.pi) / 0.89; u.inputs[2].default_value = 0.5
+    l.new(at.outputs[0], u.inputs[0])
+    v = n.new("ShaderNodeMath"); v.operation = "MULTIPLY_ADD"; v.inputs[1].default_value = 1 / 0.089; v.inputs[2].default_value = 0.5
+    l.new(sep.outputs["Z"], v.inputs[0])
+    comb = n.new("ShaderNodeCombineXYZ"); l.new(u.outputs[0], comb.inputs[0]); l.new(v.outputs[0], comb.inputs[1])
+    tex = n.new("ShaderNodeTexImage"); tex.image = bpy.data.images.load(HERE + "../apparel/mug.png"); tex.extension = "CLIP"
+    l.new(comb.outputs[0], tex.inputs[0])
+    mix = n.new("ShaderNodeMix"); mix.data_type = "RGBA"; mix.inputs["A"].default_value = (0.92, 0.92, 0.9, 1)
+    l.new(tex.outputs["Alpha"], mix.inputs["Factor"]); l.new(tex.outputs["Color"], mix.inputs["B"])
+    l.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    mug.data.materials.append(m)
+    white = flat("glaze", (0.92, 0.92, 0.9), 0.15)
+    # the handle sits in the unprinted gap, which is at -x where the wrap starts and ends
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.028, minor_radius=0.0065, location=(-R - 0.012, 0, Hm * 0.52), rotation=(math.pi / 2, 0, 0))
+    handle = bpy.context.object; handle.data.materials.append(white); handle.parent = mug
+    handle.location = (-R - 0.012, 0, Hm * 0.02)
+    bpy.ops.mesh.primitive_cylinder_add(radius=R - 0.004, depth=0.002, vertices=128, location=(0, 0, Hm - 0.004))
+    coffee = bpy.context.object; coffee.data.materials.append(flat("coffee", (0.05, 0.025, 0.012), 0.1))
+    mug.rotation_euler[2] = math.radians(10 if SHOT == "mug-left" else 170)    # which page faces the camera
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    camera((0.0, -0.36, 0.14), (0, 0, 0.048), 70)
+    sc.camera.data.dof.aperture_fstop = 11
+elif SHOT in ("orn-set", "orn-close"):
+    # four ornaments hanging on threads in front of a dark green wall with warm out-of-focus lights
+    world((0.05, 0.06, 0.05), 0.2)
+    bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 0.35, 0.5), rotation=(math.pi / 2, 0, 0))
+    bpy.context.object.data.materials.append(flat("velvet", (0.012, 0.035, 0.022), 0.9))
+    import random
+    random.seed(7)
+    glow = bpy.data.materials.new("glow"); glow.use_nodes = True
+    nt = glow.node_tree; em = nt.nodes.new("ShaderNodeEmission"); em.inputs[0].default_value = (1.0, 0.72, 0.38, 1); em.inputs[1].default_value = 14
+    nt.links.new(em.outputs[0], nt.nodes["Material Output"].inputs[0])
+    for _ in range(26):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.003, location=(random.uniform(-0.3, 0.3), 0.30, random.uniform(-0.05, 0.32)))
+        bpy.context.object.data.materials.append(glow)
+    white = pla("white PLA", (0.80, 0.80, 0.78), rough=0.45)
+    green = pla("green PLA", (0.02, 0.22, 0.09), rough=0.45)
+    red = pla("red PLA", (0.45, 0.02, 0.02), rough=0.4)
+    thread = flat("thread", (0.6, 0.45, 0.2), 0.6)
+    items = [("ornament_koch.stl", white, -0.11, 0.165), ("ornament_sierpinski.stl", green, -0.037, 0.150),
+             ("ornament_pythagoras.stl", red, 0.037, 0.170), ("ornament_pentaflake.stl", GOLD(), 0.11, 0.158)]
+    if SHOT == "orn-close":
+        items = items[:1]; items[0] = ("ornament_koch.stl", white, 0.0, 0.16)
+    for f, mat, x, top in items:
+        o = stl(f, mat, rot=(math.pi / 2, 0, random.uniform(-0.25, 0.25)))
+        bpy.context.view_layer.update()
+        o.location = (x, 0.0, top - 0.04)
+        bpy.context.view_layer.update()
+        corners = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        z_top = max(c.z for c in corners) - 0.0035          # into the hanging loop
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.0004, depth=0.4, location=(x, 0.0, z_top + 0.2))
+        bpy.context.object.data.materials.append(thread)
+    area("key", (-0.35, -0.4, 0.45), 0.6, 170, (1, 0.93, 0.85)); area("fill", (0.4, -0.35, 0.2), 0.6, 50)
+    area("rim", (0.0, 0.25, 0.4), 0.4, 40, (1, 0.85, 0.6))
+    if SHOT == "orn-set":
+        camera((0.0, -0.52, 0.125), (0, 0, 0.122), 62)
+    else:
+        camera((0.0, -0.22, 0.11), (0, 0, 0.115), 70)
+    sc.camera.data.dof.aperture_fstop = 2.8
 elif SHOT == "horn-desk":
     world((0.95, 0.88, 0.78), 0.25)
     bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
