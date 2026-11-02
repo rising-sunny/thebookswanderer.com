@@ -1,0 +1,28 @@
+name: Product gallery checks
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'deploy/remote-setup.sh'
+      - '.github/workflows/product-media-checks.yml'
+jobs:
+  gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q -r server/requirements.txt
+      - name: Gallery and storefront regression tests
+        run: |
+          python - <<'PY'
+          import sys, unittest
+          sys.path.insert(0, 'server/tests')
+          suite = unittest.TestSuite()
+          for name in ['test_product_media', 'test_internal_drafts', 'test_product_schema']:
+              suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
+          result = unittest.TextTestRunner(verbosity=1).run(suite)
+          raise SystemExit(not result.wasSuccessful())
+          PY
+      - run: bash -n deploy/remote-setup.sh

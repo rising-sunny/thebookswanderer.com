@@ -1,0 +1,26 @@
+[
+  {
+    "file": "reading-desk.webp",
+    "sha256": "65ab34ad433778f31abe44b86059dc9b928faa23a477d8e3ee494042da6a05cc",
+    "width": 1254,
+    "height": 1254,
+    "ai_generated": true,
+    "embedded_disclosure": true
+  },
+  {
+    "file": "reading-nook.webp",
+    "sha256": "7083c11b8071474fbff13b69222b311034504cb83a05e64f995ff9f2091cb62b",
+    "width": 1254,
+    "height": 1254,
+    "ai_generated": true,
+    "embedded_disclosure": true
+  },
+  {
+    "file": "detail.webp",
+    "sha256": "70dcdbf3e943834d1e115112c36839980905ef8cc5cb1e99530bd0a8aad2e54b",
+    "width": 1254,
+    "height": 1254,
+    "ai_generated": true,
+    "embedded_disclosure": true
+  }
+]
