@@ -1,7 +1,7 @@
 {
   "_doc": "Bonanza listing SKUs -> print-on-demand supplier. Orders are prepared (free) and wait for approval at /admin/bonanza/. 'live': false only logs what would happen.",
-  "live": false,
-  "since": "2026-11-03T00:00:00Z",
+  "live": true,
+  "since": "2026-11-02T23:00:00Z",
   "printify_shop_id": "29520280",
   "products": {
     "TBW-PP-SWEAT": {

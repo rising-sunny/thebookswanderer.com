@@ -1,0 +1,436 @@
+{
+  "prepared_for": "Bonanza addFixedPriceItem via the MathRelaxing bridge (option B); nothing has been published",
+  "items": [
+    {
+      "sku": "TBW-ORN-SET",
+      "brand_booth": "MathRelaxing (the only Bonanza booth)",
+      "title": "Fractal Christmas Ornaments Set of 4, Koch Snowflake, Math Teacher Gift",
+      "price": 29.99,
+      "quantity": 99,
+      "shipping": "free US shipping (cost is included in the price)",
+      "category_hint": "Christmas ornaments (Home & Garden > Holiday & Seasonal Decor > Christmas Ornaments); resolve the Bonanza/eBay category id with getCategories",
+      "description": "<p>Four Christmas ornaments, each one a famous fractal: shapes that repeat themselves at smaller and smaller scales.</p><ul><li><b>Koch snowflake (1904):</b> a triangle gets a smaller triangle on the middle of every edge, again and again. Its edge grows without end, yet its area stays under 8/5 of the first triangle. Raised lines on the face show steps 0, 1 and 2.</li><li><b>Sierpinski triangle (1915)</b>, shaped as a little tree: take out the middle triangle, then repeat in the three that are left.</li><li><b>Pythagoras tree (1942):</b> every square carries two smaller squares, and their areas always add up to the one below, a² + b² = c².</li><li><b>Pentaflake:</b> a pentagon made of six pentagons, each made of six more, shrinking by the golden ratio.</li></ul><p>Two sets: Classic (white snowflake, green tree, red Pythagoras tree, gold pentaflake) or All gold.</p><ul><li>Set of 4 flat ornaments, each about 5.7 to 7.7 cm (2.2 to 3 in) tall and 3.5 mm thick</li><li>Each has a 4 mm hole for a ribbon, thread or hook; hanging cord not included</li><li>About 37 g for all four; PLA, printed layer by layer, so fine layer lines show up close</li><li>Designed by us and printed to order in the USA</li><li>Decorative only: not a toy, keep away from small children and from heat above 50 °C (120 °F)</li></ul><p>The photos are digital renders made from the real print files. Colours can vary a little between filament batches.</p>",
+      "pictureURLs": [
+        "https://thebookswanderer.com/assets/products/fractal-ornaments/main.jpg",
+        "https://thebookswanderer.com/assets/products/fractal-ornaments/gold.jpg",
+        "https://thebookswanderer.com/assets/products/fractal-ornaments/koch.jpg",
+        "https://thebookswanderer.com/assets/products/fractal-ornaments/table.jpg",
+        "https://thebookswanderer.com/assets/products/fractal-ornaments/maths.jpg"
+      ],
+      "itemSpecifics": {
+        "Material": "PLA",
+        "Theme": "Christmas, Mathematics",
+        "Type": "Ornament set",
+        "Number of Items": "4",
+        "Handmade": "Yes, made to order"
+      },
+      "variations": [
+        {
+          "sku": "TBW-ORN-SET-CLASSIC",
+          "price": 29.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Set",
+              "value": "Classic: white, green, red and gold"
+            }
+          ],
+          "picture": "https://thebookswanderer.com/assets/products/fractal-ornaments/main.jpg"
+        },
+        {
+          "sku": "TBW-ORN-SET-GOLD",
+          "price": 29.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Set",
+              "value": "All gold"
+            }
+          ],
+          "picture": "https://thebookswanderer.com/assets/products/fractal-ornaments/gold.jpg"
+        }
+      ],
+      "fulfilment": "Slant 3D. The SKUs match server/scripts/slant3d_products.json (slug fractal-ornaments). The MathRelaxing bridge has no Slant route, so Bonanza orders must be passed on by hand (or added to the Slant flow) until that exists. Cost per set: 13.37 USD to the US."
+    },
+    {
+      "sku": "TBW-PP-SWEAT",
+      "brand_booth": "MathRelaxing (the only Bonanza booth)",
+      "title": "Annotated Pride and Prejudice Sweatshirt, Jane Austen First Line Crewneck",
+      "price": 46.99,
+      "price_2xl": 49.99,
+      "shipping": "free US shipping (included)",
+      "category_hint": "Women's or unisex sweatshirts (Clothing > Sweats & Hoodies); resolve the category id with getCategories",
+      "description": "<p>The opening of Pride and Prejudice the way a reader leaves it: the first line highlighted, a wavy underline, a circled word, and notes in the margin (\"the most famous first line ever\", \"irony!!\", \"poor guy, no say in it\").</p><p>Austen's text is from 1813 and in the public domain; the notes and the layout are ours. Printed straight on the fabric, no patch.</p><ul><li>Gildan 18000 heavy blend crewneck, 50% cotton and 50% polyester, unisex fit</li><li>Sand, White, Light Pink or Light Blue; sizes S to 2XL</li><li>Printed to order in the USA</li></ul>",
+      "pictureURLs": [
+        "https://images-api.printify.com/mockup/6ae90d55fa187cb58b00f247/25425/98502/annotated-pride-and-prejudice-sweatshirt.jpg?camera_label=front",
+        "https://images-api.printify.com/mockup/6ae90d55fa187cb58b00f247/25427/98502/annotated-pride-and-prejudice-sweatshirt.jpg?camera_label=front",
+        "https://images-api.printify.com/mockup/6ae90d55fa187cb58b00f247/25417/98502/annotated-pride-and-prejudice-sweatshirt.jpg?camera_label=front",
+        "https://images-api.printify.com/mockup/6ae90d55fa187cb58b00f247/25416/98502/annotated-pride-and-prejudice-sweatshirt.jpg?camera_label=front"
+      ],
+      "itemSpecifics": {
+        "Brand": "Gildan",
+        "Style": "Crewneck sweatshirt",
+        "Material": "50% cotton, 50% polyester",
+        "Theme": "Books, Jane Austen",
+        "Size Type": "Unisex"
+      },
+      "variations": [
+        {
+          "sku": "TBW-PP-SWEAT-SAND-S",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Sand"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "printify_variant_id": 25394
+        },
+        {
+          "sku": "TBW-PP-SWEAT-SAND-M",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Sand"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "printify_variant_id": 25425
+        },
+        {
+          "sku": "TBW-PP-SWEAT-SAND-L",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Sand"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "printify_variant_id": 25456
+        },
+        {
+          "sku": "TBW-PP-SWEAT-SAND-XL",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Sand"
+            },
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "printify_variant_id": 25487
+        },
+        {
+          "sku": "TBW-PP-SWEAT-SAND-2XL",
+          "price": 49.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Sand"
+            },
+            {
+              "name": "Size",
+              "value": "2XL"
+            }
+          ],
+          "printify_variant_id": 25518
+        },
+        {
+          "sku": "TBW-PP-SWEAT-WHITE-S",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "White"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "printify_variant_id": 25396
+        },
+        {
+          "sku": "TBW-PP-SWEAT-WHITE-M",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "White"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "printify_variant_id": 25427
+        },
+        {
+          "sku": "TBW-PP-SWEAT-WHITE-L",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "White"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "printify_variant_id": 25458
+        },
+        {
+          "sku": "TBW-PP-SWEAT-WHITE-XL",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "White"
+            },
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "printify_variant_id": 25489
+        },
+        {
+          "sku": "TBW-PP-SWEAT-WHITE-2XL",
+          "price": 49.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "White"
+            },
+            {
+              "name": "Size",
+              "value": "2XL"
+            }
+          ],
+          "printify_variant_id": 25520
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTPINK-S",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Pink"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "printify_variant_id": 25386
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTPINK-M",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Pink"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "printify_variant_id": 25417
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTPINK-L",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Pink"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "printify_variant_id": 25448
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTPINK-XL",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Pink"
+            },
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "printify_variant_id": 25479
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTPINK-2XL",
+          "price": 49.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Pink"
+            },
+            {
+              "name": "Size",
+              "value": "2XL"
+            }
+          ],
+          "printify_variant_id": 25510
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTBLUE-S",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Blue"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "printify_variant_id": 25385
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTBLUE-M",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Blue"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "printify_variant_id": 25416
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTBLUE-L",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Blue"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "printify_variant_id": 25447
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTBLUE-XL",
+          "price": 46.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Blue"
+            },
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "printify_variant_id": 25478
+        },
+        {
+          "sku": "TBW-PP-SWEAT-LIGHTBLUE-2XL",
+          "price": 49.99,
+          "quantity": 99,
+          "nameValueList": [
+            {
+              "name": "Color",
+              "value": "Light Blue"
+            },
+            {
+              "name": "Size",
+              "value": "2XL"
+            }
+          ],
+          "printify_variant_id": 25509
+        }
+      ],
+      "fulfilment": "Printify shop 29520280 (MathRelaxingBonanza), product 6ae90d55fa187cb58b00f247; each variation carries its printify_variant_id. Printify cost 18.70 USD (2XL 21.50) plus about 9.19 shipping to the US.",
+      "printify": {
+        "shop_id": 29520280,
+        "product_id": "6ae90d55fa187cb58b00f247"
+      }
+    },
+    {
+      "sku": "TBW-PP-MUG",
+      "brand_booth": "MathRelaxing (the only Bonanza booth)",
+      "title": "Annotated Pride and Prejudice Mug, Jane Austen First Line Coffee Cup 11 oz",
+      "price": 24.99,
+      "quantity": 99,
+      "shipping": "free US shipping (included)",
+      "category_hint": "Mugs (Home & Garden > Kitchen, Dining & Bar > Dinnerware & Serveware > Cups & Mugs); resolve the category id with getCategories",
+      "description": "<p>An open copy of Pride and Prejudice wraps round this mug: on one side the first line, highlighted and underlined, with \"the most famous first line ever\" in the margin; on the other, Mrs. Bennet's \"have you heard that Netherfield Park is let at last?\" with its own note. A right-handed and a left-handed reader each get a page facing them.</p><ul><li>11 oz white ceramic, dishwasher and microwave safe</li><li>Austen's text is from 1813 and in the public domain; the notes and the layout are ours</li><li>Printed to order in the USA</li></ul>",
+      "pictureURLs": [
+        "https://images-api.printify.com/mockup/6ae90d4f71c4a4b8d9050c92/33719/10393/annotated-pride-and-prejudice-mug.jpg?camera_label=context-1",
+        "https://images-api.printify.com/mockup/6ae90d4f71c4a4b8d9050c92/33719/6400/annotated-pride-and-prejudice-mug.jpg?camera_label=front",
+        "https://images-api.printify.com/mockup/6ae90d4f71c4a4b8d9050c92/33719/6402/annotated-pride-and-prejudice-mug.jpg?camera_label=left",
+        "https://images-api.printify.com/mockup/6ae90d4f71c4a4b8d9050c92/33719/10395/annotated-pride-and-prejudice-mug.jpg?camera_label=right",
+        "https://images-api.printify.com/mockup/6ae90d4f71c4a4b8d9050c92/33719/10394/annotated-pride-and-prejudice-mug.jpg?camera_label=context-2"
+      ],
+      "itemSpecifics": {
+        "Material": "Ceramic",
+        "Capacity": "11 oz",
+        "Theme": "Books, Jane Austen",
+        "Dishwasher Safe": "Yes",
+        "Microwave Safe": "Yes"
+      },
+      "fulfilment": "Printify shop 29520280 (MathRelaxingBonanza), product 6ae90d4f71c4a4b8d9050c92, variant 33719. Printify cost 6.44 USD plus about 7.69 shipping to the US.",
+      "printify": {
+        "shop_id": 29520280,
+        "product_id": "6ae90d4f71c4a4b8d9050c92",
+        "variant_id": 33719
+      }
+    }
+  ]
+}
