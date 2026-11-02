@@ -73,6 +73,7 @@ from routers.pinterest import router as pinterest_router  # noqa: E402
 from routers.collaborators import router as collaborators_router  # noqa: E402
 from routers.outreach import router as outreach_router  # noqa: E402
 from routers.product_media import router as product_media_router  # noqa: E402
+from routers.bonanza_orders import router as bonanza_orders_router  # noqa: E402
 
 # Standard US shipping is included in existing prices. International delivery
 # is quoted live and may add a surcharge over the same basket's US cost.
@@ -114,6 +115,7 @@ app.include_router(pinterest_router)
 app.include_router(collaborators_router)
 app.include_router(outreach_router)
 app.include_router(product_media_router)
+app.include_router(bonanza_orders_router)
 
 app.add_middleware(
     CORSMiddleware,

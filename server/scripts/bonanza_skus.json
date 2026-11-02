@@ -1,0 +1,182 @@
+{
+  "_doc": "Bonanza listing SKUs -> print-on-demand supplier. Orders are prepared (free) and wait for approval at /admin/bonanza/. 'live': false only logs what would happen.",
+  "live": false,
+  "since": "2026-11-03T00:00:00Z",
+  "printify_shop_id": "29520280",
+  "products": {
+    "TBW-PP-SWEAT": {
+      "supplier": "printify",
+      "product_id": "6ae90d55fa187cb58b00f247",
+      "max_cost_us": 34.0,
+      "variants": {
+        "TBW-PP-SWEAT-SAND-S": {
+          "variant_id": 25394,
+          "attributes": {
+            "Color": "Sand",
+            "Size": "S"
+          }
+        },
+        "TBW-PP-SWEAT-SAND-M": {
+          "variant_id": 25425,
+          "attributes": {
+            "Color": "Sand",
+            "Size": "M"
+          }
+        },
+        "TBW-PP-SWEAT-SAND-L": {
+          "variant_id": 25456,
+          "attributes": {
+            "Color": "Sand",
+            "Size": "L"
+          }
+        },
+        "TBW-PP-SWEAT-SAND-XL": {
+          "variant_id": 25487,
+          "attributes": {
+            "Color": "Sand",
+            "Size": "XL"
+          }
+        },
+        "TBW-PP-SWEAT-SAND-2XL": {
+          "variant_id": 25518,
+          "attributes": {
+            "Color": "Sand",
+            "Size": "2XL"
+          }
+        },
+        "TBW-PP-SWEAT-WHITE-S": {
+          "variant_id": 25396,
+          "attributes": {
+            "Color": "White",
+            "Size": "S"
+          }
+        },
+        "TBW-PP-SWEAT-WHITE-M": {
+          "variant_id": 25427,
+          "attributes": {
+            "Color": "White",
+            "Size": "M"
+          }
+        },
+        "TBW-PP-SWEAT-WHITE-L": {
+          "variant_id": 25458,
+          "attributes": {
+            "Color": "White",
+            "Size": "L"
+          }
+        },
+        "TBW-PP-SWEAT-WHITE-XL": {
+          "variant_id": 25489,
+          "attributes": {
+            "Color": "White",
+            "Size": "XL"
+          }
+        },
+        "TBW-PP-SWEAT-WHITE-2XL": {
+          "variant_id": 25520,
+          "attributes": {
+            "Color": "White",
+            "Size": "2XL"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTPINK-S": {
+          "variant_id": 25386,
+          "attributes": {
+            "Color": "Light Pink",
+            "Size": "S"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTPINK-M": {
+          "variant_id": 25417,
+          "attributes": {
+            "Color": "Light Pink",
+            "Size": "M"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTPINK-L": {
+          "variant_id": 25448,
+          "attributes": {
+            "Color": "Light Pink",
+            "Size": "L"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTPINK-XL": {
+          "variant_id": 25479,
+          "attributes": {
+            "Color": "Light Pink",
+            "Size": "XL"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTPINK-2XL": {
+          "variant_id": 25510,
+          "attributes": {
+            "Color": "Light Pink",
+            "Size": "2XL"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTBLUE-S": {
+          "variant_id": 25385,
+          "attributes": {
+            "Color": "Light Blue",
+            "Size": "S"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTBLUE-M": {
+          "variant_id": 25416,
+          "attributes": {
+            "Color": "Light Blue",
+            "Size": "M"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTBLUE-L": {
+          "variant_id": 25447,
+          "attributes": {
+            "Color": "Light Blue",
+            "Size": "L"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTBLUE-XL": {
+          "variant_id": 25478,
+          "attributes": {
+            "Color": "Light Blue",
+            "Size": "XL"
+          }
+        },
+        "TBW-PP-SWEAT-LIGHTBLUE-2XL": {
+          "variant_id": 25509,
+          "attributes": {
+            "Color": "Light Blue",
+            "Size": "2XL"
+          }
+        }
+      }
+    },
+    "TBW-PP-MUG": {
+      "supplier": "printify",
+      "product_id": "6ae90d4f71c4a4b8d9050c92",
+      "max_cost_us": 18.0,
+      "variants": {
+        "TBW-PP-MUG": {
+          "variant_id": 33719,
+          "attributes": {}
+        }
+      }
+    },
+    "TBW-ORN-SET": {
+      "supplier": "slant3d",
+      "slug": "fractal-ornaments",
+      "variants": {
+        "TBW-ORN-SET-CLASSIC": {
+          "attributes": {
+            "Set": "Classic: white, green, red and gold"
+          }
+        },
+        "TBW-ORN-SET-GOLD": {
+          "attributes": {
+            "Set": "All gold"
+          }
+        }
+      }
+    }
+  }
+}

@@ -34,6 +34,7 @@ def init_db() -> None:
         LuluSubmission,
         ProdigiSubmission,
         SlantSubmission,
+        BonanzaOrder,
         EmailOptOut,
         LiveEvent,
         NewsletterSubscriber,
