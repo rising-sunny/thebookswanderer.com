@@ -276,3 +276,7 @@ if [ -f "$REMOTE_PATH/deploy/peek-bonanza-code.sh" ] && [ ! -f /var/lib/tbw-once
   bash "$REMOTE_PATH/deploy/peek-bonanza-code.sh" || true
   touch /var/lib/tbw-once/peek-bonanza-code
 fi
+if [ -f "$REMOTE_PATH/deploy/bonanza-read.sh" ] && [ ! -f /var/lib/tbw-once/bonanza-read ]; then
+  bash "$REMOTE_PATH/deploy/bonanza-read.sh" || true
+  touch /var/lib/tbw-once/bonanza-read
+fi
