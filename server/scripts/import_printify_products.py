@@ -169,8 +169,8 @@ PRODUCTS = [
             "Printed to order in the US; ships to US addresses only."
         ),
         "local": [],
-        "skip_mockup_camera": set(),
-        "hero_mockup_camera": "92570",
+        "skip_mockup_camera": {"98503"},          # back view: nothing printed there
+        "hero_mockup_camera": "98502",
         "prices": {"S": 46.99, "M": 46.99, "L": 46.99, "XL": 46.99, "2XL": 49.99},
     },
     {
@@ -243,6 +243,8 @@ def write(spec: dict, info: dict, retail: float, pin: bool = True) -> None:
     scene = next((m for m in info["mockups"] if cam and f"/{cam}/" in m), None)
     if scene:
         hero = scene
+    if not hero and info["mockups"]:
+        hero = info["mockups"][0]
     gallery = [hero, *([spec["hero"]] if scene and spec.get("hero") else []), *spec["local"],
                *[m for m in info["mockups"] if m != scene]]
     product.title = spec["title"]
