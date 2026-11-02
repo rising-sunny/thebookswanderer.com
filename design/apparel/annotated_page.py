@@ -32,7 +32,7 @@ def font(name, size, weight=None):
     return f
 
 
-def layout(draw, words, x0, x1, y0, f, lead):
+def layout(draw, words, x0, x1, y0, f, lead, justify=True):
     """Justified lines; returns each word's box so the marks can find their words."""
     space = draw.textlength(" ", font=f)
     lines, line = [], []
@@ -46,7 +46,7 @@ def layout(draw, words, x0, x1, y0, f, lead):
     boxes, y = [], y0
     for i, ln in enumerate(lines):
         widths = [draw.textlength(w, font=f) for w in ln]
-        gap = space if i == len(lines) - 1 or len(ln) == 1 else (x1 - x0 - sum(widths)) / (len(ln) - 1)
+        gap = space if not justify or i == len(lines) - 1 or len(ln) == 1 else (x1 - x0 - sum(widths)) / (len(ln) - 1)
         x = x0
         for w, wd in zip(ln, widths):
             boxes.append((w, x, y, x + wd))
