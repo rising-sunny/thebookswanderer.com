@@ -46,6 +46,10 @@ chmod 755 "$REMOTE_PATH/server/data"
 # www-data needs write for sqlite
 chown www-data:www-data "$REMOTE_PATH/server/data"
 
+# Product galleries: public immutable uploads and private before/after backups.
+install -d -o www-data -g www-data -m 755 "$REMOTE_PATH/assets/products/uploads"
+install -d -o www-data -g www-data -m 700 /var/lib/tbw-product-media
+
 # Professional-contact research must never live under the public web root.
 mkdir -p /var/lib/tbw-collaborators
 chown www-data:www-data /var/lib/tbw-collaborators
@@ -164,6 +168,36 @@ PY
   else
     echo "nginx -t failed after adding /admin/digital/ — check $CONF"
   fi
+fi
+
+# Product image uploads use the same private administrator login.
+if [ -f "$CONF" ] && ! grep -q 'location \^~ /admin/product-media/' "$CONF"; then
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("/etc/nginx/sites-enabled/thebookswanderer.com")
+original = p.read_text()
+block = """    location ^~ /admin/product-media/ {
+        client_max_body_size 25m;
+        proxy_pass http://127.0.0.1:8010;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+"""
+needle = "location / {"
+idx = original.find(needle)
+if idx == -1:
+    raise SystemExit("could not find nginx default location")
+p.write_text(original[:idx] + block + original[idx:])
+import subprocess
+if subprocess.run(["nginx", "-t"]).returncode:
+    p.write_text(original)
+    raise SystemExit("invalid nginx product media configuration; original restored")
+PY
+  systemctl reload nginx
 fi
 
 # Daily product reel for Facebook + Instagram (server/scripts/daily_social_post.py).
