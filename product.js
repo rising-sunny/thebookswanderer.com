@@ -52,6 +52,7 @@
     // photo; the default variant's picture is often just the packaging.
     let variantChosen = false;
     let addQty = 1; // qty to add for the currently selected variant
+    let cartFeedback = null;
     let destinations = [];
     let selectedCountry = "";
     let shippingQuote = null;
@@ -146,6 +147,36 @@
 </div>`;
     }
 
+
+    function cartCopy(en, es) {
+        return document.documentElement.lang.toLowerCase().startsWith("es") ? es : en;
+    }
+
+    function cartFeedbackHtml() {
+        if (!cartFeedback) return "";
+        const href = window.TBW_L
+            ? window.TBW_L("/cart.html")
+            : cartCopy("/cart.html", "/es/cart.html");
+        return `<p class="pdp__add-status" id="pdpAddStatus" data-cart-feedback
+            role="${cartFeedback.error ? "alert" : "status"}"
+            aria-live="${cartFeedback.error ? "assertive" : "polite"}">
+            ${escapeHtml(cartFeedback.message)}<br>
+            <a class="btn btn--ghost" href="${escapeHtml(href)}">
+                ${cartCopy("View cart", "Ver carrito")}
+            </a>
+        </p>`;
+    }
+
+    function showCartFeedback(message, error = false) {
+        cartFeedback = { message, error };
+        try {
+            refreshCartUi();
+        } catch (_) {
+            const status = root.querySelector("#pdpAddStatus");
+            if (status) status.outerHTML = cartFeedbackHtml();
+        }
+    }
+
     function addBarHtml() {
         const v = selectedVariant();
         const inCart = qtyInCartForVariant(v?.id);
@@ -171,7 +202,7 @@
     </button>
   </div>
   ${
-      inCart > 0
+      cartFeedback ? cartFeedbackHtml() : inCart > 0
           ? `<p class="pdp__add-status" id="pdpAddStatus"><strong>${escapeHtml(v?.name || "This option")}</strong> — ${inCart} already in cart</p>`
           : `<p class="pdp__add-status" id="pdpAddStatus" hidden></p>`
   }
@@ -731,51 +762,65 @@
         el.querySelector("[data-add-to-cart]")?.addEventListener("click", (e) => {
             if (!shipsToSelected()) return;
             const btn = e.currentTarget;
-            const original = btn.textContent;
-            try {
-                const pid = Number(btn.getAttribute("data-product-id"));
-                const vid = normVid(btn.getAttribute("data-variant-id"));
-                const q = Math.max(
-                    1,
-                    Math.min(20, Number(qtyInput?.value) || addQty || 1)
-                );
-                addQty = q;
-                if (window.TBWCart) {
-                    window.TBWCart.add(pid, vid, q);
-                }
-                try {
-                    if (window.tbwTrack && product) {
-                        const v = selectedVariant();
-                        const unit = Number(v?.price_usd ?? product.price_usd) || 0;
-                        window.tbwTrack("add_to_cart", {
-                            product_slug: product.slug || slug || "",
-                            value: Math.round(unit * q * 100) / 100,
-                            extra: { quantity: q, variant_id: vid },
-                        });
-                    }
-                } catch (_) {
-                    /* ignore */
-                }
-                if (selectedCountry) {
-                    try {
-                        localStorage.setItem("tbw:ship_country", selectedCountry);
-                    } catch (_) {
-                        /* ignore */
-                    }
-                }
-                btn.textContent = `Added ${q} ✓`;
-                btn.classList.add("is-added");
-                refreshCartUi();
-            } catch (_) {
-                /* ignore */
+            const pid = Number(btn.getAttribute("data-product-id"));
+            const vid = normVid(btn.getAttribute("data-variant-id"));
+            const q = Math.max(1, Math.min(20, Number(qtyInput?.value) || addQty || 1));
+            addQty = q;
+
+            if (!window.TBWCart || typeof window.TBWCart.add !== "function"
+                || typeof window.TBWCart.read !== "function") {
+                showCartFeedback(cartCopy(
+                    "The cart is unavailable. Reload this page and try again.",
+                    "El carrito no está disponible. Recarga la página e inténtalo de nuevo."
+                ), true);
+                return;
             }
-            setTimeout(() => {
-                if (!btn.isConnected) return;
-                const inCart = qtyInCartForVariant(selectedVariant()?.id);
-                btn.textContent =
-                    inCart > 0 ? `Add ${addQty} more` : `Add ${addQty} to cart`;
-                btn.classList.remove("is-added");
-            }, 1400);
+
+            let added = 0;
+            try {
+                const before = qtyInCartForVariant(vid);
+                if (before >= 20) {
+                    showCartFeedback(cartCopy(
+                        "This option already has the maximum of 20 items in your cart.",
+                        "Esta opción ya tiene el máximo de 20 unidades en el carrito."
+                    ), true);
+                    return;
+                }
+                window.TBWCart.add(pid, vid, q);
+                added = qtyInCartForVariant(vid) - before;
+                if (!(added > 0)) throw new Error("Cart write not confirmed");
+            } catch (_) {
+                showCartFeedback(cartCopy(
+                    "We could not confirm that the item was saved. Check your cart before trying again.",
+                    "No pudimos confirmar que se guardó el producto. Revisa el carrito antes de intentarlo otra vez."
+                ), true);
+                return;
+            }
+
+            try {
+                if (window.tbwTrack && product) {
+                    const v = selectedVariant();
+                    const unit = Number(v?.price_usd ?? product.price_usd) || 0;
+                    window.tbwTrack("add_to_cart", {
+                        product_slug: product.slug || slug || "",
+                        value: Math.round(unit * added * 100) / 100,
+                        extra: { quantity: added, variant_id: vid },
+                    });
+                }
+            } catch (_) {
+                /* Analytics must not interrupt a confirmed cart update. */
+            }
+            if (selectedCountry) {
+                try {
+                    localStorage.setItem("tbw:ship_country", selectedCountry);
+                } catch (_) {
+                    /* The product is already saved; this preference is optional. */
+                }
+            }
+            showCartFeedback(
+                cartCopy(`Added ${added} to your cart`, `Se añadieron ${added} al carrito`)
+                + " — " + variantNameById(vid)
+            );
         });
     }
 

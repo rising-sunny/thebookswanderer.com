@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Imágenes de productos · The Books Wanderer</title>
+  <style>
+    *{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:1050px;margin:2rem auto;padding:0 1rem;color:#243729;background:#faf8f2}a{color:#315b45}h1{font-size:1.8rem}label{display:block;margin:1rem 0 .4rem}select,input,button{font:inherit;max-width:100%}select,input[type=file]{padding:.6rem;border:1px solid #b3b8ac;border-radius:5px;background:#fff}button{padding:.7rem 1rem;background:#315b45;border:0;border-radius:5px;color:white;cursor:pointer}button.remove{background:#fff;color:#85402c;border:1px solid #85402c}form.upload{padding:1.2rem;background:#fff;border:1px solid #d8ddce;border-radius:10px;margin:1.5rem 0}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}.card{padding:1rem;background:#fff;border:1px solid #d8ddce;border-radius:8px;overflow-wrap:anywhere}.card img{width:100%;height:240px;object-fit:contain;background:#f3f1ea}.notice{padding:1rem;background:#e4efdf}.error{padding:1rem;background:#fce4dc;color:#7a2919}.check{display:flex;gap:.6rem;align-items:flex-start}.check input{margin-top:.3rem;flex-shrink:0}.small{font-size:.9rem;color:#566252}.upload button{margin-top:1rem}
+  </style>
+</head>
+<body>
+  <p><a href="/admin/live">← Administración</a></p>
+  <h1>Imágenes de productos</h1>
+  <form method="get" action="/admin/product-media/">
+    <label for="product">Producto</label>
+    <select id="product" name="product_id" required>
+      <option value="">Selecciona un producto</option>
+      {% for item in products %}<option value="{{ item.id }}" {% if product and product.id == item.id %}selected{% endif %}>{{ item.id }} · {{ item.title }}{% if not item.active %} (oculto){% endif %}</option>{% endfor %}
+    </select>
+    <button>Ver galería</button>
+  </form>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% if saved %}<p class="notice" role="status">Galería guardada. La foto principal y las opciones de compra se conservan.</p>{% endif %}
+  {% if product %}
+  <h2>{{ product.title }}</h2>
+  <p>Las imágenes nuevas se añaden al final. La portada se conserva. {% if product.active %}<a href="/products/{{ product.slug }}" target="_blank" rel="noopener">Ver producto publicado ↗</a>{% else %}Este producto está oculto y seguirá oculto.{% endif %}</p>
+  <form class="upload" method="post" action="/admin/product-media/append" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="revision" value="{{ revision }}">
+    <input type="hidden" name="product_id" value="{{ product.id }}">
+    <h3>Añadir imágenes</h3>
+    <label for="files">Archivos</label>
+    <input id="files" type="file" name="files" accept="image/png,image/jpeg,image/webp" multiple required>
+    <p class="small">Hasta tres imágenes por envío, 8 MB por imagen. Se conserva la imagen completa, incluido su pie de nota.</p>
+    <label for="origin">Tipo de imágenes de este envío</label>
+    <select id="origin" name="origin" required><option value="ai">Generadas con IA</option><option value="real">Fotografías reales</option></select>
+    <label class="check"><input type="checkbox" name="disclosed" value="true"><span>Si son imágenes de IA, confirmo que todas llevan dentro de la imagen un aviso legible que indica que fueron generadas con IA y que no son fotografías reales del producto.</span></label>
+    <p class="small">Al guardar, las imágenes aparecerán en la ficha si el producto está publicado.</p>
+    <button>Añadir a la galería</button>
+  </form>
+  <h3>Galería actual · {{ images|length }} imágenes</h3>
+  <div class="gallery">
+  {% for image in images %}
+    <article class="card">
+      <a href="{{ image }}" target="_blank" rel="noopener"><img src="{{ image }}" alt="Imagen {{ loop.index }} de {{ product.title }}" loading="lazy"></a>
+      <p>{% if image == product.image_url %}<strong>Foto principal</strong>{% else %}Imagen {{ loop.index }}{% endif %} · <a href="{{ image }}" target="_blank" rel="noopener">Ver completa ↗</a></p>
+      {% if image.startswith(upload_prefix) and image != product.image_url %}
+      <form method="post" action="/admin/product-media/remove">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ revision }}"><input type="hidden" name="product_id" value="{{ product.id }}"><input type="hidden" name="url" value="{{ image }}">
+        <button class="remove">Quitar de la galería</button>
+      </form>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+  {% endif %}
+</body>
+</html>

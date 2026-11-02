@@ -82,6 +82,7 @@ scp -o BatchMode=yes `
     "$Root\server\services\cj.py" `
     "$Root\server\services\paypal.py" `
     "$Root\server\services\pricing.py" `
+    "$Root\server\services\product_media.py" `
     "$Root\server\services\categories.py" `
     "$Root\server\services\email.py" `
     "$Root\server\services\meta_capi.py" `
@@ -97,6 +98,7 @@ if (Test-Path "$Root\server\routers") {
     scp -o BatchMode=yes `
         "$Root\server\routers\__init__.py" `
         "$Root\server\routers\pinterest.py" `
+        "$Root\server\routers\product_media.py" `
         "${HostName}:${RemotePath}/server/routers/"
     Assert-Ok "routers upload"
 }

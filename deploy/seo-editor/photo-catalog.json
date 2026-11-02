@@ -1,0 +1,56 @@
+[
+  {
+    "id": "open-book-2016",
+    "title": "Open book",
+    "author": "freestocks.org",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_url": "https://commons.wikimedia.org/w/index.php?title=File:Open_book_(26421751605).jpg&oldid=1026268236",
+    "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Open_book_%2826421751605%29.jpg/960px-Open_book_%2826421751605%29.jpg",
+    "width": 960,
+    "height": 640,
+    "alt": {
+      "en": "An open book",
+      "es": "Un libro abierto"
+    },
+    "tags": [
+      "reading",
+      "book",
+      "challenge",
+      "lectura",
+      "libro",
+      "reto"
+    ],
+    "provenance": "Photograph by freestocks.org, captured 11 April 2016 with Canon EOS 6D; Flickr CC0 license reviewed by Commons 1 May 2023.",
+    "reviewed_on": "2026-11-01",
+    "real_photo": true
+  },
+  {
+    "id": "book-tea-2016",
+    "title": "Open book and a cup of tea",
+    "author": "freestocks.org",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_url": "https://commons.wikimedia.org/w/index.php?title=File:Open_book_and_a_cup_of_tea_(29364151550).jpg&oldid=1026268244",
+    "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/Open_book_and_a_cup_of_tea_%2829364151550%29.jpg/960px-Open_book_and_a_cup_of_tea_%2829364151550%29.jpg",
+    "width": 960,
+    "height": 640,
+    "alt": {
+      "en": "An open book beside a cup of tea",
+      "es": "Un libro abierto junto a una taza de té"
+    },
+    "tags": [
+      "routine",
+      "slower",
+      "pace",
+      "monthly",
+      "calm",
+      "rutina",
+      "ritmo",
+      "mensual"
+    ],
+    "provenance": "Photograph by freestocks.org, captured 9 September 2016 with Canon EOS 6D; Flickr CC0 license reviewed by Commons 1 May 2023.",
+    "reviewed_on": "2026-11-01",
+    "real_photo": true
+  }
+]

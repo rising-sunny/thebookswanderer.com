@@ -151,12 +151,45 @@
         return `$${Number(n).toFixed(2)}`;
     }
 
+
+    let cartOpenTracked = false;
+
+    function trackCartState(type, extra) {
+        try {
+            if (typeof global.tbwTrack !== "function") return false;
+            global.tbwTrack(type, { extra: extra || {} });
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function showCartLoadError(root, stage) {
+        trackCartState("cart_load_error", { stage });
+        const es = document.documentElement.lang.toLowerCase().startsWith("es");
+        root.innerHTML = `<p class="catalog-empty" role="alert">
+            ${es ? "No se pudo cargar el carrito." : "Could not load cart."}
+            <button type="button" class="btn" id="cartRetry">
+                ${es ? "Reintentar" : "Retry"}
+            </button>
+        </p>`;
+        root.querySelector("#cartRetry")?.addEventListener("click", renderCartPage);
+    }
+
     // ---- Cart page ----
     async function renderCartPage() {
         const root = document.getElementById("cartRoot");
         if (!root) return;
 
-        const raw = read();
+        if (!cartOpenTracked) cartOpenTracked = trackCartState("cart_open");
+        let raw;
+        try {
+            global.localStorage.getItem(KEY);
+            raw = read();
+        } catch (_) {
+            showCartLoadError(root, "storage");
+            return;
+        }
         if (!raw.length) {
             root.innerHTML = `
 <div class="cart-empty">
@@ -173,22 +206,25 @@
         try {
             data = await preview(raw);
         } catch (err) {
-            console.warn(err);
-            root.innerHTML = `<p class="catalog-empty">Could not load cart. <button type="button" class="btn" id="cartRetry">Retry</button></p>`;
-            document.getElementById("cartRetry")?.addEventListener("click", renderCartPage);
+            showCartLoadError(root, "preview");
             return;
         }
 
         const lines = data.items || [];
         const available = lines.filter((l) => l.available);
         // Sync storage to available lines only (normalize variant ids)
-        write(
-            available.map((l) => ({
-                product_id: l.product_id,
-                variant_id: normVid(l.variant_id),
-                quantity: l.quantity,
-            }))
-        );
+        try {
+            write(
+                available.map((l) => ({
+                    product_id: l.product_id,
+                    variant_id: normVid(l.variant_id),
+                    quantity: l.quantity,
+                }))
+            );
+        } catch (_) {
+            showCartLoadError(root, "storage");
+            return;
+        }
         if (!available.length) {
             clear();
             renderCartPage();
