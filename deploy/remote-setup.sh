@@ -280,3 +280,7 @@ if [ -f "$REMOTE_PATH/deploy/bonanza-read.sh" ] && [ ! -f /var/lib/tbw-once/bona
   bash "$REMOTE_PATH/deploy/bonanza-read.sh" || true
   touch /var/lib/tbw-once/bonanza-read
 fi
+if [ -f "$REMOTE_PATH/deploy/bonanza-read2.sh" ] && [ ! -f /var/lib/tbw-once/bonanza-read2 ]; then
+  bash "$REMOTE_PATH/deploy/bonanza-read2.sh" || true
+  touch /var/lib/tbw-once/bonanza-read2
+fi
