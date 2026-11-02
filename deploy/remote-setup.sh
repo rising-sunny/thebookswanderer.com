@@ -291,3 +291,8 @@ if [ ! -f /var/lib/tbw-once/bonanza-fulfill-check ]; then
   systemctl show -p Result --value tbw-order-tracking.service || true
   touch /var/lib/tbw-once/bonanza-fulfill-check
 fi
+# One-time: publish the three print-on-demand listings on the MathRelaxing Bonanza booth.
+if [ -f "$REMOTE_PATH/deploy/bonanza-publish.py" ] && [ ! -f /var/lib/tbw-once/bonanza-publish ]; then
+  touch /var/lib/tbw-once/bonanza-publish
+  python3 "$REMOTE_PATH/deploy/bonanza-publish.py" || true
+fi
