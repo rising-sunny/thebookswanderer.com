@@ -108,10 +108,10 @@ async def shipping_cost(lines: list[dict], country_code: str, address: dict | No
     return round(value, 2)
 
 
-async def create_order(*, external_id: str, label: str, lines: list[dict], address: dict) -> dict:
+async def create_order(*, external_id: str, label: str, lines: list[dict], address: dict, shop: str = "") -> dict:
     return await _request(
         "POST",
-        f"/shops/{shop_id()}/orders.json",
+        f"/shops/{shop or shop_id()}/orders.json",
         {
             "external_id": external_id,
             "label": label,
@@ -123,14 +123,19 @@ async def create_order(*, external_id: str, label: str, lines: list[dict], addre
     )
 
 
-async def send_to_production(order_id: str) -> dict:
-    return await _request("POST", f"/shops/{shop_id()}/orders/{order_id}/send_to_production.json")
+async def send_to_production(order_id: str, shop: str = "") -> dict:
+    return await _request("POST", f"/shops/{shop or shop_id()}/orders/{order_id}/send_to_production.json")
 
 
-async def get_order(order_id: str) -> dict:
+async def cancel_order(order_id: str, shop: str = "") -> dict:
+    """Only an order that is still on hold (not in production) can be cancelled."""
+    return await _request("POST", f"/shops/{shop or shop_id()}/orders/{order_id}/cancel.json")
+
+
+async def get_order(order_id: str, shop: str = "") -> dict:
     """status (on-hold, in-production, fulfilled, canceled, has-issues…) and
     shipments [{carrier, number, url}]."""
-    return await _request("GET", f"/shops/{shop_id()}/orders/{order_id}.json")
+    return await _request("GET", f"/shops/{shop or shop_id()}/orders/{order_id}.json")
 
 
 def auto_production() -> bool:

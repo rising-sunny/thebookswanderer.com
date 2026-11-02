@@ -284,3 +284,10 @@ if [ -f "$REMOTE_PATH/deploy/bonanza-read2.sh" ] && [ ! -f /var/lib/tbw-once/bon
   bash "$REMOTE_PATH/deploy/bonanza-read2.sh" || true
   touch /var/lib/tbw-once/bonanza-read2
 fi
+# One-time check of the Bonanza order worker (dry run while bonanza_skus.json has "live": false).
+if [ ! -f /var/lib/tbw-once/bonanza-fulfill-check ]; then
+  systemctl start tbw-order-tracking.service || true
+  grep -n "Bonanza\|bonanza-" /var/log/tbw-tracking.log | tail -n 15 || true
+  systemctl show -p Result --value tbw-order-tracking.service || true
+  touch /var/lib/tbw-once/bonanza-fulfill-check
+fi

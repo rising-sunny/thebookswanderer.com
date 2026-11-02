@@ -255,6 +255,23 @@ class SlantSubmission(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class BonanzaOrder(Base):
+    """A paid Bonanza order ("bonanza-<order id>") and its print-on-demand legs.
+    prepared -> awaiting (supplier drafts made, nothing charged) -> approved -> shipped;
+    review (needs a person) and dismissed end the automatic flow."""
+    __tablename__ = "bonanza_orders"
+    ref: Mapped[str] = mapped_column(String(60), primary_key=True)
+    state: Mapped[str] = mapped_column(String(24), default="prepared")
+    summary_json: Mapped[str] = mapped_column(Text, default="")
+    legs_json: Mapped[str] = mapped_column(Text, default="[]")
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    max_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    tracking: Mapped[str] = mapped_column(String(300), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 class OrderItem(Base):
     __tablename__ = "order_items"
 
