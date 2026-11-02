@@ -192,6 +192,90 @@
           ]
         }
       ]
+    },
+    {
+      "slug": "fractal-ornaments",
+      "max_cost_us": 18.0,
+      "max_cost_intl": 36.0,
+      "title": "Fractal Christmas Ornaments, Set of 4: Koch Snowflake, Sierpinski Tree, Pythagoras Tree and Pentaflake",
+      "title_es": "Adornos navideños fractales, set de 4: copo de Koch, árbol de Sierpinski, árbol de Pitágoras y pentaflake",
+      "category": "mathrelaxing",
+      "price_usd": 29.99,
+      "cost_usd": 13.37,
+      "image_url": "/assets/products/fractal-ornaments/main.jpg",
+      "gallery": [
+        "/assets/products/fractal-ornaments/koch.jpg",
+        "/assets/products/fractal-ornaments/table.jpg",
+        "/assets/products/fractal-ornaments/maths.jpg",
+        "/assets/products/fractal-ornaments/gold.jpg"
+      ],
+      "description": "Four Christmas ornaments, each one a famous fractal: shapes that repeat themselves at smaller and smaller scales.\n\n• Koch snowflake (1904): a triangle gets a smaller triangle on the middle of every edge, again and again. Its edge grows without end, yet its area stays under 8/5 of the first triangle. Raised lines on the face show steps 0, 1 and 2.\n• Sierpinski triangle (1915), shaped as a little tree: take out the middle triangle, then repeat in the three that are left.\n• Pythagoras tree (1942): every square carries two smaller squares, and their areas always add up to the one below, a² + b² = c².\n• Pentaflake: a pentagon made of six pentagons, each made of six more, shrinking by the golden ratio.\n\nTwo sets:\n• Classic: white snowflake, green tree, red Pythagoras tree and gold pentaflake.\n• All gold.\n\n• Set of 4 flat ornaments, each about 5.7 to 7.7 cm (2.2 to 3 in) tall and 3.5 mm thick\n• Each has a 4 mm hole for a ribbon, thread or hook; hanging cord not included\n• Light: about 37 g for all four\n• PLA, printed layer by layer; the fine layer lines show up close\n• Designed by us and printed to order by our production partner Slant 3D in the USA\n• Decorative only: not a toy, keep away from small children and from heat above 50 °C (120 °F)\n\nThe photos are digital renders made from the real print files. Colours can vary a little between filament batches.\n\nShipping to the United States is included. We also ship to Canada, the United Kingdom, Ireland, Germany, France, Spain, the Netherlands, Australia, New Zealand, Japan, Mexico and Chile for a flat 14.99 USD, shown at checkout before you pay.",
+      "description_es": "Cuatro adornos de Navidad, cada uno un fractal famoso: figuras que se repiten a sí mismas en escalas cada vez más pequeñas.\n\n• Copo de Koch (1904): a cada lado de un triángulo se le agrega un triángulo más pequeño, una y otra vez. Su borde crece sin fin, pero su área nunca supera 8/5 del triángulo inicial. Las líneas en relieve muestran los pasos 0, 1 y 2.\n• Triángulo de Sierpinski (1915), con forma de arbolito: se quita el triángulo del centro y se repite en los tres que quedan.\n• Árbol de Pitágoras (1942): cada cuadrado sostiene dos cuadrados más pequeños cuyas áreas suman siempre la del de abajo, a² + b² = c².\n• Pentaflake: un pentágono hecho de seis pentágonos, cada uno hecho de otros seis, que se achican según la razón áurea.\n\nDos sets:\n• Clásico: copo blanco, árbol verde, árbol de Pitágoras rojo y pentaflake dorado.\n• Todo dorado.\n\n• Set de 4 adornos planos, de unos 5,7 a 7,7 cm de alto y 3,5 mm de grosor\n• Cada uno tiene un orificio de 4 mm para cinta, hilo o gancho; el cordón no está incluido\n• Livianos: unos 37 g los cuatro\n• PLA impreso capa por capa; de cerca se ven las finas líneas de capa\n• Diseñados por nosotros e impresos por encargo por nuestro socio de producción Slant 3D en Estados Unidos\n• Solo decorativos: no son un juguete; mantener lejos de niños pequeños y del calor sobre 50 °C\n\nLas fotos son renders digitales hechos con los archivos reales de impresión. Los colores pueden variar un poco según el lote de filamento.\n\nEl envío a Estados Unidos está incluido. También enviamos a Canadá, Reino Unido, Irlanda, Alemania, Francia, España, Países Bajos, Australia, Nueva Zelanda, Japón, México y Chile por una tarifa fija de 14,99 USD, que se muestra antes de pagar.",
+      "details_html": "<h3>Four fractals</h3><p>The Koch snowflake, the Sierpinski triangle, the Pythagoras tree and the pentaflake: each repeats itself at smaller scales, and each carries a short idea from mathematics.</p><h3>What you receive</h3><p>Four flat ornaments in PLA, about 5.7 to 7.7 cm tall, each with a 4 mm hanging hole. Hanging cord not included. Printed to order in the USA by Slant 3D.</p><h3>Care</h3><p>Dust with a soft brush. Decorative only; keep away from heat.</p>",
+      "variants": [
+        {
+          "sku": "TBW-ORN-SET-CLASSIC",
+          "name": "Classic: white, green, red and gold",
+          "image_url": "/assets/products/fractal-ornaments/main.jpg",
+          "parts": [
+            {
+              "name": "Koch snowflake ornament, white",
+              "sku": "TBW-ORN-KOCH-WHITE",
+              "file": "5d415dce-c838-4cd2-b984-c1101fcf41c0",
+              "filament": "8f598975-6fdd-45a5-80a7-aafaa9b9015e"
+            },
+            {
+              "name": "Sierpinski tree ornament, green",
+              "sku": "TBW-ORN-SIERPINSKI-GREEN",
+              "file": "7946c18d-3d46-4b71-af54-d593f3ae8266",
+              "filament": "6484baac-fcf4-4e1d-a1a4-7480b89c7e07"
+            },
+            {
+              "name": "Pythagoras tree ornament, red",
+              "sku": "TBW-ORN-PYTHAGORAS-RED",
+              "file": "f07e5c49-31fd-4238-a90d-f64cd1a096cb",
+              "filament": "92b84110-6e43-4fc9-88aa-8f63967bb2d5"
+            },
+            {
+              "name": "Pentaflake ornament, gold",
+              "sku": "TBW-ORN-PENTAFLAKE-GOLD",
+              "file": "6c67576d-26b6-427b-8f93-255d63cb31ed",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            }
+          ]
+        },
+        {
+          "sku": "TBW-ORN-SET-GOLD",
+          "name": "All gold",
+          "image_url": "/assets/products/fractal-ornaments/gold.jpg",
+          "parts": [
+            {
+              "name": "Koch snowflake ornament, gold",
+              "sku": "TBW-ORN-KOCH-GOLD",
+              "file": "5d415dce-c838-4cd2-b984-c1101fcf41c0",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            },
+            {
+              "name": "Sierpinski tree ornament, gold",
+              "sku": "TBW-ORN-SIERPINSKI-GOLD",
+              "file": "7946c18d-3d46-4b71-af54-d593f3ae8266",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            },
+            {
+              "name": "Pythagoras tree ornament, gold",
+              "sku": "TBW-ORN-PYTHAGORAS-GOLD",
+              "file": "f07e5c49-31fd-4238-a90d-f64cd1a096cb",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            },
+            {
+              "name": "Pentaflake ornament, gold",
+              "sku": "TBW-ORN-PENTAFLAKE-GOLD",
+              "file": "6c67576d-26b6-427b-8f93-255d63cb31ed",
+              "filament": "278023e9-62e8-4657-b6c4-577fbffe7487"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
