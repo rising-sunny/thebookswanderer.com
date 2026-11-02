@@ -3,7 +3,8 @@ Same fonts, colours and marks as annotated_page.py. 2700 x 1050 px = 9 x 3.5 in 
 """
 import math
 from PIL import Image, ImageDraw, ImageFilter
-from annotated_page import font, layout, span, wobbly, PAPER, INK, PEN, RED, YELLOW, PINK
+from annotated_page import font, layout, span, wobbly, PAPER, INK, PEN, RED
+YELLOW, PINK = (255, 226, 120, 255), (255, 178, 206, 255)   # opaque: printed, not glazed over
 
 W, H = 2700, 1050
 LEFT = ("It is a truth universally acknowledged, that a single man in possession of a good fortune, "
@@ -13,12 +14,12 @@ RIGHT = ("\u201cMy dear Mr. Bennet,\u201d said his lady to him one day, \u201cha
 
 
 def main(out="mug.png"):
-    img = Image.new("RGBA", (W, H), PAPER)
-    # the gutter: a soft shadow down the middle, so the wrap reads as an open book
+    # no paper: the mug's own white is the page; a faint gutter shadow keeps the open-book feel
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     shade = Image.new("L", (W, H), 0); sd = ImageDraw.Draw(shade)
-    sd.rectangle([W // 2 - 40, 0, W // 2 + 40, H], fill=70)
-    shade = shade.filter(ImageFilter.GaussianBlur(45))
-    img = Image.composite(Image.new("RGBA", (W, H), (150, 128, 96, 255)), img, shade)
+    sd.rectangle([W // 2 - 30, 60, W // 2 + 30, H - 60], fill=60)
+    shade = shade.filter(ImageFilter.GaussianBlur(40))
+    img.paste(Image.new("RGBA", (W, H), (120, 112, 100, 255)), (0, 0), shade)
     marks = Image.new("RGBA", (W, H), (0, 0, 0, 0)); md = ImageDraw.Draw(marks)
     text = Image.new("RGBA", (W, H), (0, 0, 0, 0)); td = ImageDraw.Draw(text)
 

@@ -67,11 +67,12 @@ def wobbly(draw, pts, fill, width):
     draw.line(pts, fill=fill, width=width, joint="curve")
 
 
-def main(out="page.png", seed=3):
+def main(out="page.png", seed=3, with_paper=True):
     random.seed(seed)
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     paper = Image.new("RGBA", (W, H), (0, 0, 0, 0)); pd = ImageDraw.Draw(paper)
-    pd.rectangle([60, 60, W - 60, H - 60], fill=PAPER)
+    if with_paper:
+        pd.rectangle([60, 60, W - 60, H - 60], fill=PAPER)
     marks = Image.new("RGBA", (W, H), (0, 0, 0, 0)); md = ImageDraw.Draw(marks)
     text = Image.new("RGBA", (W, H), (0, 0, 0, 0)); td = ImageDraw.Draw(text)
 
@@ -136,6 +137,13 @@ def main(out="page.png", seed=3):
 
 
 if __name__ == "__main__":
+    import sys
+    if "--garment" in sys.argv:
+        # for print on fabric: no paper, opaque highlighter (DTG prints soft transparency poorly)
+        YELLOW, PINK = (255, 226, 120, 255), (255, 178, 206, 255)
+        im = main("page-garment.png", with_paper=False)
+        im.resize((W // 6, H // 6), Image.LANCZOS).save("page-garment-preview.png")
+        print("page-garment.png", im.size); raise SystemExit
     im = main()
     im.resize((W // 6, H // 6), Image.LANCZOS).save("page-preview.png")
     print("page.png", im.size)
