@@ -264,3 +264,7 @@ if [ -f "$REMOTE_PATH/deploy/find-credential-names.sh" ] && [ ! -f /var/lib/tbw-
   bash "$REMOTE_PATH/deploy/find-credential-names.sh" bonanz || true
   touch /var/lib/tbw-once/find-bonanza
 fi
+if [ -f "$REMOTE_PATH/deploy/inspect-bonanza.sh" ] && [ ! -f /var/lib/tbw-once/inspect-bonanza ]; then
+  bash "$REMOTE_PATH/deploy/inspect-bonanza.sh" || true
+  touch /var/lib/tbw-once/inspect-bonanza
+fi
