@@ -230,6 +230,39 @@ elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repea
         bpy.ops.render.render(write_still=True)
     raise SystemExit
 
+elif SHOT in ("mug-left", "mug-right"):
+    # an 11 oz white ceramic mug with the wrap; the print covers 229 mm of its 257 mm round
+    world((1, 1, 1), 0.45); sweep((0.86, 0.83, 0.78))
+    R, Hm = 0.041, 0.095
+    bpy.ops.mesh.primitive_cylinder_add(radius=R, depth=Hm, vertices=256, location=(0, 0, Hm / 2))
+    mug = bpy.context.object
+    bpy.ops.object.shade_smooth()
+    m, n, l, bsdf = node_mat("ceramic print")
+    bsdf.inputs["Roughness"].default_value = 0.18; bsdf.inputs["Coat Weight"].default_value = 0.6
+    tc = n.new("ShaderNodeTexCoord"); sep = n.new("ShaderNodeSeparateXYZ"); l.new(tc.outputs["Object"], sep.inputs[0])
+    at = n.new("ShaderNodeMath"); at.operation = "ARCTAN2"; l.new(sep.outputs["Y"], at.inputs[0]); l.new(sep.outputs["X"], at.inputs[1])
+    u = n.new("ShaderNodeMath"); u.operation = "MULTIPLY_ADD"; u.inputs[1].default_value = 1 / (2 * math.pi) / 0.89; u.inputs[2].default_value = 0.5
+    l.new(at.outputs[0], u.inputs[0])
+    v = n.new("ShaderNodeMath"); v.operation = "MULTIPLY_ADD"; v.inputs[1].default_value = 1 / 0.089; v.inputs[2].default_value = 0.5
+    l.new(sep.outputs["Z"], v.inputs[0])
+    comb = n.new("ShaderNodeCombineXYZ"); l.new(u.outputs[0], comb.inputs[0]); l.new(v.outputs[0], comb.inputs[1])
+    tex = n.new("ShaderNodeTexImage"); tex.image = bpy.data.images.load(HERE + "../apparel/mug.png"); tex.extension = "CLIP"
+    l.new(comb.outputs[0], tex.inputs[0])
+    mix = n.new("ShaderNodeMix"); mix.data_type = "RGBA"; mix.inputs["A"].default_value = (0.92, 0.92, 0.9, 1)
+    l.new(tex.outputs["Alpha"], mix.inputs["Factor"]); l.new(tex.outputs["Color"], mix.inputs["B"])
+    l.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    mug.data.materials.append(m)
+    white = flat("glaze", (0.92, 0.92, 0.9), 0.15)
+    # the handle sits in the unprinted gap, which is at -x where the wrap starts and ends
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.028, minor_radius=0.0065, location=(-R - 0.012, 0, Hm * 0.52), rotation=(math.pi / 2, 0, 0))
+    handle = bpy.context.object; handle.data.materials.append(white); handle.parent = mug
+    handle.location = (-R - 0.012, 0, Hm * 0.02)
+    bpy.ops.mesh.primitive_cylinder_add(radius=R - 0.004, depth=0.002, vertices=128, location=(0, 0, Hm - 0.004))
+    coffee = bpy.context.object; coffee.data.materials.append(flat("coffee", (0.05, 0.025, 0.012), 0.1))
+    mug.rotation_euler[2] = math.radians(10 if SHOT == "mug-left" else 170)    # which page faces the camera
+    area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
+    camera((0.0, -0.36, 0.14), (0, 0, 0.048), 70)
+    sc.camera.data.dof.aperture_fstop = 11
 elif SHOT in ("orn-set", "orn-close"):
     # four ornaments hanging on threads in front of a dark green wall with warm out-of-focus lights
     world((0.05, 0.06, 0.05), 0.2)
