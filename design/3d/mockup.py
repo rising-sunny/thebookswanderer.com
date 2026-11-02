@@ -263,7 +263,7 @@ elif SHOT in ("mug-left", "mug-right"):
     area("key", (-0.4, -0.35, 0.5), 0.7, 110); area("fill", (0.45, -0.3, 0.25), 0.8, 40)
     camera((0.0, -0.36, 0.14), (0, 0, 0.048), 70)
     sc.camera.data.dof.aperture_fstop = 11
-elif SHOT in ("orn-set", "orn-close"):
+elif SHOT in ("orn-set", "orn-close", "orn-gold"):
     # four ornaments hanging on threads in front of a dark green wall with warm out-of-focus lights
     world((0.05, 0.06, 0.05), 0.2)
     bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 0.35, 0.5), rotation=(math.pi / 2, 0, 0))
@@ -282,6 +282,8 @@ elif SHOT in ("orn-set", "orn-close"):
     thread = flat("thread", (0.6, 0.45, 0.2), 0.6)
     items = [("ornament_koch.stl", white, -0.11, 0.165), ("ornament_sierpinski.stl", green, -0.037, 0.150),
              ("ornament_pythagoras.stl", red, 0.037, 0.170), ("ornament_pentaflake.stl", GOLD(), 0.11, 0.158)]
+    if SHOT == "orn-gold":
+        items = [(f, GOLD(), x, top) for f, _m, x, top in items]
     if SHOT == "orn-close":
         items = items[:1]; items[0] = ("ornament_koch.stl", white, 0.0, 0.16)
     for f, mat, x, top in items:
@@ -295,11 +297,25 @@ elif SHOT in ("orn-set", "orn-close"):
         bpy.context.object.data.materials.append(thread)
     area("key", (-0.35, -0.4, 0.45), 0.6, 170, (1, 0.93, 0.85)); area("fill", (0.4, -0.35, 0.2), 0.6, 50)
     area("rim", (0.0, 0.25, 0.4), 0.4, 40, (1, 0.85, 0.6))
-    if SHOT == "orn-set":
+    if SHOT in ("orn-set", "orn-gold"):
         camera((0.0, -0.52, 0.125), (0, 0, 0.122), 62)
     else:
         camera((0.0, -0.22, 0.11), (0, 0, 0.115), 70)
     sc.camera.data.dof.aperture_fstop = 2.8
+elif SHOT == "orn-flat":
+    # the four lying flat on a wooden table beside a hardback, seen from above: the size reads at once
+    world((0.95, 0.88, 0.78), 0.3)
+    bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
+    white = pla("white PLA", (0.80, 0.80, 0.78), rough=0.45)
+    green = pla("green PLA", (0.02, 0.22, 0.09), rough=0.45)
+    red = pla("red PLA", (0.45, 0.02, 0.02), rough=0.4)
+    for f, mat, x, y, rz in (("ornament_koch.stl", white, -0.045, 0.045, 0.2), ("ornament_sierpinski.stl", green, 0.045, 0.05, -0.15),
+                             ("ornament_pythagoras.stl", red, -0.045, -0.045, -0.1), ("ornament_pentaflake.stl", GOLD(), 0.047, -0.042, 0.25)):
+        stl(f, mat, loc=(x, y, 0.0), rot=(0, 0, rz))
+    book(0.15, 0.22, 0.028, (0.205, 0.03, 0), flat("red cloth", (0.32, 0.05, 0.04), 0.8), 0.08)
+    book(0.14, 0.21, 0.024, (0.21, 0.035, 0.028), flat("green cloth", (0.06, 0.16, 0.10), 0.8), 0.14)
+    area("key", (-0.4, -0.3, 0.6), 0.8, 220); area("fill", (0.5, -0.3, 0.4), 0.8, 70)
+    camera((0.03, -0.10, 0.40), (0.03, 0.0, 0.0), 55)
 elif SHOT == "horn-desk":
     world((0.95, 0.88, 0.78), 0.25)
     bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
