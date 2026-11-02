@@ -230,6 +230,43 @@ elif SHOT in ("spin-gold", "spin-rainbow"):   # seamless loop: the lattice repea
         bpy.ops.render.render(write_still=True)
     raise SystemExit
 
+elif SHOT in ("orn-set", "orn-close"):
+    # four ornaments hanging on threads in front of a dark green wall with warm out-of-focus lights
+    world((0.05, 0.06, 0.05), 0.2)
+    bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 0.35, 0.5), rotation=(math.pi / 2, 0, 0))
+    bpy.context.object.data.materials.append(flat("velvet", (0.012, 0.035, 0.022), 0.9))
+    import random
+    random.seed(7)
+    glow = bpy.data.materials.new("glow"); glow.use_nodes = True
+    nt = glow.node_tree; em = nt.nodes.new("ShaderNodeEmission"); em.inputs[0].default_value = (1.0, 0.72, 0.38, 1); em.inputs[1].default_value = 14
+    nt.links.new(em.outputs[0], nt.nodes["Material Output"].inputs[0])
+    for _ in range(26):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.003, location=(random.uniform(-0.3, 0.3), 0.30, random.uniform(-0.05, 0.32)))
+        bpy.context.object.data.materials.append(glow)
+    white = pla("white PLA", (0.80, 0.80, 0.78), rough=0.45)
+    green = pla("green PLA", (0.02, 0.22, 0.09), rough=0.45)
+    red = pla("red PLA", (0.45, 0.02, 0.02), rough=0.4)
+    thread = flat("thread", (0.6, 0.45, 0.2), 0.6)
+    items = [("ornament_koch.stl", white, -0.11, 0.165), ("ornament_sierpinski.stl", green, -0.037, 0.150),
+             ("ornament_pythagoras.stl", red, 0.037, 0.170), ("ornament_pentaflake.stl", GOLD(), 0.11, 0.158)]
+    if SHOT == "orn-close":
+        items = items[:1]; items[0] = ("ornament_koch.stl", white, 0.0, 0.16)
+    for f, mat, x, top in items:
+        o = stl(f, mat, rot=(math.pi / 2, 0, random.uniform(-0.25, 0.25)))
+        bpy.context.view_layer.update()
+        o.location = (x, 0.0, top - 0.04)
+        bpy.context.view_layer.update()
+        corners = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        z_top = max(c.z for c in corners) - 0.0035          # into the hanging loop
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.0004, depth=0.4, location=(x, 0.0, z_top + 0.2))
+        bpy.context.object.data.materials.append(thread)
+    area("key", (-0.35, -0.4, 0.45), 0.6, 170, (1, 0.93, 0.85)); area("fill", (0.4, -0.35, 0.2), 0.6, 50)
+    area("rim", (0.0, 0.25, 0.4), 0.4, 40, (1, 0.85, 0.6))
+    if SHOT == "orn-set":
+        camera((0.0, -0.52, 0.125), (0, 0, 0.122), 62)
+    else:
+        camera((0.0, -0.22, 0.11), (0, 0, 0.115), 70)
+    sc.camera.data.dof.aperture_fstop = 2.8
 elif SHOT == "horn-desk":
     world((0.95, 0.88, 0.78), 0.25)
     bpy.ops.mesh.primitive_plane_add(size=3); bpy.context.object.data.materials.append(wood())
