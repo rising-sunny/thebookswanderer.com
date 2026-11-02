@@ -157,7 +157,7 @@ PRODUCTS = [
     # Printify title ("M / Sand"), with a fixed price per size instead of the formula
     {
         "slug": "annotated-pride-and-prejudice-sweatshirt",
-        "printify_id": "6ae8c1d908d860bc98042f48",
+        "printify_id": "6ae8c414e30acf0f5604d7d1",
         "title": "Annotated Pride and Prejudice Sweatshirt",
         "category": "book-accessories",
         "description": (
@@ -175,7 +175,7 @@ PRODUCTS = [
     },
     {
         "slug": "annotated-pride-and-prejudice-mug",
-        "printify_id": "6ae8bdc945d26ffddc02fcc7",
+        "printify_id": "6ae8c4026e342209cf08c478",
         "title": "Annotated Pride and Prejudice Mug, 11 oz",
         "category": "decor",
         "description": (
