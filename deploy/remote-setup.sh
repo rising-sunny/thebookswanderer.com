@@ -268,3 +268,7 @@ if [ -f "$REMOTE_PATH/deploy/inspect-bonanza.sh" ] && [ ! -f /var/lib/tbw-once/i
   bash "$REMOTE_PATH/deploy/inspect-bonanza.sh" || true
   touch /var/lib/tbw-once/inspect-bonanza
 fi
+if [ -f "$REMOTE_PATH/deploy/outline-bonanza.sh" ] && [ ! -f /var/lib/tbw-once/outline-bonanza ]; then
+  bash "$REMOTE_PATH/deploy/outline-bonanza.sh" || true
+  touch /var/lib/tbw-once/outline-bonanza
+fi
