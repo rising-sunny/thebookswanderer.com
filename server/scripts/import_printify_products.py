@@ -153,6 +153,45 @@ PRODUCTS = [
         "hero_mockup_camera": "19797",
         "variant_name": "Aluminium bookmark, 1.5 × 5.25 in",
     },
+    # several enabled variants: one store option per Printify variant, named by its
+    # Printify title ("M / Sand"), with a fixed price per size instead of the formula
+    {
+        "slug": "annotated-pride-and-prejudice-sweatshirt",
+        "printify_id": "6ae8c1d908d860bc98042f48",
+        "title": "Annotated Pride and Prejudice Sweatshirt",
+        "category": "book-accessories",
+        "description": (
+            "The opening of Pride and Prejudice the way a reader leaves it: the first line "
+            "highlighted, a wavy underline, a circled word, and notes in the margin (\"the most "
+            "famous first line ever\", \"irony!!\", \"poor guy, no say in it\"). Austen's text is "
+            "from 1813; the notes and the layout are ours. Printed straight on the fabric, no patch. "
+            "Gildan 18000 heavy blend crewneck, 50% cotton and 50% polyester, unisex fit. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "local": [],
+        "skip_mockup_camera": set(),
+        "hero_mockup_camera": "92570",
+        "prices": {"S": 46.99, "M": 46.99, "L": 46.99, "XL": 46.99, "2XL": 49.99},
+    },
+    {
+        "slug": "annotated-pride-and-prejudice-mug",
+        "printify_id": "6ae8bdc945d26ffddc02fcc7",
+        "title": "Annotated Pride and Prejudice Mug, 11 oz",
+        "category": "decor",
+        "description": (
+            "An open copy of Pride and Prejudice wraps round this mug: on one side the first line, "
+            "highlighted and underlined, with \"the most famous first line ever\" in the margin; on "
+            "the other, Mrs. Bennet's \"have you heard that Netherfield Park is let at last?\" with "
+            "its own note. A right-handed and a left-handed reader each get a page facing them. "
+            "11 oz white ceramic, dishwasher and microwave safe. "
+            "Printed to order in the US; ships to US addresses only."
+        ),
+        "local": [],
+        "skip_mockup_camera": set(),
+        "hero_mockup_camera": "10393",
+        "variant_name": "White ceramic mug, 11 oz",
+        "prices": {"11oz": 24.99},
+    },
 ]
 
 
@@ -163,14 +202,23 @@ def _round99(v: float) -> float:
 async def fetch(spec: dict) -> dict:
     p = await printify._request("GET", f"/shops/{printify.shop_id()}/products/{spec['printify_id']}.json")
     variants = [v for v in p["variants"] if v.get("is_enabled")]
-    if len(variants) != 1:
+    if len(variants) != 1 and "prices" not in spec:
         raise SystemExit(f"{spec['slug']}: expected one enabled variant, got {len(variants)}")
     v = variants[0]
     mockups = [m["src"] for m in p.get("images", [])
                if not any(f"/{cam}/" in m["src"] for cam in spec["skip_mockup_camera"])]
     ship = await printify.shipping_cost(
         [{"product_id": spec["printify_id"], "variant_id": v["id"], "quantity": 1}], "US")
-    return {"variant_id": v["id"], "cost": v["cost"] / 100, "ship": ship, "mockups": mockups}
+    return {"variant_id": v["id"], "cost": v["cost"] / 100, "ship": ship, "mockups": mockups,
+            "variants": [{"id": x["id"], "title": x["title"], "cost": x["cost"] / 100} for x in variants],
+            "images": [(m["src"], set(m.get("variant_ids") or [])) for m in p.get("images", [])]}
+
+
+def fixed_price(spec: dict, title: str) -> float:
+    size = title.split(" / ")[0].strip()
+    if size not in spec["prices"]:
+        raise SystemExit(f"{spec['slug']}: no price for size {size!r}")
+    return spec["prices"][size]
 
 
 def price(cost: float, ship: float) -> float:
@@ -180,7 +228,7 @@ def price(cost: float, ship: float) -> float:
     return _round99(pricing_service.retail_from_cost(cost) + allowance)
 
 
-def write(spec: dict, info: dict, retail: float) -> None:
+def write(spec: dict, info: dict, retail: float, pin: bool = True) -> None:
     from database import SessionLocal, init_db
     from models import Product, ProductVariant
 
@@ -190,16 +238,20 @@ def write(spec: dict, info: dict, retail: float) -> None:
     if not product:
         product = Product(slug=spec["slug"])
         db.add(product)
-    hero = spec["hero"]
+    hero = spec.get("hero", "")
     cam = spec.get("hero_mockup_camera")
     scene = next((m for m in info["mockups"] if cam and f"/{cam}/" in m), None)
     if scene:
         hero = scene
-    gallery = [hero, *([spec["hero"]] if scene else []), *spec["local"],
+    gallery = [hero, *([spec["hero"]] if scene and spec.get("hero") else []), *spec["local"],
                *[m for m in info["mockups"] if m != scene]]
     product.title = spec["title"]
     product.description = spec["description"]
     product.image_url = hero
+    if "prices" in spec:
+        # one front shot per colour first, then the rest; Printify makes one set per colour
+        front = [m for m in gallery[1:] if cam and f"/{cam}/" in m]
+        gallery = [hero, *front, *[m for m in gallery[1:] if m not in front]][:12]
     product.gallery_json = json.dumps(gallery)
     product.details_html = ""
     product.category = spec["category"]
@@ -218,14 +270,29 @@ def write(spec: dict, info: dict, retail: float) -> None:
     for old in list(product.variants or []):
         db.delete(old)
     db.flush()
-    db.add(ProductVariant(
-        product_id=product.id, name=spec["variant_name"], cj_vid="", cj_sku="",
-        printify_variant_id=info["variant_id"], image_url=hero,
-        cost_usd=info["cost"], price_usd=retail, sort_order=0, active=True,
-    ))
+    if "prices" in spec and len(info["variants"]) > 1:
+        sizes = list(spec["prices"])
+        order = sorted(info["variants"], key=lambda v: (v["title"].split(" / ")[-1], sizes.index(v["title"].split(" / ")[0])))
+        for i, v in enumerate(order):
+            # the colour's own front mockup when Printify made one
+            img = next((src for src, ids in info["images"] if v["id"] in ids and f"/{cam}/" in src), hero)
+            db.add(ProductVariant(
+                product_id=product.id, name=v["title"], cj_vid="", cj_sku="",
+                printify_variant_id=v["id"], image_url=img,
+                cost_usd=v["cost"], price_usd=fixed_price(spec, v["title"]), sort_order=i, active=True,
+            ))
+    else:
+        db.add(ProductVariant(
+            product_id=product.id, name=spec["variant_name"], cj_vid="", cj_sku="",
+            printify_variant_id=info["variant_id"], image_url=hero,
+            cost_usd=info["cost"], price_usd=retail, sort_order=0, active=True,
+        ))
     db.commit()
     db.refresh(product)
     print(f"  OK product {product.id} {product.slug}")
+    if not pin:
+        db.close()
+        return
     try:
         from services import pinterest_jobs as pin_jobs
 
@@ -240,6 +307,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--slug", action="append")
+    ap.add_argument("--no-pin", action="store_true", help="skip the Pinterest launch pin")
     args = ap.parse_args()
     if not printify.configured():
         raise SystemExit("PRINTIFY_API_TOKEN / PRINTIFY_SHOP_ID missing in server/.env")
@@ -247,11 +315,12 @@ def main() -> None:
         if args.slug and spec["slug"] not in args.slug:
             continue
         info = asyncio.run(fetch(spec))
-        retail = price(info["cost"], info["ship"])
+        retail = (min(fixed_price(spec, v["title"]) for v in info["variants"]) if "prices" in spec
+                  else price(info["cost"], info["ship"]))
         print(f"{spec['slug']:34} cost ${info['cost']:.2f}  US ship ${info['ship']:.2f}  "
               f"price ${retail:.2f}  mockups {len(info['mockups'])}")
         if not args.dry_run:
-            write(spec, info, retail)
+            write(spec, info, retail, pin=not args.no_pin)
 
 
 if __name__ == "__main__":
