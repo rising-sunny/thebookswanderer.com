@@ -12,7 +12,8 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-ROOT = Path("/opt/etsy_lulu_fulfill")
+import sys
+ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "/opt/etsy_lulu_fulfill")
 IDS = ("4603381326", "4220948340", "TBW-JANE-AUSTEN-PUZZLE-BOOK")
 PII_KEY = re.compile(r"(?i)(name|address|street|line_?\d|first_line|second_line|city|zip|post|email|phone|buyer|recipient|customer|tax_id|message)")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
