@@ -97,7 +97,7 @@ jobs:
             services/collaborators.py services/collaborators_store.py \
             services/invitation.py services/outreach.py services/monthly_newsletter.py \
             services/supplier_api.py services/etsy.py services/crosslist.py services/slant3d.py services/slant3d_submission.py \
-            services/product_media.py services/bonanza.py services/bonanza_orders.py \
+            services/product_media.py services/bonanza.py services/bonanza_orders.py services/image_mirror.py \
             "$VPS_HOST:$REMOTE/server/services/"
           scp -o BatchMode=yes routers/__init__.py routers/pinterest.py routers/collaborators.py routers/outreach.py routers/product_media.py routers/bonanza_orders.py "$VPS_HOST:$REMOTE/server/routers/"
           scp -o BatchMode=yes templates/*.html "$VPS_HOST:$REMOTE/server/templates/"
