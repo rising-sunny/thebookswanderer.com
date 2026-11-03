@@ -26,7 +26,7 @@ if reg.is_file():
     data = json.loads(reg.read_text())
     print("== this store's registrations:")
     for k, v in (data.items() if isinstance(data, dict) else enumerate(data)):
-        flat = {kk: vv for kk, vv in (v.items() if isinstance(v, dict) else []) if isinstance(vv, (str, int, float, bool)) and len(str(vv)) < 120}
+        flat = {kk: vv for kk, vv in (v.items() if isinstance(v, dict) else []) if isinstance(vv, (str, int, float, bool)) and len(str(vv)) < 120 and not any(w in kk.lower() for w in ("token", "secret", "key", "password", "auth"))}
         print(f"  {k}: {json.dumps(flat, ensure_ascii=False)[:400]}")
 sys.stdout.flush()
 subprocess.run([sys.executable, str(HERE / "inspect-etsy-lulu.py"), "/var/lib/mathrelaxing-etsy-lulu"], timeout=120)
