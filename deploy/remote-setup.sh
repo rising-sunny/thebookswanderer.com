@@ -310,8 +310,8 @@ if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu3.py" ] && [ ! -f /var/lib/tbw-onc
   python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu3.py" || true
 fi
 # One-time: let the Etsy -> Lulu worker submit receipt 4220948340 again (job only; owner pays in Lulu).
-if [ -f "$REMOTE_PATH/deploy/retry-etsy-lulu.py" ] && [ ! -f /var/lib/tbw-once/retry-etsy-lulu-4220948340-b ]; then
-  touch /var/lib/tbw-once/retry-etsy-lulu-4220948340-b
+if [ -f "$REMOTE_PATH/deploy/retry-etsy-lulu.py" ] && [ ! -f /var/lib/tbw-once/retry-etsy-lulu-4220948340-c ]; then
+  touch /var/lib/tbw-once/retry-etsy-lulu-4220948340-c
   python3 "$REMOTE_PATH/deploy/retry-etsy-lulu.py" || true
 fi
 if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu4.py" ] && [ ! -f /var/lib/tbw-once/inspect-etsy-lulu4 ]; then
