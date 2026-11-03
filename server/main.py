@@ -2370,7 +2370,7 @@ async def internal_supplier_api(
     """Any supplier API call with the store's key. Writes run once, with the preview's code."""
     _internal_ok(request)
     try:
-        supplier_api.check(supplier, body.method, body.path)
+        supplier_api.check(supplier, body.method, body.path, body.body)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
     except PermissionError as exc:
