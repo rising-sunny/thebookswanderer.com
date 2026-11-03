@@ -342,3 +342,8 @@ if [ -f "$REMOTE_PATH/deploy/video-inventory.sh" ] && [ ! -f /var/lib/tbw-once/v
   touch /var/lib/tbw-once/video-inventory-20261103
   bash "$REMOTE_PATH/deploy/video-inventory.sh" || true
 fi
+# One-time, owner-approved: delete the big video files of projects already public on YouTube.
+if [ -f "$REMOTE_PATH/deploy/delete-published-videos.sh" ] && [ ! -f /var/lib/tbw-once/delete-published-videos-20261103 ]; then
+  touch /var/lib/tbw-once/delete-published-videos-20261103
+  bash "$REMOTE_PATH/deploy/delete-published-videos.sh" || true
+fi
