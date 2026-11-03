@@ -347,3 +347,8 @@ if [ -f "$REMOTE_PATH/deploy/delete-published-videos.sh" ] && [ ! -f /var/lib/tb
   touch /var/lib/tbw-once/delete-published-videos-20261103
   bash "$REMOTE_PATH/deploy/delete-published-videos.sh" || true
 fi
+# One-time, read-only: Search Console report and installed MCP layout (before extending them).
+if [ -f "$REMOTE_PATH/deploy/inspect-seo.sh" ] && [ ! -f /var/lib/tbw-once/inspect-seo-20261103 ]; then
+  touch /var/lib/tbw-once/inspect-seo-20261103
+  bash "$REMOTE_PATH/deploy/inspect-seo.sh" || true
+fi
