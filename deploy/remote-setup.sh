@@ -327,3 +327,8 @@ if [ -f "$REMOTE_PATH/deploy/fix-etsy-lulu-package.py" ] && [ ! -f /var/lib/tbw-
     python3 "$REMOTE_PATH/deploy/retry-etsy-lulu.py" || true
   fi
 fi
+# One-time, read-only: what fills the root disk (alert at 85% on 2026-11-03).
+if [ -f "$REMOTE_PATH/deploy/disk-usage.sh" ] && [ ! -f /var/lib/tbw-once/disk-usage-20261103 ]; then
+  touch /var/lib/tbw-once/disk-usage-20261103
+  bash "$REMOTE_PATH/deploy/disk-usage.sh" || true
+fi
