@@ -205,10 +205,18 @@ PRODUCTS = [
             "canvas tote, heavy 12 oz fabric, 15 x 16 in with 20 in handles. Spot clean and air dry. "
             "Printed to order in the US; check your destination for delivery availability and the total."
         ),
-        "local": [],
+        # Printify only returns the mockups selected for publishing (front and person-front),
+        # so the scenes are listed here; the closeup with the care label is left out on purpose.
+        "hero": "https://images-api.printify.com/mockup/6ae94af4ce06fac797082179/101409/109940/annotated-pride-and-prejudice-tote-bag.jpg?camera_label=lifestyle-front",
+        "local": [
+            "https://images-api.printify.com/mockup/6ae94af4ce06fac797082179/101409/109938/annotated-pride-and-prejudice-tote-bag.jpg?camera_label=person-3-front",
+            "https://images-api.printify.com/mockup/6ae94af4ce06fac797082179/101409/94288/annotated-pride-and-prejudice-tote-bag.jpg?camera_label=context-front",
+            "https://images-api.printify.com/mockup/6ae94af4ce06fac797082179/101409/109939/annotated-pride-and-prejudice-tote-bag.jpg?camera_label=person-4-front",
+            "https://images-api.printify.com/mockup/6ae94af4ce06fac797082179/101409/94290/annotated-pride-and-prejudice-tote-bag.jpg?camera_label=closeup-1",
+        ],
         # the back is blank
         "skip_mockup_camera": {"93896", "94287", "109948", "109946", "109949", "94289", "109947"},
-        "hero_mockup_camera": "109940",
+        "hero_mockup_camera": None,
         "variant_name": "Natural cotton canvas, 15 x 16 in",
     },
     {
