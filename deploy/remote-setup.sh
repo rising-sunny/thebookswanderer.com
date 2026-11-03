@@ -384,3 +384,8 @@ if [ -f "$REMOTE_PATH/deploy/enable-meta-ads-paused.sh" ] && [ ! -f /var/lib/tbw
   touch /var/lib/tbw-once/enable-meta-ads-paused-20261103
   bash "$REMOTE_PATH/deploy/enable-meta-ads-paused.sh" || true
 fi
+# One-time, read-only: Etsy auth diagnosis.
+if [ -f "$REMOTE_PATH/deploy/inspect-etsy-auth.sh" ] && [ ! -f /var/lib/tbw-once/inspect-etsy-auth-20261103 ]; then
+  touch /var/lib/tbw-once/inspect-etsy-auth-20261103
+  bash "$REMOTE_PATH/deploy/inspect-etsy-auth.sh" || true
+fi
