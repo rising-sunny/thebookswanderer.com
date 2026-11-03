@@ -357,3 +357,8 @@ if [ -f "$REMOTE_PATH/deploy/show-seo-code.sh" ] && [ ! -f /var/lib/tbw-once/sho
   touch /var/lib/tbw-once/show-seo-code-20261103
   bash "$REMOTE_PATH/deploy/show-seo-code.sh" || true
 fi
+# One-time: local read-only Search Console query service and two MCP tools (with backup/rollback).
+if [ -f "$REMOTE_PATH/deploy/seo_query_install.py" ] && [ ! -f /var/lib/tbw-once/seo-query-install-20261103 ]; then
+  touch /var/lib/tbw-once/seo-query-install-20261103
+  python3 "$REMOTE_PATH/deploy/seo_query_install.py" || echo "WARNING: seo-query install incomplete"
+fi
