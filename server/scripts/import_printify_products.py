@@ -192,6 +192,46 @@ PRODUCTS = [
         "variant_name": "White ceramic mug, 11 oz",
         "prices": {"11oz": 24.99},
     },
+    {
+        "slug": "annotated-pride-and-prejudice-tote",
+        "printify_id": "6ae94af4ce06fac797082179",
+        "title": "Annotated Pride and Prejudice Tote Bag",
+        "category": "book-accessories",
+        "description": (
+            "The opening of Pride and Prejudice the way a reader leaves it: the first line "
+            "highlighted, a wavy underline, a circled word, and notes in the margin (\"the most "
+            "famous first line ever\", \"irony!!\", \"poor guy, no say in it\"). Austen's text is "
+            "from 1813; the notes and the layout are ours. Printed on one side of a natural cotton "
+            "canvas tote, heavy 12 oz fabric, 15 x 16 in with 20 in handles. Spot clean and air dry. "
+            "Printed to order in the US; check your destination for delivery availability and the total."
+        ),
+        "local": [],
+        # the back is blank
+        "skip_mockup_camera": {"93896", "94287", "109948", "109946", "109949", "94289", "109947"},
+        "hero_mockup_camera": "109940",
+        "variant_name": "Natural cotton canvas, 15 x 16 in",
+    },
+    {
+        "slug": "annotated-pride-and-prejudice-poster",
+        "printify_id": "6ae94afb85d0437faf021bbb",
+        "title": "Annotated Pride and Prejudice Poster, Matte Print",
+        "category": "decor",
+        "description": (
+            "The first page of Pride and Prejudice the way a reader leaves it, with a highlighter and "
+            "a pen: the most famous first line in English, the irony underlined, \"property\" circled, "
+            "Mrs. Bennet's \"have you heard that Netherfield Park is let at last?\" bracketed, and notes "
+            "in the margin. Austen's text is from 1813; the notes and the layout are ours. Museum-style "
+            "matte paper, standard frame sizes from 11 x 14 to 30 x 40 in; frame not included. "
+            "Printed to order in the US; check your destination for delivery availability and the total."
+        ),
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # one size's scenes (18 x 24) for the gallery
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99, "12\u2033 x 18\u2033": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "16\u2033 x 24\u2033": 31.99, "18\u2033 x 24\u2033": 31.99,
+                   "20\u2033 x 30\u2033": 34.99, "24\u2033 x 36\u2033": 42.99, "30\u2033 x 40\u2033": 74.99},
+    },
 ]
 
 
@@ -206,7 +246,8 @@ async def fetch(spec: dict) -> dict:
         raise SystemExit(f"{spec['slug']}: expected one enabled variant, got {len(variants)}")
     v = variants[0]
     mockups = [m["src"] for m in p.get("images", [])
-               if not any(f"/{cam}/" in m["src"] for cam in spec["skip_mockup_camera"])]
+               if not any(f"/{cam}/" in m["src"] for cam in spec["skip_mockup_camera"])
+               and ("mockup_variant" not in spec or spec["mockup_variant"] in (m.get("variant_ids") or []))]
     ship = await printify.shipping_cost(
         [{"product_id": spec["printify_id"], "variant_id": v["id"], "quantity": 1}], "US")
     return {"variant_id": v["id"], "cost": v["cost"] / 100, "ship": ship, "mockups": mockups,
