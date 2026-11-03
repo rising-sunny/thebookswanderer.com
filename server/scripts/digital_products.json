@@ -227,5 +227,21 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "reading-challenge-kit-2027",
+    "title": "2027 Reading Challenge Kit Printable, 52 Book Challenge Tracker, Reading Bingo and Journal Pages (PDF)",
+    "price_usd": 7.99,
+    "category": "printables",
+    "description": "The 2027 reading challenge as a complete printable kit: 52 prompts, one a week, none of them assigned, plus everything you need to track the year.\n\nWhat's inside (27 pages):\n• The 52 prompts with a line for each title\n• A bookshelf tracker: 52 numbered spines to colour in, one per book\n• Four reading bingo cards, each with a different mix of prompts, for friends or a book club\n• Twelve monthly logs: title, author, prompt, pages, star rating and a line worth keeping\n• Book review pages, a TBR list and a DNF list\n• Reading goals for January and a year-in-books page for December\n\nFormats: US Letter and A4, both in one ZIP. Print at home on plain paper (white background, light on ink) or use the PDF in GoodNotes, Notability or any PDF app on a tablet.\n\nInstant download: you get the link by email right after checkout. Digital product, nothing is shipped. For personal use. The prompts are the same as our free 2027 reading challenge, which you can read on our website.",
+    "image_url": "/assets/products/reading-challenge-kit-2027/main.jpg",
+    "gallery": [
+      "/assets/products/reading-challenge-kit-2027/inside.jpg",
+      "/assets/products/reading-challenge-kit-2027/shelf.jpg",
+      "/assets/products/reading-challenge-kit-2027/bingo.jpg",
+      "/assets/products/reading-challenge-kit-2027/monthly.jpg",
+      "/assets/products/reading-challenge-kit-2027/year.jpg"
+    ],
+    "active": true
   }
 ]
