@@ -44,6 +44,7 @@ from services import prodigi_store, prodigi_submission  # noqa: E402
 from services import slant3d, slant3d_submission  # noqa: E402
 from services import pricing as pricing_service  # noqa: E402
 from services import crosslist, supplier_api  # noqa: E402
+from services import image_mirror  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
 from services.countries import DESTINATIONS  # noqa: E402
 from ssr import (  # noqa: E402
@@ -804,7 +805,9 @@ def google_products_feed(db: Session = Depends(get_db)):
             image = (v.image_url if v and v.image_url else "") or p.image_url or (gallery[0] if gallery else "")
             if not image:
                 continue
-            extra = [u for u in ([p.image_url] + gallery) if u and u != image][:8]
+            extra = [image_mirror.local(u) for u in ([p.image_url] + gallery) if u and u != image][:8]
+            # Printify's image host blocks crawlers; use the on-site copy when there is one.
+            image = image_mirror.local(image)
             price = float(v.price_usd if v else p.price_usd)
             link = f"{PUBLIC_BASE}/products/{p.slug}" + (f"?variant={v.id}" if group and v else "")
             parts = [
