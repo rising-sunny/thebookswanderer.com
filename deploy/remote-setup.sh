@@ -296,3 +296,8 @@ if [ -f "$REMOTE_PATH/deploy/bonanza-publish.py" ] && [ ! -f /var/lib/tbw-once/b
   touch /var/lib/tbw-once/bonanza-publish
   python3 "$REMOTE_PATH/deploy/bonanza-publish.py" || true
 fi
+# One-time, read-only: state of the Etsy -> Lulu worker for the 2026-11-02 puzzle-book order (no buyer data).
+if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu.py" ] && [ ! -f /var/lib/tbw-once/inspect-etsy-lulu ]; then
+  touch /var/lib/tbw-once/inspect-etsy-lulu
+  python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu.py" || true
+fi
