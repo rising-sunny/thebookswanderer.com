@@ -314,3 +314,7 @@ if [ -f "$REMOTE_PATH/deploy/retry-etsy-lulu.py" ] && [ ! -f /var/lib/tbw-once/r
   touch /var/lib/tbw-once/retry-etsy-lulu-4220948340-b
   python3 "$REMOTE_PATH/deploy/retry-etsy-lulu.py" || true
 fi
+if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu4.py" ] && [ ! -f /var/lib/tbw-once/inspect-etsy-lulu4 ]; then
+  touch /var/lib/tbw-once/inspect-etsy-lulu4
+  python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu4.py" || true
+fi
