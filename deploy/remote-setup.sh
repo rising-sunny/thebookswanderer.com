@@ -337,3 +337,8 @@ if [ -f "$REMOTE_PATH/deploy/disk-cleanup.sh" ] && [ ! -f /var/lib/tbw-once/disk
   touch /var/lib/tbw-once/disk-cleanup-20261103
   bash "$REMOTE_PATH/deploy/disk-cleanup.sh" || true
 fi
+# One-time, read-only: which video projects match videos already public on YouTube.
+if [ -f "$REMOTE_PATH/deploy/video-inventory.sh" ] && [ ! -f /var/lib/tbw-once/video-inventory-20261103 ]; then
+  touch /var/lib/tbw-once/video-inventory-20261103
+  bash "$REMOTE_PATH/deploy/video-inventory.sh" || true
+fi
