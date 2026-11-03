@@ -318,3 +318,12 @@ if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu4.py" ] && [ ! -f /var/lib/tbw-onc
   touch /var/lib/tbw-once/inspect-etsy-lulu4
   python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu4.py" || true
 fi
+# One-time: Lulu needs pod_package_id inside printable_normalization; patch the Etsy -> Lulu worker,
+# then resubmit receipt 4220948340 (job only; the owner pays in Lulu).
+if [ -f "$REMOTE_PATH/deploy/fix-etsy-lulu-package.py" ] && [ ! -f /var/lib/tbw-once/fix-etsy-lulu-package ]; then
+  touch /var/lib/tbw-once/fix-etsy-lulu-package
+  if python3 "$REMOTE_PATH/deploy/fix-etsy-lulu-package.py" && [ ! -f /var/lib/tbw-once/retry-etsy-lulu-4220948340-d ]; then
+    touch /var/lib/tbw-once/retry-etsy-lulu-4220948340-d
+    python3 "$REMOTE_PATH/deploy/retry-etsy-lulu.py" || true
+  fi
+fi
