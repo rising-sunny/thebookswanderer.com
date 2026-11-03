@@ -332,3 +332,8 @@ if [ -f "$REMOTE_PATH/deploy/disk-usage.sh" ] && [ ! -f /var/lib/tbw-once/disk-u
   touch /var/lib/tbw-once/disk-usage-20261103
   bash "$REMOTE_PATH/deploy/disk-usage.sh" || true
 fi
+# One-time disk cleanup approved by the owner (journal cap, old snaps, VS Code builds, caches).
+if [ -f "$REMOTE_PATH/deploy/disk-cleanup.sh" ] && [ ! -f /var/lib/tbw-once/disk-cleanup-20261103 ]; then
+  touch /var/lib/tbw-once/disk-cleanup-20261103
+  bash "$REMOTE_PATH/deploy/disk-cleanup.sh" || true
+fi
