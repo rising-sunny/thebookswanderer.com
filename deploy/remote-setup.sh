@@ -372,3 +372,8 @@ if [ -f "$REMOTE_PATH/deploy/disable-seo-editor.sh" ] && [ ! -f /var/lib/tbw-onc
   touch /var/lib/tbw-once/disable-seo-editor-20261103
   bash "$REMOTE_PATH/deploy/disable-seo-editor.sh" || true
 fi
+# One-time, read-only: Search Console exploration for new content ideas.
+if [ -f "$REMOTE_PATH/deploy/seo-explore.py" ] && [ ! -f /var/lib/tbw-once/seo-explore-20261103 ]; then
+  touch /var/lib/tbw-once/seo-explore-20261103
+  python3 "$REMOTE_PATH/deploy/seo-explore.py" || true
+fi
