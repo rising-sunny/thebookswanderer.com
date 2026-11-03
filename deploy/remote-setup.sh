@@ -367,3 +367,8 @@ if [ -f "$REMOTE_PATH/deploy/seo-query-test.py" ] && [ ! -f /var/lib/tbw-once/se
   touch /var/lib/tbw-once/seo-query-test-20261103
   python3 "$REMOTE_PATH/deploy/seo-query-test.py" || true
 fi
+# One-time, owner-requested: disable the autonomous editorial pilot and report what it did.
+if [ -f "$REMOTE_PATH/deploy/disable-seo-editor.sh" ] && [ ! -f /var/lib/tbw-once/disable-seo-editor-20261103 ]; then
+  touch /var/lib/tbw-once/disable-seo-editor-20261103
+  bash "$REMOTE_PATH/deploy/disable-seo-editor.sh" || true
+fi
