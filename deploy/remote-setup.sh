@@ -257,6 +257,8 @@ chmod 644 /etc/cron.d/tbw-indexnow
 # One-time release tasks (server/scripts/release_queue.json), each run once as www-data;
 # a failed task is retried on the next deploy.
 cd "$REMOTE_PATH/server" && runuser -u www-data -- env PYTHONUNBUFFERED=1 .venv/bin/python scripts/run_release_queue.py || echo "WARNING: release queue failed"
+# Every deploy: encrypted inbox for paid digital files (prints only the public key; see deploy/digital-inbox.py).
+[ -f "$REMOTE_PATH/deploy/digital-inbox.py" ] && { python3 "$REMOTE_PATH/deploy/digital-inbox.py" "$REMOTE_PATH" || echo "WARNING: digital inbox failed"; }
 # Every deploy: on-site copies of Printify mockups (their host blocks crawlers, so Merchant Center rejects them).
 (cd "$REMOTE_PATH/server" && .venv/bin/python scripts/mirror_printify_images.py) || echo "WARNING: printify image mirror failed"
 
