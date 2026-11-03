@@ -352,3 +352,8 @@ if [ -f "$REMOTE_PATH/deploy/inspect-seo.sh" ] && [ ! -f /var/lib/tbw-once/inspe
   touch /var/lib/tbw-once/inspect-seo-20261103
   bash "$REMOTE_PATH/deploy/inspect-seo.sh" || true
 fi
+# One-time, read-only: installed MCP and Search Console report code (secrets masked).
+if [ -f "$REMOTE_PATH/deploy/show-seo-code.sh" ] && [ ! -f /var/lib/tbw-once/show-seo-code-20261103 ]; then
+  touch /var/lib/tbw-once/show-seo-code-20261103
+  bash "$REMOTE_PATH/deploy/show-seo-code.sh" || true
+fi
