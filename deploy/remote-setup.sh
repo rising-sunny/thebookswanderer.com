@@ -305,3 +305,7 @@ if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu2.py" ] && [ ! -f /var/lib/tbw-onc
   touch /var/lib/tbw-once/inspect-etsy-lulu2
   python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu2.py" || true
 fi
+if [ -f "$REMOTE_PATH/deploy/inspect-etsy-lulu3.py" ] && [ ! -f /var/lib/tbw-once/inspect-etsy-lulu3 ]; then
+  touch /var/lib/tbw-once/inspect-etsy-lulu3
+  python3 "$REMOTE_PATH/deploy/inspect-etsy-lulu3.py" || true
+fi
