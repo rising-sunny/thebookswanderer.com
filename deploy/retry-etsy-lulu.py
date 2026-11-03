@@ -70,11 +70,23 @@ RUNNER = """
 import sys, traceback
 sys.path.insert(0, %r)
 sys.argv = ['worker.py', '--config', %r, 'check']
+import requests
+_orig = requests.Session.request
+_last = {}
+def _record(self, method, url, *a, **k):
+    r = _orig(self, method, url, *a, **k)
+    if 'api.lulu.com' in str(url) and not r.ok:
+        _last['where'] = method + ' ' + str(url).split('api.lulu.com', 1)[-1].split('?')[0]
+        _last['body'] = r.text[:2500]
+    return r
+requests.Session.request = _record
 import worker
 try:
     worker.main()
 except BaseException as exc:
     print('EXC', type(exc).__name__, str(exc)[:1500], file=sys.stderr)
+    if _last:
+        print('LULU', _last.get('where'), _last.get('body'), file=sys.stderr)
     for frame in traceback.extract_tb(exc.__traceback__)[-4:]:
         print('AT', frame.name, frame.lineno, file=sys.stderr)
     raise SystemExit(1)
@@ -89,7 +101,7 @@ for line in run.stdout.splitlines():
     if RID in line or "needs_review" in line or "Error" in line:
         print("  out:", mask(line)[:300])
 for line in run.stderr.splitlines()[-20:]:
-    print("  err:", mask(line)[:300])
+    print("  err:", mask(line)[:2600])
 after = json.loads(state_path.read_text())["receipts"].get(RID, {})
 print("receipt now:", after.get("status"), "job", after.get("job_id", "-"), "reason", after.get("reason", "-"),
       "existing", after.get("existing_job_ids", "-"))
