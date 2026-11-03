@@ -49,7 +49,7 @@ def orders_enabled() -> bool:
     return os.getenv("TBW_SUPPLIER_ORDERS_ENABLED", "").strip().lower() in {"1", "true", "yes"}
 
 
-def check(supplier: str, method: str, path: str) -> None:
+def check(supplier: str, method: str, path: str, body: Any = None) -> None:
     """ValueError for a malformed call, PermissionError for a blocked one."""
     if supplier not in SUPPLIERS:
         raise ValueError("Unknown supplier")
@@ -57,9 +57,65 @@ def check(supplier: str, method: str, path: str) -> None:
         raise ValueError("Unsupported method")
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
+    if supplier == "meta" and method != "GET" and not orders_enabled():
+        _check_meta_ad_write(method, path, body)
+        if _META_AD_PATH.fullmatch(path.split("?")[0]):
+            return
     if method != "GET" and _MONEY.search(path.split("?")[0]) and not orders_enabled() \
             and not _unpaid_draft(supplier, method, path):
         raise PermissionError("Orders and payments are disabled")
+
+
+# Meta ads can be built while orders stay disabled, but only paused: campaigns, ad sets and ads
+# are created with status PAUSED, nothing is ever switched to ACTIVE through this route (the
+# owner activates in Ads Manager), and a daily budget may not exceed
+# TBW_META_ADS_MAX_DAILY_BUDGET (account currency, minor units; unset = Meta ads stay blocked).
+_META_AD_PATH = re.compile(r"/act_\d{1,25}/(campaigns|adsets|ads|adcreatives|adimages|advideos)|/\d{1,25}")
+_META_NEEDS_PAUSED = re.compile(r"/act_\d{1,25}/(campaigns|adsets|ads)")
+_META_STATUS_KEYS = {"status", "configured_status", "effective_status"}
+_META_SAFE_STATUS = {"PAUSED", "ARCHIVED", "DELETED"}
+_META_BLOCKED_KEYS = {"lifetime_budget", "spend_cap", "spend_cap_action"}
+
+
+def meta_ads_max_daily_budget() -> int:
+    try:
+        return max(0, int(os.getenv("TBW_META_ADS_MAX_DAILY_BUDGET", "0").strip() or 0))
+    except ValueError:
+        return 0
+
+
+def _walk(value: Any):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            yield k, v
+            yield from _walk(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _walk(v)
+
+
+def _check_meta_ad_write(method: str, path: str, body: Any) -> None:
+    base = path.split("?")[0]
+    for key, value in _walk(body):
+        if key in _META_STATUS_KEYS and str(value).upper() not in _META_SAFE_STATUS:
+            raise PermissionError("Meta objects can only be paused, archived or deleted here; activate in Ads Manager")
+    if not _META_AD_PATH.fullmatch(base):
+        return
+    limit = meta_ads_max_daily_budget()
+    if not limit or method != "POST" or not isinstance(body, dict):
+        raise PermissionError("Meta ads are disabled")
+    if _META_NEEDS_PAUSED.fullmatch(base) and str(body.get("status", "")).upper() != "PAUSED":
+        raise PermissionError("New Meta campaigns, ad sets and ads must be created with status PAUSED")
+    for key, value in _walk(body):
+        if key in _META_BLOCKED_KEYS:
+            raise PermissionError(f"{key} is not allowed here; use a daily budget")
+        if key == "daily_budget":
+            try:
+                amount = int(str(value))
+            except ValueError:
+                raise PermissionError("daily_budget must be a whole number") from None
+            if amount > limit:
+                raise PermissionError(f"daily_budget above the limit of {limit}")
 
 
 def _unpaid_draft(supplier: str, method: str, path: str) -> bool:
@@ -123,7 +179,7 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
 
 
 async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[str, Any]:
-    check(supplier, method, path)
+    check(supplier, method, path, body)
     try:
         async with httpx.AsyncClient(timeout=45, follow_redirects=False) as client:
             response = await _send(client, supplier, method, path, body)

@@ -379,3 +379,8 @@ if [ -f "$REMOTE_PATH/deploy/seo-explore.py" ] && [ ! -f /var/lib/tbw-once/seo-e
   touch /var/lib/tbw-once/seo-explore-20261103
   python3 "$REMOTE_PATH/deploy/seo-explore.py" || true
 fi
+# One-time, owner-approved: Meta ads through the store, paused only, with a daily budget cap.
+if [ -f "$REMOTE_PATH/deploy/enable-meta-ads-paused.sh" ] && [ ! -f /var/lib/tbw-once/enable-meta-ads-paused-20261103 ]; then
+  touch /var/lib/tbw-once/enable-meta-ads-paused-20261103
+  bash "$REMOTE_PATH/deploy/enable-meta-ads-paused.sh" || true
+fi

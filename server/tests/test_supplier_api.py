@@ -103,6 +103,26 @@ class SupplierApi(unittest.TestCase):
             self.assertEqual(self.call('prodigi', {'method': 'POST', 'path': '/orders', 'body': {}}, preview=True).status_code, 200)
         self.assertEqual(self.requests, [])
 
+    def test_meta_ads_only_paused_and_within_the_daily_budget_limit(self):
+        def status(path, body, method='POST'):
+            return self.call('meta', {'method': method, 'path': path, 'body': body}, preview=True).status_code
+        paused = {'name': 'x', 'objective': 'OUTCOME_TRAFFIC', 'status': 'PAUSED', 'daily_budget': 5000}
+        self.assertEqual(status('/act_123/campaigns', paused), 403)          # limit unset: blocked
+        with patch.dict(os.environ, {'TBW_META_ADS_MAX_DAILY_BUDGET': '15000'}):
+            self.assertEqual(status('/act_123/campaigns', paused), 200)
+            self.assertEqual(status('/act_123/adsets', {**paused, 'targeting': {'geo_locations': {'countries': ['US']}}}), 200)
+            self.assertEqual(status('/act_123/adcreatives', {'name': 'c', 'object_story_spec': {}}), 200)
+            self.assertEqual(status('/act_123/campaigns', {**paused, 'status': 'ACTIVE'}), 403)
+            self.assertEqual(status('/act_123/ads', {'name': 'a', 'creative': {'creative_id': '1'}}), 403)
+            self.assertEqual(status('/act_123/campaigns', {**paused, 'daily_budget': 15001}), 403)
+            self.assertEqual(status('/act_123/campaigns', {**paused, 'lifetime_budget': 100}), 403)
+            self.assertEqual(status('/120249986543080256', {'status': 'ACTIVE'}), 403)
+            self.assertEqual(status('/120249986543080256', {'status': 'PAUSED'}), 200)
+            self.assertEqual(status('/120249986543080256', {'name': 'renamed'}), 200)
+            self.assertEqual(status('/act_123/campaigns', paused, method='DELETE'), 403)
+        self.assertEqual(status('/120249986543080256', {'status': 'ACTIVE'}), 403)  # never, even when unset
+        self.assertEqual(self.requests, [])
+
     def test_slant3d_drafts_are_allowed_but_processing_stays_blocked(self):
         draft = {'method': 'POST', 'path': '/orders', 'body': {'items': []}}
         self.assertEqual(self.call('slant3d', draft, preview=True).status_code, 200)
