@@ -28,8 +28,12 @@ CAP = re.compile(r"\b[A-Z][a-z'-]+(?:\s+[A-Z][a-z'-]+){1,3}\b")
 STREET = re.compile(r"\b\d{1,6}\s+[A-Za-z][\w .'-]{1,40}\b(street|st|avenue|ave|drive|dr|road|rd|lane|ln|blvd|way|court|ct|place|pl)\b", re.I)
 
 
+DIGITS = re.compile(r"\+?\d[\d ()-]{6,}\d")
+TOKENISH = re.compile(r"[A-Za-z0-9_\-+/=.]{24,}")
+
+
 def mask(text):
-    return CAP.sub("<name>", STREET.sub("<street>", EMAIL.sub("<email>", text)))
+    return TOKENISH.sub("<long>", DIGITS.sub("<n>", CAP.sub("<name>", STREET.sub("<street>", EMAIL.sub("<email>", text)))))
 
 
 config = json.loads(CONFIG.read_text())
@@ -60,9 +64,23 @@ with (base / ".lock").open("a") as lock:
     print("cleared the uncertain entry; backup", backup.name)
     fcntl.flock(lock, fcntl.LOCK_UN)
 
+# Run the worker's own main() in-process so the exception text is visible (the worker's
+# entry point prints only the exception type). Masked below; never contains a payment.
+RUNNER = """
+import sys, traceback
+sys.path.insert(0, %r)
+sys.argv = ['worker.py', '--config', %r, 'check']
+import worker
+try:
+    worker.main()
+except BaseException as exc:
+    print('EXC', type(exc).__name__, str(exc)[:1500], file=sys.stderr)
+    for frame in traceback.extract_tb(exc.__traceback__)[-4:]:
+        print('AT', frame.name, frame.lineno, file=sys.stderr)
+    raise SystemExit(1)
+""" % (str(UNIFIED), str(CONFIG))
 for attempt in range(12):                    # the worker takes its own non-blocking lock
-    run = subprocess.run(["/usr/bin/python3", str(UNIFIED / "worker.py"), "--config", str(CONFIG), "check"],
-                         capture_output=True, text=True, timeout=600, cwd=str(UNIFIED))
+    run = subprocess.run(["/usr/bin/python3", "-c", RUNNER], capture_output=True, text=True, timeout=600, cwd=str(UNIFIED))
     if "BlockingIOError" not in run.stderr:
         break
     time.sleep(10)
@@ -70,7 +88,7 @@ print("worker exit", run.returncode)
 for line in run.stdout.splitlines():
     if RID in line or "needs_review" in line or "Error" in line:
         print("  out:", mask(line)[:300])
-for line in run.stderr.splitlines()[-12:]:
+for line in run.stderr.splitlines()[-20:]:
     print("  err:", mask(line)[:300])
 after = json.loads(state_path.read_text())["receipts"].get(RID, {})
 print("receipt now:", after.get("status"), "job", after.get("job_id", "-"), "reason", after.get("reason", "-"),
