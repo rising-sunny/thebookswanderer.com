@@ -59,6 +59,25 @@ class SupplierApi(unittest.TestCase):
         self.assertEqual(self.requests[0].headers['Authorization'], 'Bearer printify-secret')
         self.assertNotIn('printify-secret', response.text)
 
+    def test_receipt_and_shipping_address_names_are_hidden(self):
+        from services.supplier_api import redact
+        receipt = {"receipt_id": 1, "name": "Jane Doe", "first_line": "1 Main St", "second_line": "",
+                   "city": "Springfield", "state": "OH", "zip": "00000", "country_iso": "US",
+                   "formatted_address": "Jane Doe\n1 Main St", "buyer_email": "j@example.com",
+                   "transactions": [{"title": "Book", "sku": "X", "variations": [{"formatted_name": "Size"}]}]}
+        out = redact(receipt)
+        for key in ("name", "first_line", "second_line", "city", "zip", "formatted_address", "buyer_email"):
+            self.assertEqual(out[key], "[redacted]", key)
+        self.assertEqual((out["state"], out["country_iso"], out["transactions"][0]["title"]), ("OH", "US", "Book"))
+        lulu = redact({"shipping_address": {"name": "Sam", "street1": "x", "city": "Y", "country_code": "US"},
+                       "status": {"name": "SHIPPED"}})
+        self.assertEqual(lulu["shipping_address"], "[redacted]")
+        self.assertEqual(lulu["status"]["name"], "SHIPPED")
+        options = redact({"options": [{"name": "Clothing sizes", "values": [{"title": "S"}]}], "name": "Board"})
+        self.assertEqual((options["options"][0]["name"], options["name"]), ("Clothing sizes", "Board"))
+        nested = redact({"to": {"name": "Ann", "line1": "2 Elm", "city": "Z", "country": "US"}})
+        self.assertEqual((nested["to"]["name"], nested["to"]["city"], nested["to"]["country"]), ("[redacted]", "[redacted]", "US"))
+
     def test_writes_need_a_fresh_single_use_code_for_the_exact_request(self):
         body = {'method': 'PUT', 'path': '/shops/99/products/abc.json', 'body': {'title': 'New'}}
         preview = self.call('printify', body, preview=True).json()

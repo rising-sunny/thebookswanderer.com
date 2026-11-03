@@ -33,7 +33,8 @@ _MONEY = re.compile(
     re.I,
 )
 _PRIVATE = re.compile(
-    r"(e_?mail\w*|phone\w*|tel|mobile|address\w*|street\w*|zip\w*|post_?code|postal_?code"
+    r"(e_?mail\w*|phone\w*|tel|mobile|\w*address\w*|street\w*|zip\w*|post_?code|postal_?code"
+    r"|(first|second|third)_?line|line_?[123]"
     r"|(first|last|full|given|family)_?name|recipient\w*|customer\w*|consignee\w*|buyer\w*"
     r"|\w*token|\w*secret|password|api_?key)",
     re.I,
@@ -67,10 +68,18 @@ def _unpaid_draft(supplier: str, method: str, path: str) -> bool:
     return supplier == "slant3d" and method == "POST" and path.split("?")[0] == "/orders"
 
 
+# A dict that holds a postal address (an Etsy receipt, a Lulu shipping_address) also names
+# the person and the city in plain keys; "name" alone stays visible elsewhere (options, boards).
+_ADDRESS_HINT = re.compile(r"(\w*address\w*|street\w*|(first|second)_?line|line_?1|post_?code|postal_?code|zip\w*)", re.I)
+_PRIVATE_IN_ADDRESS = re.compile(r"(name|city|town|organization|company)", re.I)
+
+
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
+        postal = any(_ADDRESS_HINT.fullmatch(str(k)) for k in value)
         return {
-            k: "[redacted]" if _PRIVATE.fullmatch(str(k)) else redact(v)
+            k: "[redacted]" if _PRIVATE.fullmatch(str(k)) or (postal and _PRIVATE_IN_ADDRESS.fullmatch(str(k)))
+            else redact(v)
             for k, v in value.items()
         }
     if isinstance(value, list):
