@@ -362,3 +362,8 @@ if [ -f "$REMOTE_PATH/deploy/seo_query_install.py" ] && [ ! -f /var/lib/tbw-once
   touch /var/lib/tbw-once/seo-query-install-20261103
   python3 "$REMOTE_PATH/deploy/seo_query_install.py" || echo "WARNING: seo-query install incomplete"
 fi
+# One-time, read-only: test the Search Console query service.
+if [ -f "$REMOTE_PATH/deploy/seo-query-test.py" ] && [ ! -f /var/lib/tbw-once/seo-query-test-20261103 ]; then
+  touch /var/lib/tbw-once/seo-query-test-20261103
+  python3 "$REMOTE_PATH/deploy/seo-query-test.py" || true
+fi
