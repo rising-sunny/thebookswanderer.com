@@ -1182,3 +1182,18 @@
 html[lang="es"] .j-pick--own h4::after {
     content: "te toca a ti";
 }
+
+/* Buttons inside article prose keep their own colours (the prose link colour must not win). */
+.j-prose .btn {
+    color: var(--btn-fg);
+    text-decoration: none;
+}
+
+.j-prose .guide-card h3 a {
+    color: var(--green-900);
+    text-decoration: none;
+}
+
+.j-prose .guide-grid {
+    padding-left: 0;
+}

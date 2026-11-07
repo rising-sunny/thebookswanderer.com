@@ -186,6 +186,11 @@ CATEGORIES: list[dict[str, Any]] = [
         "faq_h": "Questions",
         "guides": [
             {
+                "title": "E-reader accessories worth buying, and three to skip",
+                "href": "/guides/best-ereader-accessories/",
+                "blurb": "A sleeve that fits, a page-turner remote and what you can skip.",
+            },
+            {
                 "title": "How many books does a 16 GB Kindle hold?",
                 "href": "/guides/how-many-books-does-a-kindle-hold/",
                 "blurb": "The math, what changes it and whether you need 32 GB.",

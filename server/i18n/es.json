@@ -120,6 +120,11 @@
       "faq_h": "Preguntas",
       "guides": [
         {
+          "title": "Accesorios para Kindle y e-readers: los que valen la pena y tres que no",
+          "href": "/guides/accesorios-para-kindle-y-e-readers/",
+          "blurb": "Una funda de la talla justa, un control para pasar páginas y lo que puedes saltarte."
+        },
+        {
           "title": "Cuántos libros caben en un Kindle",
           "href": "/guides/cuantos-libros-caben-en-un-kindle/",
           "blurb": "Las cuentas, qué cambia el resultado y si necesitas 32 GB."
