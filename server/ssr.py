@@ -11,6 +11,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from services import image_mirror
+
 ROOT = Path(__file__).resolve().parent
 SITE_ROOT = ROOT.parent
 PUBLIC_BASE = "https://thebookswanderer.com"
@@ -220,7 +222,9 @@ def render_product_page(
 
     price = detail.get("price_usd")
     price_max = detail.get("price_max_usd", price)
-    img = detail.get("image_url") or ""
+    # images-api.printify.com disallows crawlers in its robots.txt, so Googlebot and the AI
+    # search bots cannot read those images. Serve the on-site copy when the mirror has one.
+    img = image_mirror.local(detail.get("image_url") or "")
     if img.startswith("/"):
         img = PUBLIC_BASE + img
     category = detail.get("category") or "Shop"
@@ -229,7 +233,8 @@ def render_product_page(
     product_id = detail.get("id")
     related_html = _related_block_html(related or [])
     variants = detail.get("variants") or []
-    lifestyle = detail.get("lifestyle_images") or detail.get("images") or []
+    lifestyle = [image_mirror.local(u) if isinstance(u, str) else u
+                 for u in (detail.get("lifestyle_images") or detail.get("images") or [])]
     # The feed sends each variant to ?variant=<id> and Merchant Center checks
     # the price on that page, so it shows that variant's price, not the range.
     chosen = next((v for v in variants if variant_id is not None and v.get("id") == variant_id
@@ -237,7 +242,7 @@ def render_product_page(
     if chosen:
         price = price_max = chosen["price_usd"]
         if chosen.get("image_url"):
-            img = chosen["image_url"]
+            img = image_mirror.local(chosen["image_url"])
             if img.startswith("/"):
                 img = PUBLIC_BASE + img
 
@@ -273,7 +278,10 @@ def render_product_page(
     if img:
         # Google picks the best of several images for results and Shopping;
         # one was all it ever saw.
-        gallery = [img] + [u for u in lifestyle if u and u != img]
+        gallery = [img] + [
+            u for u in lifestyle
+            if u and (PUBLIC_BASE + u if str(u).startswith("/") else u) != img
+        ]
         json_ld_product["image"] = [
             PUBLIC_BASE + u if u.startswith("/") else u for u in gallery[:8]
         ]
