@@ -884,6 +884,10 @@ def sitemap_xml(db: Session = Depends(get_db)):
             )
         )
 
+    journal_index = site_root / "guides" / "index.html"
+    if journal_index.is_file():
+        urls.append((f"{PUBLIC_BASE}/guides/", _file_mtime_iso(journal_index), "weekly", "0.8"))
+
     for rel, prio in (
         ("about.html", "0.6"),
         ("contact.html", "0.5"),
