@@ -132,6 +132,27 @@ _SHIP_LINES = {
 }
 
 
+# Suppliers that make our own designs; their products carry our brand in the Product schema.
+_OWN_DESIGN_SUPPLIERS = {"printify", "digital", "slant3d", "lulu", "prodigi"}
+_MADE_TO_ORDER_SUPPLIERS = {"printify", "prodigi", "lulu", "slant3d"}
+
+
+def _about_paragraph(title: str, supplier: str | None, cat_slug: str) -> str:
+    """One factual paragraph per fulfilment type, instead of the same text on every product."""
+    seller = ("MathRelaxing, the math art studio of The Books Wanderer"
+              if cat_slug == "mathrelaxing" else "The Books Wanderer")
+    if supplier == "digital":
+        return (f"{title} is a digital download sold by {seller}. You pay securely with PayPal "
+                "and the download link arrives by email right after payment. Nothing is shipped.")
+    if supplier in _MADE_TO_ORDER_SUPPLIERS:
+        return (f"{title} is made to order by our production partner and sold by {seller}. "
+                "Because it is made after you order, delivery takes longer than for a product kept "
+                "in stock. Delivery for your country and the shipping total are calculated at the "
+                "cart, and checkout is secured with PayPal.")
+    return (f"{title} is sold by {seller} and ships from partner warehouses with tracking. "
+            "Shipping is calculated by destination at the cart, and checkout is secured with PayPal.")
+
+
 def _supplier_countries(supplier: str | None, from_country: str | None = None) -> set[str] | None:
     """Prodigi art launches in the US; other suppliers confirm coverage via quotes."""
     return {"US"} if supplier == "prodigi" else None
@@ -323,7 +344,14 @@ def render_product_page(
     elif price is not None:
         json_ld_product["offers"] = make_offer(price)
     # Supplier SKUs are internal inventory identifiers, not manufacturer MPNs.
-    # No verified brand, GTIN, reviews or ratings exist in the product model.
+    # No GTIN, reviews or ratings exist in the product model, so none are declared.
+    # A brand is declared only for our own designs (print-on-demand, print and digital
+    # products made from our artwork); CJ items are third-party goods and stay brandless.
+    if detail.get("supplier") in _OWN_DESIGN_SUPPLIERS:
+        json_ld_product["brand"] = {
+            "@type": "Brand",
+            "name": "MathRelaxing" if cat_slug == "mathrelaxing" else "The Books Wanderer",
+        }
 
     json_ld_breadcrumb = {
         "@context": "https://schema.org",
@@ -408,11 +436,7 @@ def render_product_page(
   </div>
   <section class="pdp-ssr__section">
     <h2>About this piece</h2>
-    <p>
-      {_esc_text(title)} is part of {"MathRelaxing, the math art studio of The Books Wanderer — designs computed from real mathematics, not stock art." if cat_slug == "mathrelaxing" else "The Books Wanderer literary boutique — accessories chosen for everyday reading, not novelty clutter."}
-      We list real stock options, clear USD pricing, and ship with tracking.
-      Checkout is secured with PayPal.
-    </p>
+    <p>{_esc_text(_about_paragraph(title, detail.get("supplier"), cat_slug))}</p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
       <li>{"Digital download (PDF) — the link arrives by email right after payment" if digital else _SHIP_LINES.get(detail.get("supplier") or "", _SHIP_LINES["cj"])}</li>
