@@ -3601,3 +3601,49 @@ a.add-to-cart {
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+/* Collection pages: guides and questions below the product grid */
+.collection-guides,
+.collection-faq {
+    padding-block: var(--sp-5) var(--sp-4);
+}
+
+.collection-guides h2,
+.collection-faq h2 {
+    margin: 0 0 var(--sp-4);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--t-h2);
+    color: var(--green-900);
+}
+
+.collection-guides ul {
+    margin: 0;
+    padding-left: 1.2em;
+    max-width: 68ch;
+}
+
+.collection-guides li {
+    margin: 0 0 0.5em;
+}
+
+.collection-faq h3 {
+    margin: var(--sp-5) 0 var(--sp-1);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--t-h3);
+    color: var(--green-900);
+}
+
+.collection-faq p {
+    margin: 0;
+    max-width: 68ch;
+    line-height: 1.65;
+}
+
+.collection-faq a,
+.collection-guides a {
+    color: var(--green-700);
+    text-decoration-color: var(--gold-500);
+    text-underline-offset: 3px;
+}

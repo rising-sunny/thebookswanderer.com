@@ -852,6 +852,45 @@ def render_collection_page(
     count_label = "No pieces yet" if n == 0 else ("1 piece" if n == 1 else f"{n} pieces")
 
     intro_html = "".join(f"<p>{_esc_text(p)}</p>" for p in intro_paras if p)
+
+    # Guides and questions that sit below the product grid (internal links and answers).
+    guides_html = ""
+    if cat.get("guides"):
+        items = "".join(
+            f'<li><a href="{_esc(g["href"])}">{_esc_text(g["title"])}</a>'
+            f'{": " + _esc_text(g["blurb"]) if g.get("blurb") else ""}</li>'
+            for g in cat["guides"]
+        )
+        guides_html = (
+            '<section class="section collection-guides" aria-labelledby="collectionGuidesTitle"><div class="container">'
+            f'<h2 id="collectionGuidesTitle">{_esc_text(cat.get("guides_h") or "Guides that help")}</h2>'
+            f"<ul>{items}</ul></div></section>"
+        )
+    faq_html, ld_faq = "", ""
+    if cat.get("faq"):
+        qs = []
+        for q in cat["faq"]:
+            link = q.get("link")
+            link_html = f' <a href="{_esc(link["href"])}">{_esc_text(link["label"])}</a>' if link else ""
+            qs.append(f"<h3>{_esc_text(q['q'])}</h3><p>{_esc_text(q['a'])}{link_html}</p>")
+        faq_html = (
+            '<section class="section collection-faq" aria-labelledby="collectionFaqTitle"><div class="container">'
+            f'<h2 id="collectionFaqTitle">{_esc_text(cat.get("faq_h") or "Questions")}</h2>'
+            + "".join(qs) + "</div></section>"
+        )
+        ld_faq = (
+            '<script type="application/ld+json">'
+            + json.dumps({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {"@type": "Question", "name": q["q"],
+                     "acceptedAnswer": {"@type": "Answer", "text": q["a"]}}
+                    for q in cat["faq"]
+                ],
+            }, ensure_ascii=False)
+            + "</script>"
+        )
     cards = "\n".join(_product_card_html(p) for p in products) or (
         '<p class="catalog-empty">Nothing in this collection yet — '
         '<a href="/products/">browse the full catalog</a>.</p>'
@@ -942,6 +981,7 @@ def render_collection_page(
     <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
     <script type="application/ld+json">{ld_page}</script>
     <script type="application/ld+json">{ld_crumbs}</script>
+    {ld_faq}
 </head>
 <body class="page-collection">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -974,6 +1014,8 @@ def render_collection_page(
       </div>
     </div>
   </section>
+  {guides_html}
+  {faq_html}
 </main>
 {_site_footer(note=name)}
 <script src="/track.js?v=6" defer></script>

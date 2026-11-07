@@ -8,7 +8,22 @@
       "intro": [
         "Estos son los libros que hacemos nosotros. Libros para colorear hechos con arte de dominio público, desde los cuentos de hadas de Walter Crane hasta las aves de Audubon. Acertijos literarios. Diarios para llevar la cuenta de lo que lees y de lo que piensas de ello.",
         "Cada uno se imprime y encuaderna por encargo, así que llega nuevo. Los precios están en dólares (USD) y el envío a Estados Unidos está incluido."
-      ]
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "Láminas para colorear gratis",
+          "href": "/guides/laminas-para-colorear-gratis/",
+          "blurb": "Tres láminas imprimibles gratis de las primeras ediciones de Alicia en el país de las maravillas y El mago de Oz."
+        },
+        {
+          "title": "Regalos pequeños para lectores",
+          "href": "/guides/regalos-pequenos-para-lectores/",
+          "blurb": "Ideas de regalo para quienes leen."
+        }
+      ],
+      "faq": []
     },
     "book-accessories": {
       "name": "Accesorios para libros",
@@ -19,6 +34,47 @@
         "Los libros de papel merecen herramientas que respeten la página: marcapáginas que no la doblan, soportes que te dejan una mano libre para el té y pinzas que marcan un capítulo sin orejas en las esquinas. Esta colección reúne las piezas que de verdad usamos con libros de bolsillo, tapas duras y cuadernos.",
         "Cada objeto se elige primero por el tacto y la función: madera, metal, silicona suave y papel impreso que quedan bien en la mesita de noche. Los precios están en dólares (USD), con las opciones bien claras cuando un diseño viene en más de un acabado.",
         "Mira la colección completa abajo, o empieza por un marcapáginas calado, un sujetapáginas de madera para el dedo o un set de regalo para la persona lectora de tu vida."
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "Cómo leer sin sostener el libro",
+          "href": "/guides/leer-sin-sostener-el-libro/",
+          "blurb": "En la mesa, en el sillón y en la cama, con trucos gratis y soportes."
+        },
+        {
+          "title": "Regalos para lectores por menos de 25 dólares",
+          "href": "/guides/regalos-para-lectores-menos-de-25/",
+          "blurb": "Marcapáginas, soportes y otros regalos pequeños que se usan."
+        },
+        {
+          "title": "Regalos pequeños para lectores",
+          "href": "/guides/regalos-pequenos-para-lectores/",
+          "blurb": "Detalles que caben en un calcetín de Navidad."
+        }
+      ],
+      "faq": [
+        {
+          "q": "¿Cómo mantengo un libro abierto con una mano?",
+          "a": "Hay cuatro formas sencillas, desde un truco con el pulgar que no necesita nada hasta un sujetador de dedo o una pinza. Nuestra guía, que está en inglés, explica cada una.",
+          "link": {
+            "href": "/guides/hold-a-book-open-one-handed/",
+            "label": "Ver la guía en inglés."
+          }
+        },
+        {
+          "q": "¿Cómo puedo leer sin sostener el libro?",
+          "a": "En una mesa, pon el libro en un atril y sujeta las páginas con una pinza. En el sillón, usa un soporte para el regazo. En la cama, siéntate con el soporte sobre el edredón o cambia a un lector electrónico con control remoto.",
+          "link": {
+            "href": "/guides/leer-sin-sostener-el-libro/",
+            "label": "Más en nuestra guía de manos libres."
+          }
+        },
+        {
+          "q": "¿Un marcapáginas o una pinza pueden dañar las páginas?",
+          "a": "Elige piezas suaves o lisas. Un marcapáginas metálico hueco se desliza sobre la página sin marcarla, y una pinza de silicona blando es delicada con el papel. Evita aplastar el lomo de un libro de bolsillo nuevo, porque se rompe el pegamento."
+        }
       ]
     },
     "decor": {
@@ -29,7 +85,27 @@
       "intro": [
         "Un rincón de lectura es más que una pila de libros. Luz suave, una lamparita con forma de libros apilados, pegatinas de vitral en la ventana: son los detalles que convierten un escritorio en un sitio donde quedarse.",
         "Nuestra colección de decoración es pequeña a propósito: piezas que lucen en fotos, viajan bien embaladas y no le roban protagonismo a la historia que tienes a medias."
-      ]
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "Regalos para fans de Jane Austen",
+          "href": "/guides/regalos-para-fans-de-jane-austen/",
+          "blurb": "Para quienes ya tienen las novelas."
+        },
+        {
+          "title": "Regalos pequeños para lectores",
+          "href": "/guides/regalos-pequenos-para-lectores/",
+          "blurb": "Piezas que caben en un calcetín de Navidad."
+        },
+        {
+          "title": "Amigo secreto: regalos para lectores",
+          "href": "/guides/amigo-secreto-regalos-para-lectores/",
+          "blurb": "Ideas para intercambios de regalos con presupuesto."
+        }
+      ],
+      "faq": []
     },
     "ereader-accessories": {
       "name": "Accesorios para e-readers",
@@ -39,6 +115,55 @@
       "intro": [
         "Los e-readers viajan: bolso, playa, cajón de la mesita. Una buena funda protege la pantalla sin abultar y se ve mejor que una carcasa genérica cuando la sacas en el tren.",
         "Elegimos fundas que cierran bien, se limpian fácil y encajan en los modelos de Kindle más habituales. Si aún no tienes uno, en nuestra selección de Amazon están los dos que recomendamos."
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "Cuántos libros caben en un Kindle",
+          "href": "/guides/cuantos-libros-caben-en-un-kindle/",
+          "blurb": "Las cuentas, qué cambia el resultado y si necesitas 32 GB."
+        },
+        {
+          "title": "Cómo leer sin sostener el libro",
+          "href": "/guides/leer-sin-sostener-el-libro/",
+          "blurb": "Incluye un lector electrónico con control remoto en la cama."
+        },
+        {
+          "title": "Regalos para lectores de Kindle que no son libros",
+          "href": "/guides/regalos-para-lectores-de-kindle/",
+          "blurb": "Una funda, un diario de lectura, un soporte y más."
+        }
+      ],
+      "faq": [
+        {
+          "q": "¿Qué tamaño de funda necesito para mi Kindle?",
+          "a": "Nuestra funda magnética para Kindle viene en cuatro tamaños: 6 pulgadas, 6,8 pulgadas, 7 pulgadas y 10,2 pulgadas para el Kindle Scribe. Elige el que coincida con el tamaño de pantalla de tu dispositivo, que figura en sus especificaciones."
+        },
+        {
+          "q": "¿Puedo pasar las páginas sin tocar mi lector electrónico?",
+          "a": "Sí. El control remoto para pasar páginas de Kindle tiene una pinza que se coloca en el borde de la pantalla y la toca cuando pulsas el botón del mando. No usa Bluetooth, ni wifi, ni aplicación. Funciona con Kindle, Kobo, móviles y tabletas con pantalla táctil, para dispositivos de hasta 1,1 cm (0,45 in) de grosor, funda incluida. Algunos Kindle antiguos no son compatibles, y la ficha del producto trae la lista.",
+          "link": {
+            "href": "/products/kindle-page-turner-remote",
+            "label": "Ver el control remoto."
+          }
+        },
+        {
+          "q": "¿Cuántos libros caben en un Kindle?",
+          "a": "Un Kindle de 16 GB suele guardar entre 4.000 y 10.000 novelas.",
+          "link": {
+            "href": "/guides/cuantos-libros-caben-en-un-kindle/",
+            "label": "Las cuentas están en nuestra guía."
+          }
+        },
+        {
+          "q": "¿Cómo puedo leer en la cama sin sostener el dispositivo?",
+          "a": "Con el control remoto puedes mantener las manos bajo la manta y seguir pasando páginas. Para otras opciones, como un atril en la mesa o un soporte en el regazo, mira nuestra guía.",
+          "link": {
+            "href": "/guides/leer-sin-sostener-el-libro/",
+            "label": "Leer la guía de manos libres."
+          }
+        }
       ]
     },
     "printables": {
@@ -49,6 +174,39 @@
       "intro": [
         "Algunos compañeros de lectura no necesitan paquete. Nuestros imprimibles son PDF que compras una vez, imprimes en casa o en una copistería y doblas en cuadernillo: sin envío ni esperas, te llegan al correo justo después del pago.",
         "Cada uno está diseñado desde cero, no revendido de un pack de plantillas, con guía de impresión para A4 y Carta y una versión A5 para carpetas de anillas y tablets."
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "El reto de lectura 2027",
+          "href": "/reto-de-lectura-2027/",
+          "blurb": "52 retos gratis, uno por semana, con un imprimible gratuito opcional."
+        },
+        {
+          "title": "Cómo leer 52 libros en un año",
+          "href": "/guides/como-leer-52-libros-en-un-ano/",
+          "blurb": "Unos cincuenta minutos al día y una calculadora para tu ritmo."
+        },
+        {
+          "title": "Retos de lectura 2027 comparados",
+          "href": "/guides/retos-de-lectura-2027-comparados/",
+          "blurb": "En qué se diferencian los principales y cómo elegir."
+        }
+      ],
+      "faq": [
+        {
+          "q": "¿Qué recibo después de pagar?",
+          "a": "Una descarga digital. El enlace llega por correo justo después del pago y no se envía nada."
+        },
+        {
+          "q": "¿En qué tamaños de papel vienen los imprimibles?",
+          "a": "Los diarios de lectura vienen en PDF en A4, Carta y A5, pensados para imprimir en casa y doblar como un cuadernillo. Nuestros kits vienen en Carta y A4."
+        },
+        {
+          "q": "¿Puedo usarlos en una tableta?",
+          "a": "Sí. Imprímelos en papel normal o rellénalos con GoodNotes, Notability o cualquier aplicación de PDF en una tableta. Son para uso personal."
+        }
       ]
     },
     "mathrelaxing": {
@@ -59,6 +217,25 @@
       "intro": [
         "MathRelaxing es nuestro estudio hermano para quienes leen y además disfrutan de una buena ecuación. Cada diseño se calcula a partir de matemáticas reales —un conjunto de Julia, la identidad de Euler, una onda estacionaria— y se compone con el mismo cuidado que una página de libro.",
         "Los productos físicos los imprimen bajo pedido nuestros socios de producción; los imprimibles son PDF que te llegan justo después del pago. Los precios están en dólares (USD)."
+      ],
+      "guides_h": "Guías que ayudan",
+      "faq_h": "Preguntas",
+      "guides": [
+        {
+          "title": "Regalos para amantes de las matemáticas",
+          "href": "/guides/regalos-para-amantes-de-las-matematicas/",
+          "blurb": "Pósters de ecuaciones famosas, una taza con la identidad de Euler y más."
+        }
+      ],
+      "faq": [
+        {
+          "q": "¿Qué es MathRelaxing?",
+          "a": "Es el estudio de arte matemático de The Books Wanderer. Sus diseños son fractales, curvas y ecuaciones famosas dibujadas a partir de sus fórmulas, en pósters, tazas, marcapáginas e imprimibles."
+        },
+        {
+          "q": "¿Los diseños son imágenes de catálogo?",
+          "a": "No. Se calculan a partir de matemáticas reales, no son imágenes de archivo."
+        }
       ]
     }
   },

@@ -31,6 +31,20 @@ CATEGORIES: list[dict[str, Any]] = [
                 "new. Prices are in USD, and shipping to the United States is included."
             ),
         ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "Free literary coloring pages",
+                "href": "/guides/free-literary-coloring-pages/",
+                "blurb": "Three free printable pages from the first editions of Alice in Wonderland and The Wizard of Oz.",
+            },
+            {
+                "title": "Gifts for book lovers they will actually use",
+                "href": "/guides/gifts-for-book-lovers/",
+                "blurb": "Gift ideas by budget and by kind of reader, with Christmas order dates.",
+            },
+        ],
         "tile": "linear-gradient(150deg, #5b3a29, #2e1c12)",
         "sort_order": 0,
     },
@@ -60,6 +74,46 @@ CATEGORIES: list[dict[str, Any]] = [
                 "finger buckle, or a multi-pack gift set for the reader in your life."
             ),
         ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "How to hold a book open with one hand",
+                "href": "/guides/hold-a-book-open-one-handed/",
+                "blurb": "Four easy ways, from a thumb trick to a page holder.",
+            },
+            {
+                "title": "How to read without holding the book",
+                "href": "/guides/how-to-read-hands-free/",
+                "blurb": "At a table, on the sofa and in bed, from free tricks to stands.",
+            },
+            {
+                "title": "Gifts for book lovers under $25",
+                "href": "/guides/gifts-for-book-lovers-under-25/",
+                "blurb": "Bookmarks, book holders and other small gifts readers use.",
+            },
+            {
+                "title": "Stocking stuffers for book lovers",
+                "href": "/guides/stocking-stuffers-for-book-lovers/",
+                "blurb": "Small gifts that fit in a Christmas stocking.",
+            },
+        ],
+        "faq": [
+            {
+                "q": "How do I keep a book open with one hand?",
+                "a": "There are four easy ways, from a thumb trick that needs nothing to a finger page holder or a clip.",
+                "link": {"href": "/guides/hold-a-book-open-one-handed/", "label": "Our guide walks through each one."},
+            },
+            {
+                "q": "How can I read without holding the book at all?",
+                "a": "At a table, put the book on a stand and clip the pages. On the sofa, use a lap stand. In bed, sit up with a lap stand on the duvet, or switch to an e-reader with a page-turner remote.",
+                "link": {"href": "/guides/how-to-read-hands-free/", "label": "More in our hands-free guide."},
+            },
+            {
+                "q": "Will a bookmark or a clip damage my pages?",
+                "a": "Choose smooth or soft ones. A hollow metal bookmark slides onto the page without creasing it, and a soft silicone clip is gentle on paper. Avoid pressing the spine of a new paperback flat, because that cracks the glue.",
+            },
+        ],
         "tile": "linear-gradient(150deg, #2b5240, #10241a)",
         "sort_order": 1,
     },
@@ -83,6 +137,25 @@ CATEGORIES: list[dict[str, Any]] = [
                 "well, ship carefully, and do not fight for attention with the story you "
                 "are mid-chapter. Gift-ready packaging comes with every boutique order."
             ),
+        ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "Gifts for book lovers they will actually use",
+                "href": "/guides/gifts-for-book-lovers/",
+                "blurb": "Gift ideas by budget and by kind of reader.",
+            },
+            {
+                "title": "Gifts for Jane Austen fans",
+                "href": "/guides/gifts-for-jane-austen-fans/",
+                "blurb": "For readers who already own the novels.",
+            },
+            {
+                "title": "Stocking stuffers for book lovers",
+                "href": "/guides/stocking-stuffers-for-book-lovers/",
+                "blurb": "Small pieces that fit in a Christmas stocking.",
+            },
         ],
         "tile": "linear-gradient(150deg, #c1912f, #8a5f16)",
         "sort_order": 2,
@@ -109,6 +182,46 @@ CATEGORIES: list[dict[str, Any]] = [
                 "picks if you are still choosing a device."
             ),
         ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "How many books does a 16 GB Kindle hold?",
+                "href": "/guides/how-many-books-does-a-kindle-hold/",
+                "blurb": "The math, what changes it and whether you need 32 GB.",
+            },
+            {
+                "title": "How to read without holding the book",
+                "href": "/guides/how-to-read-hands-free/",
+                "blurb": "Including an e-reader with a page-turner remote in bed.",
+            },
+            {
+                "title": "Gifts for Kindle readers that aren't books",
+                "href": "/guides/gifts-for-kindle-readers/",
+                "blurb": "A sleeve, a reading journal, a stand and more.",
+            },
+        ],
+        "faq": [
+            {
+                "q": "What size Kindle sleeve do I need?",
+                "a": "Our Kindle Magnetic Sleeve comes in four sizes: 6 inch, 6.8 inch, 7 inch and 10.2 inch for the Kindle Scribe. Pick the one that matches your device's screen size, which is in the device's specifications.",
+            },
+            {
+                "q": "Can I turn pages without touching my e-reader?",
+                "a": "Yes. The Kindle Page Turner Remote has a clip that goes on the edge of the screen and taps it when you press the button on the remote. It uses no Bluetooth, no wifi and no app. It works with Kindle, Kobo, phones and tablets with a touch screen, for devices up to 0.45 in (1.1 cm) thick, case included. Some older Kindle models do not work, and the product page lists them.",
+                "link": {"href": "/products/kindle-page-turner-remote", "label": "See the page turner remote."},
+            },
+            {
+                "q": "How many books fit on a Kindle?",
+                "a": "A 16 GB Kindle usually holds 4,000 to 10,000 novels.",
+                "link": {"href": "/guides/how-many-books-does-a-kindle-hold/", "label": "The math is in our guide."},
+            },
+            {
+                "q": "How can I read in bed without holding the device?",
+                "a": "With the page turner remote you can keep your hands under the blanket and still turn pages. For other setups, such as a stand at a table or on your lap, see our guide.",
+                "link": {"href": "/guides/how-to-read-hands-free/", "label": "Read the hands-free guide."},
+            },
+        ],
         "tile": "linear-gradient(150deg, #a63a2f, #6d221c)",
         "sort_order": 3,
     },
@@ -133,6 +246,39 @@ CATEGORIES: list[dict[str, Any]] = [
                 "and tablets."
             ),
         ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "The 2027 Reading Challenge",
+                "href": "/reading-challenge-2027/",
+                "blurb": "52 free prompts, one a week, with an optional free printable.",
+            },
+            {
+                "title": "How to read 52 books in a year",
+                "href": "/guides/how-to-read-52-books-in-a-year/",
+                "blurb": "About 50 minutes a day, and a calculator for your own pace.",
+            },
+            {
+                "title": "2027 reading challenges, compared",
+                "href": "/guides/2027-reading-challenges-compared/",
+                "blurb": "How the main challenges differ and how to pick one.",
+            },
+        ],
+        "faq": [
+            {
+                "q": "What do I get after paying?",
+                "a": "A digital download. The link arrives by email right after payment, and nothing is shipped.",
+            },
+            {
+                "q": "What paper sizes do the printables come in?",
+                "a": "The reading journals come as PDFs in A4, Letter and A5, designed to print at home and fold into a booklet. Our kits come in US Letter and A4.",
+            },
+            {
+                "q": "Can I use them on a tablet?",
+                "a": "Yes. Print them on plain paper, or fill them in with GoodNotes, Notability or any PDF app on a tablet. They are for personal use.",
+            },
+        ],
         "tile": "linear-gradient(150deg, #3a4f7a, #1b2540)",
         "sort_order": 4,
     },
@@ -155,6 +301,25 @@ CATEGORIES: list[dict[str, Any]] = [
                 "Physical pieces are printed to order by our production partners; printables "
                 "are PDF downloads delivered right after checkout. Prices are in USD."
             ),
+        ],
+        "guides_h": "Guides that help",
+        "faq_h": "Questions",
+        "guides": [
+            {
+                "title": "Gifts for math lovers",
+                "href": "/guides/gifts-for-math-lovers/",
+                "blurb": "Posters of famous equations, an Euler's identity mug and more.",
+            },
+        ],
+        "faq": [
+            {
+                "q": "What is MathRelaxing?",
+                "a": "It is the math art studio of The Books Wanderer. Its designs are fractals, curves and famous equations drawn from their formulas, on posters, mugs, bookmarks and printables.",
+            },
+            {
+                "q": "Are the designs made from stock images?",
+                "a": "No. They are computed from real mathematics, not stock art.",
+            },
         ],
         "tile": "linear-gradient(150deg, #1f3b57, #0d1b2a)",
         "sort_order": 5,
