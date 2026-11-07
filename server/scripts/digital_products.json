@@ -243,5 +243,21 @@
       "/assets/products/reading-challenge-kit-2027/year.jpg"
     ],
     "active": true
+  },
+  {
+    "slug": "pride-and-prejudice-watch-party-kit",
+    "title": "Pride and Prejudice Watch Party Kit Printable, Jane Austen Read Along Planner, Bingo, Episode Notes and Discussion Questions (PDF)",
+    "price_usd": 6.99,
+    "category": "printables",
+    "description": "A printable kit for watching and reading Pride and Prejudice together: a nine-week reading plan, episode notes, a who-is-who page, four bingo cards, twelve lines to listen for, and everything you need to host a watch party.\n\nWhat's inside (18 pages):\n• A reading plan: 61 chapters in 9 weeks, with what to look out for each week\n• Episode notes: eight blocks with scenes, best lines and what differs from the book\n• A who-is-who page for 17 characters, with room for your first impressions\n• Four watch-along bingo cards of moments from the book\n• Twelve lines from the novel to tick off when you hear them\n• A book-against-screen page, scene by scene\n• A little Regency vocabulary: entail, assembly, militia and more\n• A watch-party planner and twelve discussion questions\n• A verdict page, a first line to frame and a notes page\n\nFormats: US Letter and A4, both in one ZIP. Print at home on plain paper (white background, light on ink) or use the PDF in GoodNotes, Notability or any PDF app on a tablet.\n\nWorks with any adaptation of the novel, or with the book alone. This kit is independent and is not connected to any film or series. Pride and Prejudice was published in 1813 and every quotation is from the novel.\n\nInstant download: you get the link by email right after checkout. Digital product, nothing is shipped. For personal use.",
+    "image_url": "/assets/products/pride-prejudice-watch-party-kit/main.jpg",
+    "gallery": [
+      "/assets/products/pride-prejudice-watch-party-kit/inside.jpg",
+      "/assets/products/pride-prejudice-watch-party-kit/plan.jpg",
+      "/assets/products/pride-prejudice-watch-party-kit/bingo.jpg",
+      "/assets/products/pride-prejudice-watch-party-kit/quotes.jpg",
+      "/assets/products/pride-prejudice-watch-party-kit/party.jpg"
+    ],
+    "active": true
   }
 ]
