@@ -979,3 +979,74 @@
         display: none;
     }
 }
+
+/* ---------- Comparison article ---------- */
+.j-table--wrap td,
+.j-table--wrap th {
+    white-space: normal;
+    vertical-align: top;
+}
+
+.j-vs {
+    display: grid;
+    gap: var(--sp-4);
+    margin: var(--sp-5) 0 var(--sp-6);
+}
+
+.j-vs__card {
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold-500);
+    border-radius: var(--r-md);
+    background: var(--bg-raised);
+    box-shadow: var(--shadow-sm);
+}
+
+.j-vs__card:nth-child(2) { border-left-color: var(--orange-500); }
+.j-vs__card:nth-child(3) { border-left-color: var(--red-600); }
+.j-vs__card:nth-child(4) { border-left-color: var(--green-700); }
+.j-vs__card:nth-child(5) { border-left-color: var(--green-200); }
+
+.j-vs__card h3 {
+    margin: 0 0 var(--sp-1);
+}
+
+.j-vs__size {
+    margin: 0 0 var(--sp-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-600);
+}
+
+.j-vs__card p {
+    margin: 0 0 0.8em;
+    font-size: var(--t-body);
+    line-height: 1.65;
+}
+
+.j-vs__fit {
+    display: grid;
+    gap: var(--sp-1);
+    margin: var(--sp-3) 0 0 !important;
+    padding-top: var(--sp-3);
+    border-top: 1px dashed var(--line-strong);
+    font-size: var(--t-sm) !important;
+    color: var(--ink-muted);
+}
+
+.j-vs__fit strong {
+    color: var(--green-900);
+}
+
+.j-sources {
+    margin: var(--sp-4) 0 0;
+    padding-left: 1.2em;
+    font-size: var(--t-sm);
+    color: var(--ink-muted);
+}
+
+.j-sources li {
+    margin: 0 0 0.35em;
+}
