@@ -1,0 +1,76 @@
+# The Books Wanderer
+
+> An online literary boutique for readers. It sells reading accessories, printable reading journals and challenge kits, and made-to-order apparel, prints and gifts inspired by books. It also publishes reading guides and a free 2027 reading challenge. Prices are in US dollars and checkout is with PayPal. The site is in English and Spanish.
+
+Notes for assistants and search tools:
+
+- Physical products from print partners are made to order, so delivery takes longer than for items kept in stock. Digital products are PDF downloads delivered by email after payment.
+- The shipping and returns page is the reference for delivery and refund terms: https://thebookswanderer.com/shipping-returns.html
+- MathRelaxing is the math art studio of The Books Wanderer: designs computed from real mathematics.
+- The guides are written by The Books Wanderer. Facts about other companies' reading challenges were checked against their own pages on the date shown in each article.
+
+## The Wanderer's Journal: the 2027 reading challenge
+
+- [The 2027 Reading Challenge](https://thebookswanderer.com/reading-challenge-2027/): 52 free reading prompts, one a week, with an optional free printable by email. Spanish version: https://thebookswanderer.com/reto-de-lectura-2027/
+- [How to read 52 books in a year](https://thebookswanderer.com/guides/how-to-read-52-books-in-a-year/): 52 books is about 50 minutes of reading a day. The math, a ten-page speed test, a calculator, and what to do when you fall behind in March.
+- [2027 reading challenges, compared](https://thebookswanderer.com/guides/2027-reading-challenges-compared/): Popsugar, Buzzword, The 52 Book Club, Read Harder and ours: how the 2027 reading challenges differ, which lists are out, and how to pick one.
+- [2027 reading challenge ideas](https://thebookswanderer.com/guides/2027-reading-challenge-ideas/): Book ideas for the 52 prompts of the 2027 reading challenge: 35 with real picks across genres, and 17 that only you can answer, with a tip for each.
+- [The Wanderer's Journal](https://thebookswanderer.com/guides/): index of all guides, in English and Spanish
+
+## Reading gear guides
+
+- [How to hold a book open with one hand: 4 easy ways](https://thebookswanderer.com/guides/hold-a-book-open-one-handed/): Four ways to keep a book open with one hand: a thumb trick that needs nothing, things already on your table, a finger page holder and a clip. Plus hands-free reading in bed or at a table.
+- [How to read without holding the book](https://thebookswanderer.com/guides/how-to-read-hands-free/): Hands-free reading in three places: a stand and page clip at a table, a lap stand on the sofa, and an e-reader with a page-turner remote in bed. Free tricks included.
+- [How many books does a 16 GB Kindle hold?](https://thebookswanderer.com/guides/how-many-books-does-a-kindle-hold/): A 16 GB Kindle holds several thousand ebooks, usually 4,000 to 10,000 novels. Here is the math, what changes it (comics, audiobooks) and whether you need 32 GB.
+
+## Gift guides
+
+- [Gifts for book lovers they will actually use](https://thebookswanderer.com/guides/gifts-for-book-lovers/): Gift ideas for readers by budget and by kind of reader: bookmarks, book nook kits, reading journals, literary calendars, reading lights: plus Christmas order dates and what to avoid.
+- [Gifts for book lovers under $25](https://thebookswanderer.com/guides/gifts-for-book-lovers-under-25/): Gift ideas for readers under $25 that they will actually use: reading journals, metal bookmarks, book holders, Kindle sleeves and shelf lights, with standard US shipping included.
+- [Gifts for Kindle readers that aren't books](https://thebookswanderer.com/guides/gifts-for-kindle-readers/): What to give someone who reads on a Kindle: a magnetic e-reader sleeve, a reading journal to log every book, a reading tracker, a stand and a few things for the shelf.
+- [Gifts for Jane Austen fans](https://thebookswanderer.com/guides/gifts-for-jane-austen-fans/): Gift ideas for Jane Austen fans who already own the novels: an annotated Pride and Prejudice mug and sweatshirt, a Jane Austen puzzle book, a coloring book with Hugh Thomson's drawings and more.
+- [Gifts for math lovers](https://thebookswanderer.com/guides/gifts-for-math-lovers/): Gift ideas for math teachers, engineers and anyone who likes equations: posters of famous equations, an Euler's identity mug and a metal bookmark, with a short note on what each equation is.
+- [Secret Santa gifts for book lovers](https://thebookswanderer.com/guides/secret-santa-gifts-for-book-lovers/): Secret Santa and gift-exchange ideas for readers in the usual $10–$20 budget: Christmas bookmarks, book-tree ornaments, metal bookmarks and a literary coloring book.
+- [Stocking stuffers for book lovers](https://thebookswanderer.com/guides/stocking-stuffers-for-book-lovers/): Small gifts for readers that fit in a Christmas stocking: magnetic bookmarks, page clips, cat bookmarks, sticker books, book ornaments and two printable gifts.
+
+## Free and fun
+
+- [Free literary coloring pages](https://thebookswanderer.com/guides/free-literary-coloring-pages/): Three free printable coloring pages from the first editions of Alice in Wonderland and The Wizard of Oz: the Cheshire Cat, the Cowardly Lion and the Mad Hatter. PDF, Letter and A4.
+- ["It is a truth universally acknowledged": the first line of Pride and Prejudice, explained](https://thebookswanderer.com/guides/pride-and-prejudice-first-line/): What the first line of Pride and Prejudice really means, why "in want of a wife" is ironic, what the second sentence gives away and why it became the most quoted opening in English literature.
+
+## Shop
+
+- [All products](https://thebookswanderer.com/products/): the full catalog
+- [Collections](https://thebookswanderer.com/collections): all categories
+- [Book accessories](https://thebookswanderer.com/collections/book-accessories): bookmarks, page holders, clips and reading tools that keep your place and free a hand
+- [E-reader accessories](https://thebookswanderer.com/collections/ereader-accessories): Kindle sleeves and other e-reader accessories
+- [Decor](https://thebookswanderer.com/collections/decor): desk lamps, stickers, calendars, prints and reading-nook decor for shelves and study tables
+- [Printables](https://thebookswanderer.com/collections/printables): printable reading journals and other PDF downloads, for printing at home
+- [Books](https://thebookswanderer.com/collections/books): printed books made to order: coloring books from old illustrations, literary mysteries, reading journals and notebooks
+- [MathRelaxing](https://thebookswanderer.com/collections/mathrelaxing): fractals, curves and famous equations drawn from their formulas, on posters, mugs, bookmarks and printables
+- [2027 Reading Challenge Kit](https://thebookswanderer.com/products/reading-challenge-kit-2027): printable PDF with a 52-spine bookshelf tracker, bingo cards, monthly logs, review pages, TBR and DNF lists (US Letter and A4, pages in English)
+
+## About and policies
+
+- [About](https://thebookswanderer.com/about.html): what we sell, how we pick it and how we work
+- [Shipping and returns](https://thebookswanderer.com/shipping-returns.html): delivery, made-to-order times and refund terms
+- [Contact](https://thebookswanderer.com/contact.html): how to reach us
+- [Press](https://thebookswanderer.com/press.html): press information
+- [Privacy and cookies](https://thebookswanderer.com/privacy.html): how data and cookies are handled
+
+## En espanol
+
+- [El reto de lectura 2027](https://thebookswanderer.com/reto-de-lectura-2027/): 52 retos de lectura gratis, uno por semana
+- [Cómo leer 52 libros en un año](https://thebookswanderer.com/guides/como-leer-52-libros-en-un-ano/): 52 libros son unos 50 minutos de lectura al día. Las cuentas, una prueba de velocidad de diez páginas, una calculadora y qué hacer si en marzo vas atrasado.
+- [Retos de lectura 2027, comparados](https://thebookswanderer.com/guides/retos-de-lectura-2027-comparados/): Popsugar, Buzzword, The 52 Book Club, Read Harder y el nuestro: en qué se diferencian los retos de lectura 2027, cuáles ya publicaron su lista y cómo elegir.
+- [Ideas para el reto de lectura 2027](https://thebookswanderer.com/guides/ideas-para-el-reto-de-lectura-2027/): Ideas de libros para los 52 retos del reto de lectura 2027: 35 con sugerencias reales de distintos géneros y 17 que solo tú puedes resolver, con una pista para cada uno.
+- [Cómo leer sin sostener el libro](https://thebookswanderer.com/guides/leer-sin-sostener-el-libro/): Leer con las manos libres en tres lugares: atril y pinza en la mesa, soporte para el regazo en el sillón y lector electrónico con control remoto en la cama. Incluye trucos gratis.
+- [¿Cuántos libros caben en un Kindle de 16 GB?](https://thebookswanderer.com/guides/cuantos-libros-caben-en-un-kindle/): En un Kindle de 16 GB caben varios miles de libros, por lo general entre 4.000 y 10.000 novelas. Las cuentas, qué cambia el número (cómics, audiolibros) y si necesitas 32 GB.
+- [Regalos para lectores de Kindle que no son libros](https://thebookswanderer.com/guides/regalos-para-lectores-de-kindle/): Qué regalarle a alguien que lee en Kindle: una funda magnética, un diario para registrar cada libro, un contador de lecturas, un atril y detalles para la estantería.
+- [Regalos para fans de Jane Austen](https://thebookswanderer.com/guides/regalos-para-fans-de-jane-austen/): Ideas de regalo para fans de Jane Austen que ya tienen las novelas: taza y polerón anotados de Orgullo y prejuicio, un libro de acertijos de Jane Austen, un libro para colorear con los dibujos de Hugh Thomson y más.
+- [Regalos para amantes de las matemáticas](https://thebookswanderer.com/guides/regalos-para-amantes-de-las-matematicas/): Ideas de regalo para profesores de matemáticas, ingenieros y cualquiera a quien le gusten las ecuaciones: pósters de ecuaciones famosas, una taza de la identidad de Euler y un marcapáginas de metal.
+- [Regalos para lectores por menos de 25 dólares](https://thebookswanderer.com/guides/regalos-para-lectores-menos-de-25/): Ideas de regalo para lectores por menos de 25 USD que sí van a usar: diarios de lectura, marcapáginas de metal, sujetapáginas, fundas de Kindle y luces para la estantería, con envío gratis a EE. UU.
+- [Regalos de amigo secreto para lectores](https://thebookswanderer.com/guides/amigo-secreto-regalos-para-lectores/): Ideas para el amigo secreto o intercambio de regalos de alguien que ama leer, en el presupuesto habitual de 10 a 20 dólares: marcapáginas navideños, adornos de libros y más.
+- [Detalles pequeños para lectores](https://thebookswanderer.com/guides/regalos-pequenos-para-lectores/): Regalos pequeños para quien lee: marcapáginas magnéticos, pinzas para páginas, marcapáginas de gatitos, pegatinas, adornos de libros y dos regalos imprimibles.
+- [Láminas para colorear gratis de libros clásicos](https://thebookswanderer.com/guides/laminas-para-colorear-gratis/): Tres láminas para colorear gratis de las primeras ediciones de Alicia en el país de las maravillas y El Mago de Oz: el Gato de Cheshire, el León Cobarde y el Sombrerero. PDF para A4 y Carta.
+- [«Es una verdad universalmente reconocida»: la primera frase de Orgullo y prejuicio, explicada](https://thebookswanderer.com/guides/primera-frase-de-orgullo-y-prejuicio/): Qué significa de verdad la primera frase de Orgullo y prejuicio, por qué es irónica, qué delata la segunda frase y por qué se volvió el comienzo más citado de la literatura inglesa.
