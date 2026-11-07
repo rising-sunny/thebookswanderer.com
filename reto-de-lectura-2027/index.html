@@ -31,7 +31,366 @@
         .page-reading-challenge .newsletter input {min-width:0;width:100%}
         .page-reading-challenge .newsletter .btn {max-width:100%;white-space:normal}
         .page-reading-challenge .newsletter .form-status {color:var(--gold-300)}
+
+        .challenge-cta {display:grid;gap:1rem;margin:2rem 0}
+        @media (min-width:720px) {.challenge-cta {grid-template-columns:1fr 1fr}}
+        .challenge-cta__card {display:flex;flex-direction:column;gap:.6rem;padding:1.25rem;border:1px solid rgba(43,82,64,.18);border-radius:14px;background:#fff}
+        .challenge-cta__card--dark {background:#10241a;border-color:#10241a;color:#fdfaf3}
+        .challenge-cta__card--dark p {color:#e4d9c1}
+        .challenge-cta__card img {width:100%;height:auto;max-width:9rem;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+        .challenge-cta__title {margin:0;font-family:var(--font-display);font-size:1.35rem;line-height:1.2}
+        .challenge-cta__card p {margin:0}
+        .challenge-cta__card .btn {margin-top:.4rem;color:var(--btn-fg);text-decoration:none}
+        .challenge-cta__card > p:last-child {margin-top:auto}
+        .challenge-cta__card--dark .btn {--btn-bg:var(--gold-500);--btn-fg:var(--green-900);--btn-border:var(--gold-500)}
+        .pace-table {width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+        .pace-table caption {text-align:left;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-600);padding-bottom:.4rem}
+        .pace-table th,.pace-table td {padding:.55rem .7rem;text-align:left;border-top:1px solid rgba(16,36,26,.12)}
+        .pace-table th {font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
     </style>
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "El reto de lectura 2027",
+    "url": "https://thebookswanderer.com/reto-de-lectura-2027/",
+    "description": "Un reto de lectura 2027 gratis: 52 retos, uno por semana, y una página para registrar tu año lector.",
+    "inLanguage": "es",
+    "dateModified": "2026-11-07",
+    "isPartOf": {
+        "@type": "WebSite",
+        "name": "The Books Wanderer",
+        "url": "https://thebookswanderer.com/"
+    },
+    "mainEntity": {
+        "@type": "ItemList",
+        "name": "Los 52 retos del reto de lectura 2027",
+        "numberOfItems": 52,
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Publicado el año en que naciste"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Un clásico que fingiste haber leído"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Ambientado en un país que no conoces"
+            },
+            {
+                "@type": "ListItem",
+                "position": 4,
+                "name": "De menos de 200 páginas"
+            },
+            {
+                "@type": "ListItem",
+                "position": 5,
+                "name": "De más de 500 páginas"
+            },
+            {
+                "@type": "ListItem",
+                "position": 6,
+                "name": "Traducido de otro idioma"
+            },
+            {
+                "@type": "ListItem",
+                "position": 7,
+                "name": "Una primera novela"
+            },
+            {
+                "@type": "ListItem",
+                "position": 8,
+                "name": "Recomendado por un amigo"
+            },
+            {
+                "@type": "ListItem",
+                "position": 9,
+                "name": "Con un mapa dentro"
+            },
+            {
+                "@type": "ListItem",
+                "position": 10,
+                "name": "Escrito por alguien de más de 70 años"
+            },
+            {
+                "@type": "ListItem",
+                "position": 11,
+                "name": "Ambientado en invierno"
+            },
+            {
+                "@type": "ListItem",
+                "position": 12,
+                "name": "Uno que tienes y nunca abriste"
+            },
+            {
+                "@type": "ListItem",
+                "position": 13,
+                "name": "Elegido solo por la portada"
+            },
+            {
+                "@type": "ListItem",
+                "position": 14,
+                "name": "Un libro de cuentos"
+            },
+            {
+                "@type": "ListItem",
+                "position": 15,
+                "name": "Poesía"
+            },
+            {
+                "@type": "ListItem",
+                "position": 16,
+                "name": "No ficción sobre un lugar"
+            },
+            {
+                "@type": "ListItem",
+                "position": 17,
+                "name": "Una novela de misterio"
+            },
+            {
+                "@type": "ListItem",
+                "position": 18,
+                "name": "Ambientado en una biblioteca o librería"
+            },
+            {
+                "@type": "ListItem",
+                "position": 19,
+                "name": "Un libro que llegó al cine: léelo antes"
+            },
+            {
+                "@type": "ListItem",
+                "position": 20,
+                "name": "Escrito en cartas o diarios"
+            },
+            {
+                "@type": "ListItem",
+                "position": 21,
+                "name": "Prohibido alguna vez en algún sitio"
+            },
+            {
+                "@type": "ListItem",
+                "position": 22,
+                "name": "Publicado en 1927"
+            },
+            {
+                "@type": "ListItem",
+                "position": 23,
+                "name": "De un autor con tus mismas iniciales"
+            },
+            {
+                "@type": "ListItem",
+                "position": 24,
+                "name": "Ambientado en un tren, un barco o un avión"
+            },
+            {
+                "@type": "ListItem",
+                "position": 25,
+                "name": "Su título es una pregunta"
+            },
+            {
+                "@type": "ListItem",
+                "position": 26,
+                "name": "Un libro sobre comida"
+            },
+            {
+                "@type": "ListItem",
+                "position": 27,
+                "name": "Ambientado en verano"
+            },
+            {
+                "@type": "ListItem",
+                "position": 28,
+                "name": "Recomendado en BookTok o Bookstagram"
+            },
+            {
+                "@type": "ListItem",
+                "position": 29,
+                "name": "Relectura de un favorito de la infancia"
+            },
+            {
+                "@type": "ListItem",
+                "position": 30,
+                "name": "Publicado este año"
+            },
+            {
+                "@type": "ListItem",
+                "position": 31,
+                "name": "De un premio Nobel"
+            },
+            {
+                "@type": "ListItem",
+                "position": 32,
+                "name": "Una novela gráfica"
+            },
+            {
+                "@type": "ListItem",
+                "position": 33,
+                "name": "Un cuento de hadas reescrito"
+            },
+            {
+                "@type": "ListItem",
+                "position": 34,
+                "name": "Ambientado en tu ciudad"
+            },
+            {
+                "@type": "ListItem",
+                "position": 35,
+                "name": "Unas memorias"
+            },
+            {
+                "@type": "ListItem",
+                "position": 36,
+                "name": "Uno que leía un desconocido"
+            },
+            {
+                "@type": "ListItem",
+                "position": 37,
+                "name": "Con un color en el título"
+            },
+            {
+                "@type": "ListItem",
+                "position": 38,
+                "name": "Con menos de 1.000 valoraciones en internet"
+            },
+            {
+                "@type": "ListItem",
+                "position": 39,
+                "name": "Ciencia bien explicada"
+            },
+            {
+                "@type": "ListItem",
+                "position": 40,
+                "name": "Una obra de teatro"
+            },
+            {
+                "@type": "ListItem",
+                "position": 41,
+                "name": "El primero de una saga"
+            },
+            {
+                "@type": "ListItem",
+                "position": 42,
+                "name": "Ambientado hace más de 200 años"
+            },
+            {
+                "@type": "ListItem",
+                "position": 43,
+                "name": "Ambientado en el futuro"
+            },
+            {
+                "@type": "ListItem",
+                "position": 44,
+                "name": "De una librería de viejo"
+            },
+            {
+                "@type": "ListItem",
+                "position": 45,
+                "name": "Uno que te regalaron"
+            },
+            {
+                "@type": "ListItem",
+                "position": 46,
+                "name": "De un autor que murió antes de que nacieras"
+            },
+            {
+                "@type": "ListItem",
+                "position": 47,
+                "name": "Un libro sobre libros"
+            },
+            {
+                "@type": "ListItem",
+                "position": 48,
+                "name": "Con un animal en la portada"
+            },
+            {
+                "@type": "ListItem",
+                "position": 49,
+                "name": "Leído en un solo día"
+            },
+            {
+                "@type": "ListItem",
+                "position": 50,
+                "name": "Elegido al azar en la biblioteca"
+            },
+            {
+                "@type": "ListItem",
+                "position": 51,
+                "name": "Uno que luego regalarás"
+            },
+            {
+                "@type": "ListItem",
+                "position": 52,
+                "name": "El que llevas tiempo guardando"
+            }
+        ]
+    }
+}
+    </script>
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Inicio",
+            "item": "https://thebookswanderer.com/es/"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "El reto de lectura 2027",
+            "item": "https://thebookswanderer.com/reto-de-lectura-2027/"
+        }
+    ]
+}
+    </script>
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "¿Tengo que leer 52 libros?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Cincuenta y dos es la lista completa, no un requisito para participar. También puedes hacer una versión de 12 o 26 libros: elige los retos que quieras seguir y cuenta un libro por cada reto completado."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Puedo empezar después de enero?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí. Empieza con tu próximo libro y fija un objetivo para los meses que te queden. Puedes incluir libros que ya hayas terminado en 2027 si encajan en algún reto; anota sus fechas de finalización originales."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Cuentan los libros electrónicos y los audiolibros?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí. Elige el formato que prefieras: libro impreso, electrónico o audiolibro. También cuentan los préstamos de biblioteca y los libros que ya tengas."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Tengo que registrarme o comprar algo?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Puedes leer los 52 retos completos en esta página sin registrarte ni comprar nada. Si quieres el imprimible, solicita el PDF gratuito por correo. También te suscribirás a nuestras cartas de lectura, como mucho una al mes; puedes darte de baja con un clic."
+            }
+        }
+    ]
+}
+    </script>
 </head>
 <body class="page-product page-reading-challenge">
 
@@ -63,10 +422,12 @@
     <div class="container legal__inner">
         <p class="pdp__crumb"><a href="/es/">Inicio</a> · Reto de lectura 2027</p>
         <h1>El reto de lectura 2027</h1>
-        <p class="legal__updated">52 retos, uno por semana · imprimible gratis · <a href="/reading-challenge-2027/" lang="en" hreflang="en">Read in English</a></p>
+        <p class="legal__updated">52 retos, uno por semana · imprimible gratis · actualizado en noviembre de 2026 · <a href="/reading-challenge-2027/" lang="en" hreflang="en">Read in English</a></p>
         <p>Cincuenta y dos retos para 2027, uno por cada semana del año. Ninguno te dice qué leer: cada uno te empuja hacia un libro que quizá no habrías elegido — un clásico que fingiste haber leído, un libro con un mapa dentro, el que llevas tiempo guardando.</p>
         <nav class="challenge-nav" aria-label="En esta página">
             <a href="#prompts">Los 52 retos</a>
+            <a href="#printable">Imprimible gratis</a>
+            <a href="#pace">Elige tu ritmo</a>
             <a href="#how-to">Cómo usarlos</a>
             <a href="#track-progress">Registra tus lecturas</a>
             <a href="#questions">Preguntas</a>
@@ -140,6 +501,19 @@
             <li>Uno que luego regalarás</li>
             <li>El que llevas tiempo guardando</li>
         </ol>
+        <section class="challenge-cta" aria-label="Llévate el reto contigo">
+            <div class="challenge-cta__card">
+                <p class="challenge-cta__title">¿Quieres la lista en papel?</p>
+                <p>El imprimible gratuito trae los 52 retos con una línea para cada título y una página para registrar el año mes a mes.</p>
+                <p><a class="btn" href="#printable">Recibe el imprimible gratis</a></p>
+            </div>
+            <div class="challenge-cta__card challenge-cta__card--dark">
+                <a href="/es/products/reading-challenge-kit-2027"><img src="/assets/products/reading-challenge-kit-2027/main.jpg" alt="El kit del reto de lectura 2027: estantería de seguimiento, cartones de bingo y registros mensuales sobre una mesa beige" width="600" height="750" loading="lazy"></a>
+                <p class="challenge-cta__title">O un kit completo para todo el año</p>
+                <p>27 páginas imprimibles: estantería de 52 lomos, cuatro cartones de bingo, registros mensuales, reseñas y listas de pendientes y abandonados. Carta y A4. Las páginas del kit están en inglés.</p>
+                <p><a class="btn" href="/es/products/reading-challenge-kit-2027">Ver el kit</a></p>
+            </div>
+        </section>
         <section aria-labelledby="how-to">
             <h2 id="how-to">Cómo usar el reto de lectura 2027</h2>
             <ol>
@@ -148,6 +522,19 @@
                 <li><strong>Registra cada lectura y vuelve a elegir.</strong> Anota el título y la fecha en que lo terminaste junto al reto. Escoge el siguiente libro cuando estés listo, sin necesidad de planificar los 52 desde el principio.</li>
             </ol>
             <p>Por ejemplo, empieza por «Uno que tienes y nunca abriste» y después prueba «Traducido de otro idioma». Para «Con un mapa dentro», comprueba la edición que vas a leer. El reto te da un punto de partida; tú eliges el libro.</p>
+        
+            <h3 id="pace">Elige tu ritmo</h3>
+            <p>Cincuenta y dos libros son unos 51 minutos de lectura al día para una novela media. Menos también está muy bien:</p>
+            <table class="pace-table">
+                <caption>Tiempo diario aproximado de lectura</caption>
+                <thead><tr><th>Ritmo</th><th>Libros</th><th>Aproximadamente, al día</th></tr></thead>
+                <tbody>
+                    <tr><td>Uno por semana</td><td>52</td><td>51 minutos</td></tr>
+                    <tr><td>Uno cada dos semanas</td><td>26</td><td>26 minutos</td></tr>
+                    <tr><td>Uno al mes</td><td>12</td><td>12 minutos</td></tr>
+                </tbody>
+            </table>
+            <p>Son estimaciones para una novela de 90.000 palabras. Las cuentas, y una calculadora para tu propia velocidad, están en <a href="/guides/como-leer-52-libros-en-un-ano/">cómo leer 52 libros en un año</a>.</p>
         </section>
         <section aria-labelledby="track-progress">
             <h2 id="track-progress">Una forma sencilla de registrar tus lecturas</h2>
@@ -168,14 +555,19 @@
         </section>
         <section aria-labelledby="tools">
             <h2 id="tools">Para llevar la cuenta</h2>
-            <p>¿Te parece realista el 52? Hicimos las cuentas en <a href="/guides/como-leer-52-libros-en-un-ano/">cómo leer 52 libros en un año</a>, con una calculadora para tu ritmo. Si dudas entre este y otros retos, los <a href="/guides/retos-de-lectura-2027-comparados/">comparamos</a>, y si te atascas en un reto concreto, tenemos <a href="/guides/ideas-para-el-reto-de-lectura-2027/">un libro para casi cada uno</a>.</p>
+            <h3>Para ir más lejos</h3>
+            <ul>
+                <li><a href="/guides/como-leer-52-libros-en-un-ano/">Cómo leer 52 libros en un año</a>: las cuentas, una prueba de velocidad de diez páginas y una calculadora para tu ritmo.</li>
+                <li><a href="/guides/ideas-para-el-reto-de-lectura-2027/">Ideas para el reto de lectura 2027</a>: un libro para casi cada reto, y una pista para los que solo tú puedes resolver.</li>
+                <li><a href="/guides/retos-de-lectura-2027-comparados/">Retos de lectura 2027 comparados</a>: en qué se diferencia este de Popsugar, Buzzword y The 52 Book Club.</li>
+            </ul>
             <p>Con el imprimible basta para hacer el reto. Si quieres algo más bonito para anotar, esto es lo que tenemos:</p>
             <ul>
                 <li>El <a href="/es/products/reading-passport-printed">Pasaporte del lector</a>, un diario de lectura con forma de pasaporte. También está en <a href="/es/products/reading-passport">versión imprimible</a> y en <a href="/es/products/reading-passport-hardcover">tapa dura</a>.</li>
                 <li><a href="/es/products/reading-log-bookmarks">Marcapáginas de registro</a>, con espacio para el título, las fechas y una nota.</li>
                 <li>Un <a href="/es/products/wooden-reading-tracker">contador de lecturas de madera</a> para el escritorio.</li>
             </ul>
-            <p>Para el reto “Ciencia bien explicada”, nuestra página de <a href="/guides/regalos-para-amantes-de-las-matematicas/">regalos para amantes de las matemáticas</a> tiene notas cortas sobre seis ecuaciones famosas. Y si vas a regalar el reto, hay más ideas en <a href="/guides/regalos-para-lectores-menos-de-25/">regalos para lectores por menos de 25 dólares</a> y en <a href="/guides/regalos-pequenos-para-lectores/">detalles pequeños para lectores</a>.</p>
+            <p>Para «Un libro que llegó al cine: léelo antes», Orgullo y prejuicio es un buen candidato, y hicimos un <a href="/es/products/pride-and-prejudice-watch-party-kit">kit imprimible para verla y leerla en grupo</a> (en inglés). Para el reto “Ciencia bien explicada”, nuestra página de <a href="/guides/regalos-para-amantes-de-las-matematicas/">regalos para amantes de las matemáticas</a> tiene notas cortas sobre seis ecuaciones famosas. Y si vas a regalar el reto, hay más ideas en <a href="/guides/regalos-para-lectores-menos-de-25/">regalos para lectores por menos de 25 dólares</a> y en <a href="/guides/regalos-pequenos-para-lectores/">detalles pequeños para lectores</a>.</p>
         </section>
     </div>
 </main>
