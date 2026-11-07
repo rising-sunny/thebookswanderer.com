@@ -259,5 +259,63 @@
       "/assets/products/pride-prejudice-watch-party-kit/party.jpg"
     ],
     "active": true
+  },
+  {
+    "slug": "math-art-coffee-table-book-standard",
+    "supplier": "lulu",
+    "lulu_package": "0850X0850FCSTDCW080CW444MXX",
+    "title": "The Mathematics of Beauty, Math Art Coffee Table Book, Standard Hardcover, 88 Pages of Fractals, Attractors and Curves",
+    "title_es": "The Mathematics of Beauty, libro de arte matemático para mesa de centro, tapa dura Standard, 88 páginas de fractales, atractores y curvas",
+    "price_usd": 48,
+    "cost_usd": 0,
+    "category": "mathrelaxing",
+    "description": "The Mathematics of Beauty is a square hardcover of 38 full-page plates, each one drawn straight from its own equation: strange attractors, fractals, curves, waves and tilings. Nothing is traced and nothing is drawn by hand. Beside every plate you get the equation behind it and a short note on what it shows.\n\nThe plates are grouped in five chapters: Strange Attractors, Fractals, Curves, Waves & Fields, and Tilings. The Lorenz butterfly sits a few pages from a Lissajous figure and a vibrating drum, so the book reads as a gallery you can open anywhere.\n\nStandard edition: 88 pages, 8.5 × 8.5 in (21.6 × 21.6 cm), case-wrap hardcover with a matte cover. Premium coated paper, 80 lb.\n\nPrinted to order, so each copy is made fresh. Allow 7 to 10 business days for production before it ships; transit time is shown at checkout.",
+    "description_es": "The Mathematics of Beauty es un libro cuadrado de tapa dura con 38 láminas a página completa, cada una dibujada directamente desde su propia ecuación: atractores extraños, fractales, curvas, ondas y teselaciones. Nada está calcado ni dibujado a mano. Junto a cada lámina encuentras la ecuación que la genera y una nota breve sobre lo que muestra.\n\nLas láminas se agrupan en cinco capítulos: Atractores extraños, Fractales, Curvas, Ondas y campos, y Teselaciones. La mariposa de Lorenz queda a pocas páginas de una figura de Lissajous y de un tambor vibrando, así que el libro se lee como una galería que puedes abrir por cualquier página.\n\nEdición Standard: 88 páginas, 8,5 × 8,5 in (21,6 × 21,6 cm), tapa dura con cubierta mate. Papel estucado premium de 80 lb.\n\nSe imprime bajo pedido, así que cada ejemplar se hace en el momento. Calcula de 7 a 10 días hábiles de producción antes del envío; el tiempo de tránsito aparece al pagar.",
+    "image_url": "/assets/products/math-art-coffee-table-book/main.jpg",
+    "gallery": [
+      "/assets/products/math-art-coffee-table-book/desk.jpg",
+      "/assets/products/math-art-coffee-table-book/table.jpg",
+      "/assets/products/math-art-coffee-table-book/back.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-lorenz.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-lissajous.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-drum.jpg",
+      "/assets/products/math-art-coffee-table-book/contents.jpg"
+    ],
+    "variants": [
+      {
+        "name": "Standard Hardcover",
+        "image_url": "/assets/products/math-art-coffee-table-book/main.jpg"
+      }
+    ],
+    "active": false
+  },
+  {
+    "slug": "math-art-coffee-table-book-premium",
+    "supplier": "lulu",
+    "lulu_package": "0850X0850FCPRECW080CW444MXX",
+    "title": "The Mathematics of Beauty, Math Art Coffee Table Book, Premium Hardcover, 88 Pages of Fractals, Attractors and Curves",
+    "title_es": "The Mathematics of Beauty, libro de arte matemático para mesa de centro, tapa dura Premium, 88 páginas de fractales, atractores y curvas",
+    "price_usd": 65,
+    "cost_usd": 0,
+    "category": "mathrelaxing",
+    "description": "The Mathematics of Beauty is a square hardcover of 38 full-page plates, each one drawn straight from its own equation: strange attractors, fractals, curves, waves and tilings. Nothing is traced and nothing is drawn by hand. Beside every plate you get the equation behind it and a short note on what it shows.\n\nThe plates are grouped in five chapters: Strange Attractors, Fractals, Curves, Waves & Fields, and Tilings. The Lorenz butterfly sits a few pages from a Lissajous figure and a vibrating drum, so the book reads as a gallery you can open anywhere.\n\nPremium edition: 88 pages, 8.5 × 8.5 in (21.6 × 21.6 cm), case-wrap hardcover with a matte cover. The same gallery on heavier, gallery-weight coated stock, for deeper blacks and richer colour.\n\nPrinted to order, so each copy is made fresh. Allow 7 to 10 business days for production before it ships; transit time is shown at checkout.",
+    "description_es": "The Mathematics of Beauty es un libro cuadrado de tapa dura con 38 láminas a página completa, cada una dibujada directamente desde su propia ecuación: atractores extraños, fractales, curvas, ondas y teselaciones. Nada está calcado ni dibujado a mano. Junto a cada lámina encuentras la ecuación que la genera y una nota breve sobre lo que muestra.\n\nLas láminas se agrupan en cinco capítulos: Atractores extraños, Fractales, Curvas, Ondas y campos, y Teselaciones. La mariposa de Lorenz queda a pocas páginas de una figura de Lissajous y de un tambor vibrando, así que el libro se lee como una galería que puedes abrir por cualquier página.\n\nEdición Premium: 88 páginas, 8,5 × 8,5 in (21,6 × 21,6 cm), tapa dura con cubierta mate. La misma galería sobre papel estucado más grueso, de gramaje de galería, con negros más profundos y colores más ricos.\n\nSe imprime bajo pedido, así que cada ejemplar se hace en el momento. Calcula de 7 a 10 días hábiles de producción antes del envío; el tiempo de tránsito aparece al pagar.",
+    "image_url": "/assets/products/math-art-coffee-table-book/main.jpg",
+    "gallery": [
+      "/assets/products/math-art-coffee-table-book/desk.jpg",
+      "/assets/products/math-art-coffee-table-book/table.jpg",
+      "/assets/products/math-art-coffee-table-book/back.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-lorenz.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-lissajous.jpg",
+      "/assets/products/math-art-coffee-table-book/plate-drum.jpg",
+      "/assets/products/math-art-coffee-table-book/contents.jpg"
+    ],
+    "variants": [
+      {
+        "name": "Premium Hardcover",
+        "image_url": "/assets/products/math-art-coffee-table-book/main.jpg"
+      }
+    ],
+    "active": false
   }
 ]
