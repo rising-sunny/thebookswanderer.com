@@ -1171,3 +1171,14 @@
     color: var(--gold-600);
     background: rgba(193, 145, 47, 0.14);
 }
+
+/* ---------- Language links and Spanish pages ---------- */
+.j-meta a {
+    color: var(--gold-300);
+    text-decoration-color: rgba(226, 196, 124, 0.5);
+    text-underline-offset: 3px;
+}
+
+html[lang="es"] .j-pick--own h4::after {
+    content: "te toca a ti";
+}
