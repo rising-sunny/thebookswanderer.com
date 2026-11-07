@@ -1050,3 +1050,124 @@
 .j-sources li {
     margin: 0 0 0.35em;
 }
+
+/* ---------- Prompt picks ---------- */
+.j-pickbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3) var(--sp-4);
+    margin: var(--sp-5) 0 var(--sp-6);
+    padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    background: var(--bg-raised);
+    box-shadow: var(--shadow-sm);
+}
+
+.j-pickbar p {
+    flex: 1 1 14rem;
+    margin: 0;
+    font-size: var(--t-sm);
+    color: var(--ink-muted);
+}
+
+.j-picks {
+    list-style: none;
+    margin: var(--sp-5) 0 var(--sp-6);
+    padding: 0;
+    border-top: 1px solid var(--line);
+}
+
+.j-pick {
+    display: grid;
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+    gap: var(--sp-4);
+    margin: 0;
+    padding: var(--sp-4) var(--sp-3);
+    border-bottom: 1px solid var(--line);
+    transition: background 0.4s var(--ease);
+}
+
+.j-pick::marker {
+    content: "";
+}
+
+.j-pick.is-hit {
+    background: rgba(193, 145, 47, 0.2);
+}
+
+.j-pick__n {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--gold-500);
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--gold-600);
+    background: var(--cream-50);
+}
+
+.j-pick h4 {
+    margin: 0 0 0.3rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--green-900);
+}
+
+.j-pick ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: var(--t-body);
+    line-height: 1.5;
+}
+
+.j-pick li {
+    margin: 0;
+    padding: 0.1rem 0;
+}
+
+.j-pick em {
+    font-family: var(--font-display);
+    font-size: 1.05em;
+    color: var(--ink);
+}
+
+.j-by {
+    color: var(--ink-muted);
+    font-size: var(--t-sm);
+}
+
+.j-pick p {
+    margin: 0.1rem 0 0;
+    font-size: var(--t-sm);
+    line-height: 1.55;
+    color: var(--ink-muted);
+}
+
+.j-pick--own {
+    background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(16, 36, 26, 0.025) 10px 20px);
+}
+
+.j-pick--own .j-pick__n {
+    border-style: dashed;
+    color: var(--ink-muted);
+}
+
+.j-pick--own h4::after {
+    content: "yours to answer";
+    margin-left: var(--sp-2);
+    padding: 0.1rem 0.55rem;
+    border-radius: var(--r-pill);
+    font-size: var(--t-micro);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-600);
+    background: rgba(193, 145, 47, 0.14);
+}
