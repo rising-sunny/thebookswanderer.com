@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-time, read-only: where the site's visits come from (owner request 2026-11-07).
+# One-time, read-only: where the site's visits come from (owner request 2026-11-07). v2: also drops datacenter traffic.
 # Aggregates from the first-party live_events table only; no IPs, cities, sessions or emails are printed.
 cd /var/www/thebookswanderer.com/server && runuser -u www-data -- .venv/bin/python - <<'PY'
 from datetime import datetime, timedelta
@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from database import SessionLocal
 from models import LiveEvent
 
-SKIP = ("bot", "server", "crawler", "spider")
+SKIP = ("bot", "server", "crawler", "spider", "datacenter", "hosting")
 db = SessionLocal()
 t0 = datetime.utcnow() - timedelta(days=14)
 rows = db.query(LiveEvent.ts, LiveEvent.session_id, LiveEvent.event_type, LiveEvent.path, LiveEvent.referrer_domain,
@@ -39,6 +39,17 @@ for r in pv:
     if r.ts >= last7: g[(grp(r), page(r))].append(r)
 print("== last 7 days: source -> page (sessions), top 15")
 for k, v in sorted(g.items(), key=lambda kv: -sess(kv[1]))[:15]: print(f"   {k[0][:28]:28} {k[1][:44]:44} {sess(v):4}")
+AI = ("chatgpt", "openai", "perplexity", "gemini", "claude", "copilot", "you.com", "phind", "kagi")
+ai = [r for r in pv if any(k in grp(r) for k in AI)]
+print("== AI assistants: sessions", sess(ai), "| pageviews", len(ai))
+g = defaultdict(list)
+for r in ai: g[(grp(r), page(r))].append(r)
+for k, v in sorted(g.items(), key=lambda kv: -len(kv[1]))[:15]: print(f"   {k[0][:24]:24} {k[1][:48]:48} sessions {sess(v)} views {len(v)}")
+print("== ai daily:", {str(k): sess(v) for k, v in sorted(defaultdict(list, {d: [r for r in ai if r.ts.date() == d] for d in {r.ts.date() for r in ai}}).items())})
+print("== pages per session by source group:")
+sg = defaultdict(list)
+for r in pv: sg[grp(r)].append(r)
+for k, v in sorted(sg.items(), key=lambda kv: -sess(kv[1]))[:8]: print(f"   {k[:36]:36} {sess(v):4} sessions  {len(v)/max(sess(v),1):.1f} pages/session")
 camp = Counter(r.campaign for r in pv if r.campaign)
 print("== campaigns (pageviews):", dict(camp.most_common(8)))
 print("== funnel events, last 14 days:", dict(Counter(r.event_type for r in rows if r.event_type != "pageview")))

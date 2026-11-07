@@ -396,3 +396,8 @@ if [ -f "$REMOTE_PATH/deploy/visits-report.sh" ] && [ ! -f /var/lib/tbw-once/vis
   touch /var/lib/tbw-once/visits-report-20261107
   bash "$REMOTE_PATH/deploy/visits-report.sh" || true
 fi
+# One-time, read-only: visits report v2 (datacenter traffic excluded, AI assistants detail).
+if [ -f "$REMOTE_PATH/deploy/visits-report.sh" ] && [ ! -f /var/lib/tbw-once/visits-report-20261107b ]; then
+  touch /var/lib/tbw-once/visits-report-20261107b
+  bash "$REMOTE_PATH/deploy/visits-report.sh" || true
+fi
