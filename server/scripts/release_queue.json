@@ -29,5 +29,11 @@
   {"id": "annotated-pp-tote-poster-import", "script": "import_printify_products.py", "args": ["--slug", "annotated-pride-and-prejudice-tote", "--slug", "annotated-pride-and-prejudice-poster", "--no-pin"]},
   {"id": "annotated-pp-tote-gallery", "script": "import_printify_products.py", "args": ["--slug", "annotated-pride-and-prejudice-tote", "--no-pin"]},
   {"id": "reading-challenge-kit-create", "script": "digital_products.py", "args": ["--apply", "reading-challenge-kit-2027"]},
-  {"id": "pp-watch-party-kit-create", "script": "digital_products.py", "args": ["--apply", "pride-and-prejudice-watch-party-kit"]}
+  {"id": "pp-watch-party-kit-create", "script": "digital_products.py", "args": ["--apply", "pride-and-prejudice-watch-party-kit"]},
+  {"id": "math-art-book-standard-create", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-standard"]},
+  {"id": "math-art-book-standard-link", "script": "link_print_files.py", "args": ["math-art-coffee-table-book-standard", "math-art-book-interior.pdf", "math-art-book-cover.pdf"]},
+  {"id": "math-art-book-standard-validate", "script": "validate_lulu_files.py", "args": ["math-art-coffee-table-book-standard"]},
+  {"id": "math-art-book-premium-create", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-premium"]},
+  {"id": "math-art-book-premium-link", "script": "link_print_files.py", "args": ["math-art-coffee-table-book-premium", "math-art-book-interior.pdf", "math-art-book-cover.pdf"]},
+  {"id": "math-art-book-premium-validate", "script": "validate_lulu_files.py", "args": ["math-art-coffee-table-book-premium"]}
 ]
