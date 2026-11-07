@@ -391,3 +391,8 @@ if [ -f "$REMOTE_PATH/deploy/inspect-etsy-auth.sh" ] && [ ! -f /var/lib/tbw-once
   touch /var/lib/tbw-once/inspect-etsy-auth-20261103
   bash "$REMOTE_PATH/deploy/inspect-etsy-auth.sh" || true
 fi
+# One-time, read-only: where the site visits come from.
+if [ -f "$REMOTE_PATH/deploy/visits-report.sh" ] && [ ! -f /var/lib/tbw-once/visits-report-20261107 ]; then
+  touch /var/lib/tbw-once/visits-report-20261107
+  bash "$REMOTE_PATH/deploy/visits-report.sh" || true
+fi
