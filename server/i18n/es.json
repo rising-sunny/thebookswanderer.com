@@ -80,6 +80,30 @@
       "$1 forma parte de MathRelaxing, el estudio de arte matemático de The Books Wanderer: diseños calculados a partir de matemáticas reales, no imágenes de catálogo. Mostramos opciones reales en stock, precios claros en USD y envíos con seguimiento. El pago se hace de forma segura con PayPal."
     ],
     [
+      "^(.+) is a digital download sold by The Books Wanderer\\. You pay securely with PayPal and the download link arrives by email right after payment\\. Nothing is shipped\\.$",
+      "$1 es una descarga digital que vende The Books Wanderer. Pagas de forma segura con PayPal y el enlace de descarga te llega por correo justo después del pago. No se envía nada."
+    ],
+    [
+      "^(.+) is made to order by our production partner and sold by The Books Wanderer\\. Because it is made after you order, delivery takes longer than for a product kept in stock\\. Delivery for your country and the shipping total are calculated at the cart, and checkout is secured with PayPal\\.$",
+      "$1 se fabrica bajo pedido en nuestro socio de producción y lo vende The Books Wanderer. Como se hace después de tu pedido, la entrega tarda más que la de un producto que ya está en stock. La entrega a tu país y el total del envío se calculan en el carrito, y el pago se hace de forma segura con PayPal."
+    ],
+    [
+      "^(.+) is sold by The Books Wanderer and ships from partner warehouses with tracking\\. Shipping is calculated by destination at the cart, and checkout is secured with PayPal\\.$",
+      "$1 lo vende The Books Wanderer y se envía con seguimiento desde almacenes de socios. El envío se calcula según el destino en el carrito, y el pago se hace de forma segura con PayPal."
+    ],
+    [
+      "^(.+) is a digital download sold by MathRelaxing, the math art studio of The Books Wanderer\\. You pay securely with PayPal and the download link arrives by email right after payment\\. Nothing is shipped\\.$",
+      "$1 es una descarga digital que vende MathRelaxing, el estudio de arte matemático de The Books Wanderer. Pagas de forma segura con PayPal y el enlace de descarga te llega por correo justo después del pago. No se envía nada."
+    ],
+    [
+      "^(.+) is made to order by our production partner and sold by MathRelaxing, the math art studio of The Books Wanderer\\. Because it is made after you order, delivery takes longer than for a product kept in stock\\. Delivery for your country and the shipping total are calculated at the cart, and checkout is secured with PayPal\\.$",
+      "$1 se fabrica bajo pedido en nuestro socio de producción y lo vende MathRelaxing, el estudio de arte matemático de The Books Wanderer. Como se hace después de tu pedido, la entrega tarda más que la de un producto que ya está en stock. La entrega a tu país y el total del envío se calculan en el carrito, y el pago se hace de forma segura con PayPal."
+    ],
+    [
+      "^(.+) is sold by MathRelaxing, the math art studio of The Books Wanderer and ships from partner warehouses with tracking\\. Shipping is calculated by destination at the cart, and checkout is secured with PayPal\\.$",
+      "$1 lo vende MathRelaxing, el estudio de arte matemático de The Books Wanderer y se envía con seguimiento desde almacenes de socios. El envío se calcula según el destino en el carrito, y el pago se hace de forma segura con PayPal."
+    ],
+    [
       "^(\\d+) designs$",
       "$1 diseños"
     ],
