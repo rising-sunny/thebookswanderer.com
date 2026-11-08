@@ -73,13 +73,14 @@ let passed = 0;
    }
   }
   for (const testVisit of [false, true]) {
-   const context = await browser.newContext(); const records = [];
+   const context = await browser.newContext(); const records = [], shown = [];
    await context.addInitScript(() => {
     localStorage.setItem('tbw_consent','granted');
     window.fixtureMeta = []; window.fbq = (...args) => window.fixtureMeta.push(args);
    });
    await context.route('**/*', async route => {
     const url = new URL(route.request().url());
+    if (url.hostname === 'shown.io') { shown.push(url.href); return route.abort(); }
     assert.equal(url.hostname,'tbw.test');
     if (url.pathname === '/api/track') { records.push(route.request().postDataJSON()); return route.fulfill({json:{ok:true}}); }
     if (url.pathname === '/track.js') return route.fulfill({contentType:'application/javascript',body:fs.readFileSync(path.join(root,'track.js'),'utf8')});
@@ -90,8 +91,9 @@ let passed = 0;
    await page.evaluate(() => window.tbwTrack('purchase_return',{extra:{order_id:123}}));
    await page.waitForTimeout(100);
    const meta = await page.evaluate(() => window.fixtureMeta);
-   if (testVisit) { assert.deepEqual(records,[]); assert.deepEqual(meta,[]); }
+   if (testVisit) { assert.deepEqual(records,[]); assert.deepEqual(meta,[]); assert.deepEqual(shown,[]); }
    else {
+    assert.deepEqual(shown,['https://shown.io/metrics/Zb3QjPDA8j']);
     assert.equal(records.filter(r => r.type === 'purchase_return').length,1);
     const purchase = meta.find(r => r[1] === 'Purchase');
     assert.equal(purchase[3].eventID,'purchase-123');
