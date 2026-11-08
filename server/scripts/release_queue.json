@@ -39,5 +39,10 @@
   {"id": "math-art-book-standard-cost", "script": "lulu_check.py", "args": ["--countries", "0850X0850FCSTDCW080CW444MXX", "88"]},
   {"id": "math-art-book-premium-cost", "script": "lulu_check.py", "args": ["--countries", "0850X0850FCPRECW080CW444MXX", "88"]},
   {"id": "math-art-book-standard-publish", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-standard"]},
-  {"id": "math-art-book-premium-publish", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-premium"]}
+  {"id": "math-art-book-premium-publish", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-premium"]},
+  {"id": "pinterest-wipe-1", "script": "pinterest_wipe.py", "args": ["--apply"]},
+  {"id": "pinterest-wipe-2", "script": "pinterest_wipe.py", "args": ["--apply"]},
+  {"id": "pinterest-wipe-3", "script": "pinterest_wipe.py", "args": ["--apply"]},
+  {"id": "pinterest-wipe-4", "script": "pinterest_wipe.py", "args": ["--apply"]},
+  {"id": "pinterest-wipe-5", "script": "pinterest_wipe.py", "args": ["--apply"]}
 ]
