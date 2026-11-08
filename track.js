@@ -147,8 +147,24 @@
             metaLoaded = true;
         }
 
+        // --- Shown tag ----------------------------------------------------
+        // Shown (ad-measurement service, on trial) can inject its own Meta and Google ad
+        // tags, so it is loaded only after the visitor opts in, like the Meta Pixel.
+        var SHOWN_SRC = "https://shown.io/metrics/Zb3QjPDA8j";
+        var shownLoaded = false;
+
+        function loadShown() {
+            if (shownLoaded) return;
+            shownLoaded = true;
+            var s = document.createElement("script");
+            s.defer = true;
+            s.src = SHOWN_SRC;
+            document.head.appendChild(s);
+        }
+
         if (consent() === "granted") {
             loadMetaPixel();
+            loadShown();
         }
 
         // tbwTrack type -> Meta standard event. Types missing from this map stay
@@ -267,6 +283,7 @@
             if (el && el.parentNode) el.parentNode.removeChild(el);
             if (value === "granted") {
                 loadMetaPixel();
+                loadShown();
                 // The pageview above was suppressed for Meta, so replay it now
                 // that we are allowed to.
                 fireMeta("pageview", null);
@@ -282,7 +299,7 @@
             bar.setAttribute("role", "dialog");
             bar.setAttribute("aria-label", "Cookie choices");
             bar.innerHTML =
-                '<p class="consent__text">Cookies run the shop; with your OK, Meta cookies measure our ads. ' +
+                '<p class="consent__text">Cookies run the shop; with your OK, Meta and Shown cookies measure our ads. ' +
                 '<a href="/privacy.html">Privacy</a></p>' +
                 '<div class="consent__actions">' +
                 '<button type="button" class="btn btn--ghost btn--sm" data-consent="denied">Only essential</button>' +
