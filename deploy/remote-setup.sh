@@ -401,3 +401,7 @@ if [ -f "$REMOTE_PATH/deploy/visits-report.sh" ] && [ ! -f /var/lib/tbw-once/vis
   touch /var/lib/tbw-once/visits-report-20261107b
   bash "$REMOTE_PATH/deploy/visits-report.sh" || true
 fi
+if [ -f "$REMOTE_PATH/deploy/visits-report.sh" ] && [ ! -f /var/lib/tbw-once/visits-report-20261108 ]; then
+  touch /var/lib/tbw-once/visits-report-20261108
+  bash "$REMOTE_PATH/deploy/visits-report.sh" || true
+fi

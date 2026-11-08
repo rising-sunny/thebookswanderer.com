@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-time, read-only: where the site's visits come from (owner request 2026-11-07). v2: also drops datacenter traffic.
+# One-time, read-only: where the site's visits come from (owner request 2026-11-07). v2: also drops datacenter traffic. v3 (2026-11-08): funnel by channel.
 # Aggregates from the first-party live_events table only; no IPs, cities, sessions or emails are printed.
 cd /var/www/thebookswanderer.com/server && runuser -u www-data -- .venv/bin/python - <<'PY'
 from datetime import datetime, timedelta
@@ -53,5 +53,38 @@ for k, v in sorted(sg.items(), key=lambda kv: -sess(kv[1]))[:8]: print(f"   {k[:
 camp = Counter(r.campaign for r in pv if r.campaign)
 print("== campaigns (pageviews):", dict(camp.most_common(8)))
 print("== funnel events, last 14 days:", dict(Counter(r.event_type for r in rows if r.event_type != "pageview")))
+# --- v3: funnel by channel (session first touch), human traffic only, aggregates only ---
+PAID = {"paid", "cpc", "ppc", "paid_social", "paidsocial", "paid-social"}
+SEARCH = ("google", "bing", "duckduckgo", "yahoo", "ecosia", "brave", "yandex", "baidu", "startpage", "qwant")
+SOCIAL = ("facebook", "instagram", "pinterest", "reddit", "youtube", "tiktok", "twitter", "t.co", "x.com", "linkedin")
+def channel(r):
+    g, m = grp(r), (r.medium or "").lower()
+    if m in PAID or "paid" in m or "cpc" in m: return "paid ads"
+    if any(k in g for k in AI): return "AI assistants"
+    if any(k in g for k in SEARCH): return "organic search"
+    if any(k in g for k in SOCIAL): return "social (unpaid)"
+    return "direct / unknown" if g == "direct" else "other referral"
+first = {}
+for r in sorted(pv, key=lambda r: r.ts): first.setdefault(r.session_id, r)
+chan = {sid: channel(r) for sid, r in first.items()}
+by_ev = defaultdict(lambda: defaultdict(set))
+for r in rows:
+    if r.session_id in chan and r.event_type != "pageview": by_ev[r.event_type][chan[r.session_id]].add(r.session_id)
+cs = Counter(chan.values())
+types = ["product_view", "add_to_cart", "checkout_start", "purchase_return"]
+print("== v3 FUNNEL BY CHANNEL, last 14 days (sessions, by first touch)")
+print("   " + "channel".ljust(20) + "sessions".rjust(9) + "".join(t[:12].rjust(14) for t in types))
+for ch, n in cs.most_common():
+    print("   " + ch.ljust(20) + str(n).rjust(9) + "".join(str(len(by_ev[t][ch])).rjust(14) for t in types))
+print("== v3 top 5 landing pages per channel (sessions)")
+for ch, _ in cs.most_common():
+    gl = Counter(page(first[sid]) for sid, c in chan.items() if c == ch)
+    print("   " + ch + ": " + "; ".join(f"{k[:40]} {v}" for k, v in gl.most_common(5)))
+print("== v3 product pages viewed per channel (sessions), top 5")
+for ch, _ in cs.most_common():
+    pc = defaultdict(set)
+    for r in rows:
+        if r.event_type == "product_view" and chan.get(r.session_id) == ch: pc[page(r)].add(r.session_id)
+    print("   " + ch + ": " + "; ".join(f"{k[:44]} {len(v)}" for k, v in sorted(pc.items(), key=lambda kv: -len(kv[1]))[:5]))
 db.close()
 PY
