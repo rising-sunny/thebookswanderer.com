@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -41,6 +42,42 @@ _PRIVATE = re.compile(
 )
 
 
+# Meta video upload from a file already on this server (JSON bodies cannot carry binary data and
+# Meta's own download of a file_url has failed with an unspecific error). The body names the file
+# with "local_file", relative to the site's assets folder; it is sent as a multipart "source".
+ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
+VIDEO_SUFFIXES = {".mp4", ".mov"}
+MAX_VIDEO_BYTES = 100 * 1024 * 1024
+_META_VIDEO_PATH = re.compile(r"/act_\d{1,25}/advideos")
+
+
+def meta_local_video(body: Any) -> Path | None:
+    """The file named by body["local_file"], or None when the body has none. ValueError if unusable."""
+    if not isinstance(body, dict) or "local_file" not in body:
+        return None
+    name = body["local_file"]
+    if not isinstance(name, str) or not name or name.startswith("/") or ".." in name.split("/"):
+        raise ValueError("local_file must be a path inside the assets folder")
+    if "file_url" in body or "source" in body:
+        raise ValueError("local_file cannot be combined with file_url or source")
+    root = ASSETS_DIR.resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root) or path.suffix.lower() not in VIDEO_SUFFIXES or not path.is_file():
+        raise ValueError("local_file must be an existing .mp4 or .mov inside the assets folder")
+    if path.stat().st_size > MAX_VIDEO_BYTES:
+        raise ValueError("local_file is larger than the 100 MB limit")
+    return path
+
+
+def _form_fields(body: dict) -> dict[str, str]:
+    out = {}
+    for key, value in body.items():
+        if key == "local_file":
+            continue
+        out[key] = json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value)
+    return out
+
+
 class SupplierAPIError(Exception):
     pass
 
@@ -57,6 +94,10 @@ def check(supplier: str, method: str, path: str, body: Any = None) -> None:
         raise ValueError("Unsupported method")
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
+    if supplier == "meta" and method != "GET" and isinstance(body, dict) and "local_file" in body:
+        if method != "POST" or not _META_VIDEO_PATH.fullmatch(path.split("?")[0]):
+            raise ValueError("local_file is only for POST /act_<id>/advideos")
+        meta_local_video(body)
     if supplier == "meta" and method != "GET" and not orders_enabled():
         _check_meta_ad_write(method, path, body)
         if _META_AD_PATH.fullmatch(path.split("?")[0]):
@@ -169,6 +210,10 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
             raise SupplierAPIError("Meta is not configured")
         url = META_GRAPH + path
         headers = {"Authorization": "Bearer " + token}
+        video = meta_local_video(body)
+        if video is not None:
+            return await client.post(url, headers=headers, data=_form_fields(body),
+                                     files={"source": (video.name, video.read_bytes(), "video/mp4")})
     elif supplier == "pinterest":
         url = pinterest.api_base() + path
         headers = {"Authorization": "Bearer " + await pinterest.access_token()}
@@ -181,7 +226,8 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
 async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[str, Any]:
     check(supplier, method, path, body)
     try:
-        async with httpx.AsyncClient(timeout=45, follow_redirects=False) as client:
+        slow = supplier == "meta" and isinstance(body, dict) and "local_file" in body
+        async with httpx.AsyncClient(timeout=300 if slow else 45, follow_redirects=False) as client:
             response = await _send(client, supplier, method, path, body)
     except httpx.HTTPError:
         raise SupplierAPIError(f"{supplier} unavailable") from None

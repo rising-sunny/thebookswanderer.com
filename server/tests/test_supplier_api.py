@@ -153,6 +153,49 @@ class SupplierApi(unittest.TestCase):
             response = self.call('cj', {'method': 'GET', 'path': '/x'})
         self.assertEqual(response.status_code, 502);self.assertNotIn('secret', response.text)
 
+    def test_meta_video_uploads_from_a_file_inside_the_assets_folder_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory)
+            (assets / 'products').mkdir()
+            (assets / 'products' / 'ad.mp4').write_bytes(b'FAKE-VIDEO-BYTES')
+            (assets / 'products' / 'notes.txt').write_text('x')
+            (assets.parent / 'outside.mp4').write_bytes(b'secret')
+            self.addCleanup(lambda: (assets.parent / 'outside.mp4').unlink(missing_ok=True))
+            path = '/act_123/advideos'
+            def send(body, p=path, preview=True, code=None, method='POST'):
+                data = {'method': method, 'path': p, 'body': body}
+                if code: data['code'] = code
+                return self.call('meta', data, preview=preview)
+            ok = {'local_file': 'products/ad.mp4', 'title': 'Math Art', 'published': False}
+            with patch.object(supplier_api, 'ASSETS_DIR', assets), \
+                    patch.dict(os.environ, {'FB_PAGE_TOKEN': 'page-token', 'TBW_META_ADS_MAX_DAILY_BUDGET': '15000'}):
+                for bad in ({'local_file': '../outside.mp4'}, {'local_file': '/etc/passwd'}, {'local_file': 'products/notes.txt'},
+                            {'local_file': 'products/missing.mp4'}, {'local_file': 5},
+                            {**ok, 'file_url': 'https://example.com/a.mp4'}):
+                    self.assertEqual(send(bad).status_code, 422, bad)
+                self.assertEqual(send(ok, p='/act_123/adimages').status_code, 422)
+                self.assertEqual(send(ok, p='/123/videos').status_code, 422)
+                self.assertEqual(send(ok, method='PUT').status_code, 422)
+                self.assertEqual(self.requests, [])
+                preview = send(ok)
+                self.assertEqual(preview.status_code, 200)
+                self.assertFalse(preview.json()['executed'])
+                self.assertEqual(self.requests, [])
+                done = send(ok, preview=False, code=preview.json()['code'])
+        self.assertEqual(done.status_code, 200)
+        request = self.requests[0]
+        self.assertEqual(str(request.url), 'https://graph.facebook.com/v21.0/act_123/advideos')
+        self.assertEqual(request.headers['Authorization'], 'Bearer page-token')
+        self.assertTrue(request.headers['Content-Type'].startswith('multipart/form-data'))
+        body = request.content
+        self.assertIn(b'FAKE-VIDEO-BYTES', body)
+        self.assertIn(b'name="source"', body)
+        self.assertIn(b'name="title"', body)
+        self.assertIn(b'Math Art', body)
+        self.assertIn(b'name="published"', body)
+        self.assertIn(b'false', body)
+        self.assertNotIn(b'local_file', body)
+
     def test_etsy_meta_and_pinterest_auth(self):
         with tempfile.TemporaryDirectory() as directory:
             token = Path(directory) / 'etsy_token.json'
