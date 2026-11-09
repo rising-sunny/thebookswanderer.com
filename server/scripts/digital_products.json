@@ -317,5 +317,32 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "christmas-carol-illustrated-quotes-hardcover",
+    "supplier": "lulu",
+    "lulu_package": "0850X0850FCSTDCW080CW444MXX",
+    "title": "A Christmas Carol: The Illustrated Quotes, Square Hardcover with 21 Plates by John Leech and Arthur Rackham",
+    "title_es": "A Christmas Carol: The Illustrated Quotes, libro cuadrado de tapa dura con 21 láminas de John Leech y Arthur Rackham",
+    "price_usd": 34.99,
+    "cost_usd": 14.52,
+    "category": "books",
+    "description": "A square hardcover that sets 21 of the original illustrations of A Christmas Carol beside the line of Dickens they belong to. Opposite each plate, a single quote in large type, labelled with its stave, from Marley's chain to the pudding at the Cratchits' table and the last line of the book.\n\nThe plates come from the first edition of 1843, with John Leech's hand-coloured etchings and woodcuts, and from Arthur Rackham's edition of 1915, in colour and in line. Dickens's text and both sets of illustrations are in the public domain, reproduced here from scans of those two editions.\n\nThis is a book of pictures and quotations, not the full story. 44 pages, 8.5 × 8.5 in (21.6 × 21.6 cm), case-wrap hardcover with a matte cover, full colour on premium coated paper (80 lb).\n\nPrinted to order, so each copy is made fresh. Allow 7 to 10 business days for production before it ships; transit time is shown at checkout.",
+    "description_es": "Un libro cuadrado de tapa dura que pone 21 de las ilustraciones originales de A Christmas Carol junto a la línea de Dickens a la que pertenecen. Frente a cada lámina, una sola cita en letra grande, con su estrofa, desde la cadena de Marley hasta el pudín en la mesa de los Cratchit y la última línea del libro.\n\nLas láminas vienen de la primera edición de 1843, con los aguafuertes y grabados coloreados a mano de John Leech, y de la edición de 1915 de Arthur Rackham, en color y en línea. El texto de Dickens y las dos series de ilustraciones son de dominio público, reproducidas de escaneos de esas dos ediciones.\n\nEs un libro de imágenes y citas, no la historia completa. 44 páginas, 8,5 × 8,5 in (21,6 × 21,6 cm), tapa dura con cubierta mate, a todo color en papel estucado premium de 80 lb.\n\nSe imprime bajo pedido, así que cada ejemplar se hace en el momento. Calcula de 7 a 10 días hábiles de producción antes del envío; el tiempo de tránsito aparece al pagar.",
+    "image_url": "/assets/products/christmas-carol-quotes-book/main.jpg",
+    "gallery": [
+      "/assets/products/christmas-carol-quotes-book/spread-1.jpg",
+      "/assets/products/christmas-carol-quotes-book/spread-2.jpg",
+      "/assets/products/christmas-carol-quotes-book/spread-3.jpg",
+      "/assets/products/christmas-carol-quotes-book/spread-4.jpg",
+      "/assets/products/christmas-carol-quotes-book/back.jpg"
+    ],
+    "variants": [
+      {
+        "name": "Hardcover",
+        "image_url": "/assets/products/christmas-carol-quotes-book/main.jpg"
+      }
+    ],
+    "active": true
   }
 ]
