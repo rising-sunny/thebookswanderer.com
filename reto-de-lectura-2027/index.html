@@ -47,6 +47,15 @@
         .pace-table caption {text-align:left;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-600);padding-bottom:.4rem}
         .pace-table th,.pace-table td {padding:.55rem .7rem;text-align:left;border-top:1px solid rgba(16,36,26,.12)}
         .pace-table th {font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+        .shop-strip {margin:2rem 0}
+        .shop-strip__grid {display:grid;gap:1rem;grid-template-columns:1fr 1fr;margin-top:1rem}
+        @media (min-width:860px) {.shop-strip__grid {grid-template-columns:repeat(4,1fr)}}
+        .shop-strip__card {display:flex;flex-direction:column;border:1px solid rgba(43,82,64,.18);border-radius:14px;background:#fff;overflow:hidden;text-decoration:none;color:inherit}
+        .shop-strip__card img {width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;display:block}
+        .page-reading-challenge .shop-strip__card,.page-reading-challenge .shop-strip__card * {text-decoration:none}
+        .shop-strip__card div {padding:.8rem .9rem 1rem}
+        .shop-strip__card strong {display:block;font-size:.98rem;line-height:1.3}
+        .shop-strip__card span {display:block;margin-top:.3rem;font-size:.86rem;line-height:1.4;color:var(--ink-muted)}
     </style>
     <script type="application/ld+json">
 {
@@ -535,6 +544,16 @@
                 </tbody>
             </table>
             <p>Son estimaciones para una novela de 90.000 palabras. Las cuentas, y una calculadora para tu propia velocidad, están en <a href="/guides/como-leer-52-libros-en-un-ano/">cómo leer 52 libros en un año</a>.</p>
+        </section>
+        <section class="shop-strip" aria-labelledby="shop-strip-title">
+            <h2 id="shop-strip-title">Para que tu año de lectura sea más bonito</h2>
+            <p>Si quieres algo más que el imprimible, esto es lo que hacemos para acompañar el reto.</p>
+            <div class="shop-strip__grid">
+                <a class="shop-strip__card" href="/es/products/reading-passport-printed"><img src="/assets/products/reading-passport-printed/main_es.jpg" alt="Pasaporte del lector, diario de lectura impreso" width="600" height="450" loading="lazy"><div><strong>Pasaporte del lector</strong><span>Un diario de lectura A5 con forma de pasaporte.</span></div></a>
+                <a class="shop-strip__card" href="/es/products/reading-log-bookmarks"><img src="/assets/products/reading-log-bookmarks/ambient-ai-20261020.jpg" alt="Marcapáginas de registro de lectura" width="600" height="450" loading="lazy"><div><strong>Marcapáginas de registro</strong><span>Con espacio para el título, las fechas y una nota.</span></div></a>
+                <a class="shop-strip__card" href="/es/products/readers-2027-desk-calendar"><img src="/assets/products/readers-2027-desk-calendar/ambient-ai-20261020.jpg" alt="Calendario de escritorio Readers 2027" width="600" height="450" loading="lazy"><div><strong>Readers: calendario de escritorio 2027</strong><span>Doce grabados de personas leyendo, uno por mes.</span></div></a>
+                <a class="shop-strip__card" href="/es/products/usb-clip-reading-light"><img src="/assets/products/usb-clip-reading-light/ambient-ai-20261020.jpg" alt="Luz de lectura recargable con clip sobre un libro abierto" width="600" height="450" loading="lazy"><div><strong>Luz de lectura con clip</strong><span>Recargable por USB; se sujeta a la página.</span></div></a>
+            </div>
         </section>
         <section aria-labelledby="track-progress">
             <h2 id="track-progress">Una forma sencilla de registrar tus lecturas</h2>
