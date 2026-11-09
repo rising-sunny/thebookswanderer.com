@@ -214,6 +214,16 @@ cat > /etc/cron.d/tbw-social-post <<CRON
 CRON
 chmod 644 /etc/cron.d/tbw-social-post
 
+# Scheduled Pinterest pins (server/scripts/scheduled_pins.py): owner-approved texts, each published once.
+mkdir -p /var/lib/tbw-once/scheduled-pins
+chown www-data:www-data /var/lib/tbw-once/scheduled-pins
+touch /var/log/tbw-scheduled-pins.log
+chown www-data:www-data /var/log/tbw-scheduled-pins.log
+cat > /etc/cron.d/tbw-scheduled-pins <<CRON
+*/10 * * * * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/scheduled_pins.py >> /var/log/tbw-scheduled-pins.log 2>&1
+CRON
+chmod 644 /etc/cron.d/tbw-scheduled-pins
+
 # Supplier legs (CJ, Printify, Lulu, Prodigi): tracking email to the buyer when a leg
 # ships, one inbox alert when a leg is stuck (server/scripts/sync_order_tracking.py).
 rm -f /etc/cron.d/tbw-lulu-tracking
