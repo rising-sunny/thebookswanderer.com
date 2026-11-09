@@ -14,12 +14,12 @@ from pathlib import Path
 
 import sys
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "/opt/etsy_lulu_fulfill")
-IDS = ("4603381326", "4220948340", "TBW-JANE-AUSTEN-PUZZLE-BOOK")
+IDS = ("4224212753", "5282393524", "TMB-STD-8585")
 PII_KEY = re.compile(r"(?i)(name|address|street|line_?\d|first_line|second_line|city|zip|post|email|phone|buyer|recipient|customer|tax_id|message)")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 STREET = re.compile(r"\b\d{1,6}\s+[A-Za-z][\w .'-]{1,40}\b(street|st|avenue|ave|drive|dr|road|rd|lane|ln|blvd|way|court|ct|place|pl)\b", re.I)
 CAPNAME = re.compile(r"\b[A-Z][a-z'-]+(?:\s+[A-Z][a-z'-]+){1,3}\b")
-LONGNUM = re.compile(r"\b(?!(?:4603381326|4220948340)\b)\d{5,}\b")
+LONGNUM = re.compile(r"\b(?!(?:4224212753|5282393524)\b)\d{5,}\b")
 
 
 def mask(text):
