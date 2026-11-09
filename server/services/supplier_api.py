@@ -49,6 +49,8 @@ ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 VIDEO_SUFFIXES = {".mp4", ".mov"}
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
 _META_VIDEO_PATH = re.compile(r"/act_\d{1,25}/advideos")
+_ETSY_VIDEO_PATH = re.compile(r"/application/shops/\d{1,15}/listings/\d{1,15}/videos")
+_VIDEO_PATHS = {"meta": _META_VIDEO_PATH, "etsy": _ETSY_VIDEO_PATH}
 
 
 def meta_local_video(body: Any) -> Path | None:
@@ -94,9 +96,10 @@ def check(supplier: str, method: str, path: str, body: Any = None) -> None:
         raise ValueError("Unsupported method")
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
-    if supplier == "meta" and method != "GET" and isinstance(body, dict) and "local_file" in body:
-        if method != "POST" or not _META_VIDEO_PATH.fullmatch(path.split("?")[0]):
-            raise ValueError("local_file is only for POST /act_<id>/advideos")
+    if supplier in _VIDEO_PATHS and method != "GET" and isinstance(body, dict) and "local_file" in body:
+        if method != "POST" or not _VIDEO_PATHS[supplier].fullmatch(path.split("?")[0]):
+            raise ValueError("local_file is only for POST /act_<id>/advideos (Meta) "
+                             "or POST /application/shops/<id>/listings/<id>/videos (Etsy)")
         meta_local_video(body)
     if supplier == "meta" and method != "GET" and not orders_enabled():
         _check_meta_ad_write(method, path, body)
@@ -204,6 +207,10 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
     elif supplier == "etsy":
         url = etsy.BASE + path
         headers = {"x-api-key": etsy.api_key(), "Authorization": "Bearer " + await etsy.access_token(client)}
+        video = meta_local_video(body)
+        if video is not None:
+            return await client.post(url, headers=headers, data=_form_fields(body),
+                                     files={"video": (video.name, video.read_bytes(), "video/mp4")})
     elif supplier == "meta":
         token = (os.getenv("FB_PAGE_TOKEN") or "").strip()
         if not token:
@@ -226,7 +233,7 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
 async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[str, Any]:
     check(supplier, method, path, body)
     try:
-        slow = supplier == "meta" and isinstance(body, dict) and "local_file" in body
+        slow = supplier in _VIDEO_PATHS and isinstance(body, dict) and "local_file" in body
         async with httpx.AsyncClient(timeout=300 if slow else 45, follow_redirects=False) as client:
             response = await _send(client, supplier, method, path, body)
     except httpx.HTTPError:

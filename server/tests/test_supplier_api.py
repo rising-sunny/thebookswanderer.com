@@ -196,6 +196,40 @@ class SupplierApi(unittest.TestCase):
         self.assertIn(b'false', body)
         self.assertNotIn(b'local_file', body)
 
+    def test_etsy_listing_video_uploads_from_the_assets_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory)
+            (assets / 'ad.mp4').write_bytes(b'FAKE-VIDEO-BYTES')
+            token = assets / 'etsy_token.json'
+            token.write_text(json.dumps({'access_token': 'tok', 'refresh_token': 'r1', 'expires_at': 9999999999}))
+            path = '/application/shops/66586766/listings/4544209146/videos'
+            def send(body, p=path, preview=True, code=None):
+                data = {'method': 'POST', 'path': p, 'body': body}
+                if code: data['code'] = code
+                return self.call('etsy', data, preview=preview)
+            ok = {'local_file': 'ad.mp4', 'name': 'Book'}
+            def handler(request):
+                self.requests.append(request)
+                return httpx.Response(201, json={'video_id': 1})
+            with patch.object(supplier_api, 'ASSETS_DIR', assets), \
+                    patch.object(supplier_api.httpx, 'AsyncClient',
+                                 lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                    patch.dict(os.environ, {'ETSY_API_KEY': 'keystring:secret', 'ETSY_TOKEN_FILE': str(token)}):
+                self.assertEqual(send({'local_file': '../x.mp4'}).status_code, 422)
+                self.assertEqual(send(ok, p='/application/shops/66586766/listings/4544209146').status_code, 422)
+                self.assertEqual(self.requests, [])
+                preview = send(ok)
+                self.assertEqual(preview.status_code, 200)
+                self.assertEqual(self.requests, [])
+                done = send(ok, preview=False, code=preview.json()['code'])
+        self.assertEqual(done.status_code, 200)
+        request = self.requests[0]
+        self.assertTrue(request.url.path.endswith('/listings/4544209146/videos'))
+        self.assertTrue(request.headers['Content-Type'].startswith('multipart/form-data'))
+        self.assertIn(b'name="video"', request.content)
+        self.assertIn(b'FAKE-VIDEO-BYTES', request.content)
+        self.assertNotIn(b'local_file', request.content)
+
     def test_etsy_meta_and_pinterest_auth(self):
         with tempfile.TemporaryDirectory() as directory:
             token = Path(directory) / 'etsy_token.json'
