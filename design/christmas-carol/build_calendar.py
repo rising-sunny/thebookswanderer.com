@@ -1,7 +1,9 @@
 """2027 wall calendar from the 1843 (John Leech) and 1915 (Arthur Rackham) illustrations of A Christmas Carol.
 
   python build_calendar.py SRC OUT     # SRC: folder with plates rN-NNN.jpg (Rackham) / lN-NNN.jpg (Leech) from the
-                                        # Internet Archive scans; OUT: folder for cover.png + 01.png..12.png (3300 x 2550)
+                                        # Internet Archive scans; OUT: folder for front_cover.jpg, january.jpg..december.jpg, back_cover.jpg
+                                        # (3375 x 2625 px = Printify's 11 x 8.5 in calendar art pages with bleed; the date
+                                        # grids are printed by Printify, so these pages carry only art and quote)
 
 Both illustrators and Dickens's text are public domain. Quotes are verbatim from Project Gutenberg #46.
 """
@@ -11,7 +13,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-W, H = 3300, 2550  # 11 x 8.5 in at 300 ppi
+W, H = 3375, 2625  # Printify calendar art page, 11 x 8.5 in plus bleed, at 300 ppi
 PAPER, INK, RED, GREEN, MUTE = (247, 240, 224), (52, 40, 32), (150, 38, 38), (46, 82, 58), (140, 120, 100)
 FONTS = Path(__file__).parent / "fonts"
 
@@ -76,25 +78,16 @@ def month_page(src, idx, spec):
     d.text((rx, 150), calendar.month_name[idx].upper(), font=font("eb-500-normal.woff", 150), fill=GREEN)
     d.text((rx + rw, 255), "2027", font=font("eb-400-normal.woff", 70), fill=RED, anchor="ra")
     d.line([rx, 345, rx + rw, 345], fill=RED, width=4)
-    cell = rw / 7
-    fh = font("eb-500-normal.woff", 46)
-    for i, wd in enumerate(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]):
-        d.text((rx + cell * i + cell / 2, 400), wd, font=fh, fill=MUTE, anchor="ma")
-    fn = font("eb-400-normal.woff", 64)
-    for r, week in enumerate(calendar.Calendar(firstweekday=6).monthdayscalendar(2027, idx)):
-        for c, day in enumerate(week):
-            if day:
-                d.text((rx + cell * c + cell / 2, 480 + r * 150), str(day), font=fn, fill=RED if c == 0 else INK, anchor="ma")
-    fq, ff = font("eb-400-italic.woff", 62), font("eb-400-normal.woff", 44)
+    fq, ff = font("eb-400-italic.woff", 78), font("eb-400-normal.woff", 44)
     lines = wrap(d, quote, fq, rw)
-    y = 1530
+    y = max(520, H // 2 - (len(lines) * 100 + 90) // 2 - 80)
     d.line([rx, y - 40, rx + 200, y - 40], fill=RED, width=4)
     for ln in lines:
         d.text((rx, y), ln, font=fq, fill=INK)
-        y += 88
+        y += 100
     d.text((rx, y + 30), f"CHARLES DICKENS · A CHRISTMAS CAROL · {stave.upper()}", font=ff, fill=MUTE)
     credit = "Illustration: " + ("John Leech, 1843" if name.startswith("l") else "Arthur Rackham, 1915") + " · public domain"
-    d.text((rx, H - 150), credit, font=font("eb-400-normal.woff", 38), fill=MUTE)
+    d.text((rx, H - 190), credit, font=font("eb-400-normal.woff", 38), fill=MUTE)
     return img
 
 
@@ -116,9 +109,24 @@ def cover(src):
     return img
 
 
+def back():
+    img = Image.new("RGB", (W, H), PAPER)
+    d = ImageDraw.Draw(img)
+    art = fit(plate(SRC_DIR, "l169-169"), 1500, 2000)
+    img.paste(art, ((W - art.width) // 2, 200))
+    d.text((W // 2, 2330), "God bless Us, Every One!", font=font("eb-400-italic.woff", 90), fill=RED, anchor="ma")
+    d.text((W // 2, 2470), "Illustrations: John Leech (1843) and Arthur Rackham (1915) \u00b7 public domain", font=font("eb-400-normal.woff", 40), fill=MUTE, anchor="ma")
+    return img
+
+
+SRC_DIR = "."
+
 if __name__ == "__main__":
-    src, out = sys.argv[1], Path(sys.argv[2])
+    SRC_DIR = sys.argv[1]
+    src, out = SRC_DIR, Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
-    cover(src).save(out / "cover.png")
+    save = dict(quality=88, subsampling=0, dpi=(300, 300))
+    cover(src).save(out / "front_cover.jpg", **save)
     for i, spec in enumerate(MONTHS, 1):
-        month_page(src, i, spec).save(out / f"{i:02d}.png")
+        month_page(src, i, spec).save(out / f"{calendar.month_name[i].lower()}.jpg", **save)
+    back().save(out / "back_cover.jpg", **save)
