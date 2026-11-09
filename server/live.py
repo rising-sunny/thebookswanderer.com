@@ -397,11 +397,17 @@ def _normalize_source(source: Optional[str], referrer_domain: Optional[str], med
     if referrer_domain:
         candidates.append(referrer_domain.lower().strip())
     for c in candidates:
-        if c in SOURCE_GROUPS:
-            return SOURCE_GROUPS[c]
-        for key, val in SOURCE_GROUPS.items():
-            if "." in key and (c == key or c.endswith("." + key)):
-                return val
+        hit = SOURCE_GROUPS.get(c)
+        if hit is None:
+            for key, val in SOURCE_GROUPS.items():
+                if "." in key and (c == key or c.endswith("." + key)):
+                    hit = val
+                    break
+        if hit is not None:
+            if hit[0] == "Pinterest":  # split paid ads from organic pins/referrals
+                paid = bool(medium and any(p in medium.lower() for p in ("paid", "cpc", "ppc", "ads")))
+                return ("Pinterest Ads", "💰") if paid else ("Pinterest orgánico", "📌")
+            return hit
     if not candidates:
         return ("Direct", "↪️")
     return (candidates[0], "🌐")
