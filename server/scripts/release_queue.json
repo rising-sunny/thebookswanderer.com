@@ -44,5 +44,6 @@
   {"id": "pinterest-wipe-2", "script": "pinterest_wipe.py", "args": ["--apply"]},
   {"id": "pinterest-wipe-3", "script": "pinterest_wipe.py", "args": ["--apply"]},
   {"id": "pinterest-wipe-4", "script": "pinterest_wipe.py", "args": ["--apply"]},
-  {"id": "pinterest-wipe-5", "script": "pinterest_wipe.py", "args": ["--apply"]}
+  {"id": "pinterest-wipe-5", "script": "pinterest_wipe.py", "args": ["--apply"]},
+  {"id": "christmas-carol-calendar-import", "script": "import_printify_products.py", "args": ["--slug", "a-christmas-carol-wall-calendar-2027", "--no-pin"]}
 ]

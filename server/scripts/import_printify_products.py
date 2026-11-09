@@ -99,6 +99,27 @@ PRODUCTS = [
         "variant_name": "Wall calendar, 11 × 8.5 in",
     },
     {
+        "slug": "a-christmas-carol-wall-calendar-2027",
+        "printify_id": "6af1d6ad6413c89eeb00a6df",
+        "title": "A Christmas Carol — Wall Calendar 2027",
+        "category": "decor",
+        "description": (
+            "Twelve illustrations from A Christmas Carol for 2027: ten by Arthur Rackham (1915) and two by "
+            "John Leech (1843), the story's first illustrator, whose plates are also on the front and back "
+            "covers. Every month carries a line from Dickens, from Marley's chain in January to \"God bless Us, "
+            "Every One!\" in December. The illustrations and the text are public domain, reproduced from scans "
+            "of the 1915 and 1843 editions. Spiral-bound wall calendar, 11 × 8.5 in pages (opens to 11 × 17 in), "
+            "matte paper, hanging hole. "
+            "Printed to order in the US; check your destination for delivery availability and the total."
+        ),
+        "hero": f"{LOCAL}/christmas-carol-2027/front_cover.jpg",
+        "local": [f"{LOCAL}/christmas-carol-2027/january.jpg", f"{LOCAL}/christmas-carol-2027/december.jpg"],
+        "skip_mockup_camera": set(),
+        # the hanging mockup shows the object; the flat cover goes second
+        "hero_mockup_camera": "60004",
+        "variant_name": "Wall calendar, 11 × 8.5 in",
+    },
+    {
         "slug": "wizard-of-oz-jigsaw-puzzle",
         "printify_id": "6acd94f6fd7dc1c56b0b3a44",
         "title": "The Wonderful Wizard of Oz — 252-Piece Jigsaw Puzzle",
