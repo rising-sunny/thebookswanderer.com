@@ -230,6 +230,42 @@ class SupplierApi(unittest.TestCase):
         self.assertIn(b'FAKE-VIDEO-BYTES', request.content)
         self.assertNotIn(b'local_file', request.content)
 
+    def test_alura_is_read_only_uses_the_server_key_and_reports_credits(self):
+        seen = []
+        def handler(request):
+            seen.append(request)
+            left = '5' if 'research/products' in request.url.path else '90'
+            return httpx.Response(200, json={'keywords': [{'q': 'desk mat'}]},
+                                  headers={'Alura-Credits-Cost': '1', 'Alura-Credits-Remaining': left})
+        supplier_api._alura_remaining = None
+        with patch.object(supplier_api.httpx, 'AsyncClient',
+                          lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                patch.dict(os.environ, {'ALURA_API_KEY': 'alura_sk_secret', 'ALURA_MIN_CREDITS_RESERVE': '10'}):
+            ok = self.call('alura', {'method': 'GET', 'path': '/research/keywords?q=desk%20mat&q=math%20gift'})
+            self.assertEqual(ok.status_code, 200)
+            self.assertEqual(ok.json()['credits'], {'cost': '1', 'remaining': '90'})
+            self.assertNotIn('alura_sk_secret', ok.text)
+            self.assertEqual(str(seen[0].url), 'https://api.alura.io/v1/research/keywords?q=desk%20mat&q=math%20gift')
+            self.assertEqual(seen[0].headers['Authorization'], 'Bearer alura_sk_secret')
+            # never a write, never a path outside the research and account reads
+            self.assertEqual(self.call('alura', {'method': 'POST', 'path': '/research/saved/lists'}).status_code, 403)
+            self.assertEqual(self.call('alura', {'method': 'DELETE', 'path': '/research/saved/lists/1'}).status_code, 403)
+            for bad in ('/admin', '/me/workspace', '/research', '/research/../me'):
+                self.assertEqual(self.call('alura', {'method': 'GET', 'path': bad}).status_code, 422, bad)
+            n = len(seen)
+            # a call that leaves only 5 credits: research stops, free account reads keep working
+            self.assertEqual(self.call('alura', {'method': 'GET', 'path': '/research/products?q=desk'}).status_code, 200)
+            self.assertEqual(self.call('alura', {'method': 'GET', 'path': '/research/keywords?q=x'}).status_code, 403)
+            self.assertEqual(self.call('alura', {'method': 'GET', 'path': '/usage'}).status_code, 200)
+            self.assertEqual(len(seen), n + 2)
+        supplier_api._alura_remaining = None
+
+    def test_alura_without_a_key_is_not_configured(self):
+        supplier_api._alura_remaining = None
+        with patch.dict(os.environ, {'ALURA_API_KEY': ''}):
+            self.assertEqual(self.call('alura', {'method': 'GET', 'path': '/me'}).status_code, 502)
+        self.assertEqual(self.requests, [])
+
     def test_etsy_meta_and_pinterest_auth(self):
         with tempfile.TemporaryDirectory() as directory:
             token = Path(directory) / 'etsy_token.json'

@@ -14,10 +14,11 @@ GET /suppliers/prodigi/products/{sku}, GET /products/{id}/shipping
 POST /crosslist/from-etsy and POST /crosslist/to-etsy/{id} (cross-listing
 with the Etsy shop through Printify twins or Etsy drafts; both previewed
 with a code, see server/services/crosslist.py),
-and POST /suppliers/{cj|printify|lulu|prodigi|etsy|meta|pinterest}/api: any
+and POST /suppliers/{cj|printify|lulu|prodigi|etsy|meta|pinterest|alura}/api: any
 call to that API (Meta Graph with FB_PAGE_TOKEN, Pinterest with the store's
 OAuth token, Etsy with ETSY_API_KEY and scripts/etsy_oauth.py),
-made by the storefront with its key. Writes need a single-use code from
+made by the storefront with its key (Alura, with ALURA_API_KEY in the store's .env, is
+read-only: research and account paths only, replies carry the API credits left). Writes need a single-use code from
 ?preview=true (bound to the exact request, valid 10-20 minutes); paths for
 orders, payments, Etsy receipts and Meta/Pinterest ads are refused unless
 TBW_SUPPLIER_ORDERS_ENABLED=1 is set

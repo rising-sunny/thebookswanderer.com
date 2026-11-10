@@ -19,8 +19,15 @@ from fastapi import HTTPException
 
 from services import cj, etsy, lulu, pinterest, printify, prodigi_store, slant3d
 
-SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest")
+SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest", "alura")
 META_GRAPH = "https://graph.facebook.com/v21.0"
+# Alura (Etsy market research) is read-only here and bills API credits per call. The key lives only
+# in this server's environment (ALURA_API_KEY) and is never returned.
+ALURA_BASE = "https://api.alura.io/v1"
+_ALURA_PATH = re.compile(r"/(me|me/workspaces|usage|usage/by-day|usage/events|languages|categories(/[0-9]{1,12})?"
+                         r"|research(/[A-Za-z0-9_-]{1,80}){1,6})")
+_ALURA_FREE = re.compile(r"/(me|me/workspaces|usage|usage/by-day|usage/events|languages|categories(/[0-9]{1,12})?)")
+_alura_remaining: int | None = None  # last "Alura-Credits-Remaining" seen
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 LIMIT = 60_000
 
@@ -96,6 +103,15 @@ def check(supplier: str, method: str, path: str, body: Any = None) -> None:
         raise ValueError("Unsupported method")
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
+    if supplier == "alura":
+        base = path.split("?")[0]
+        if method != "GET":
+            raise PermissionError("Alura is read-only here")
+        if not _ALURA_PATH.fullmatch(base):
+            raise ValueError("That Alura path is not available here")
+        reserve = int(os.getenv("ALURA_MIN_CREDITS_RESERVE", "10") or 10)
+        if not _ALURA_FREE.fullmatch(base) and _alura_remaining is not None and _alura_remaining < reserve:
+            raise PermissionError("Alura credits are almost used up; check /usage before more research")
     if supplier in _VIDEO_PATHS and method != "GET" and isinstance(body, dict) and "local_file" in body:
         if method != "POST" or not _VIDEO_PATHS[supplier].fullmatch(path.split("?")[0]):
             raise ValueError("local_file is only for POST /act_<id>/advideos (Meta) "
@@ -221,6 +237,12 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
         if video is not None:
             return await client.post(url, headers=headers, data=_form_fields(body),
                                      files={"source": (video.name, video.read_bytes(), "video/mp4")})
+    elif supplier == "alura":
+        key = (os.getenv("ALURA_API_KEY") or "").strip()
+        if not key:
+            raise SupplierAPIError("Alura is not configured")
+        url = ALURA_BASE + path
+        headers = {"Authorization": "Bearer " + key, "Accept": "application/json"}
     elif supplier == "pinterest":
         url = pinterest.api_base() + path
         headers = {"Authorization": "Bearer " + await pinterest.access_token()}
@@ -247,5 +269,12 @@ async def call(supplier: str, method: str, path: str, body: Any = None) -> dict[
         data = response.text[:2000]
     text = json.dumps(data, ensure_ascii=False)
     truncated = len(text) > LIMIT
-    return {"status": response.status_code, "data": text[:LIMIT] if truncated else data,
-            "truncated": truncated}
+    result = {"status": response.status_code, "data": text[:LIMIT] if truncated else data,
+              "truncated": truncated}
+    if supplier == "alura":
+        global _alura_remaining
+        cost, left = response.headers.get("Alura-Credits-Cost"), response.headers.get("Alura-Credits-Remaining")
+        if left is not None and left.strip().isdigit():
+            _alura_remaining = int(left)
+        result["credits"] = {"cost": cost, "remaining": left}
+    return result
