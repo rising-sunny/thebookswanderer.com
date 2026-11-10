@@ -49,5 +49,6 @@
   {"id": "carol-quotes-book-create", "script": "digital_products.py", "args": ["--apply", "christmas-carol-illustrated-quotes-hardcover"]},
   {"id": "carol-quotes-book-validate", "script": "validate_lulu_files.py", "args": ["christmas-carol-illustrated-quotes-hardcover"]},
   {"id": "carol-quotes-book-publish", "script": "digital_products.py", "args": ["--apply", "christmas-carol-illustrated-quotes-hardcover"]},
-  {"id": "tulip-reader-prices", "script": "set_tulip_reader_prices.py", "args": ["--apply"]}
+  {"id": "tulip-reader-prices", "script": "set_tulip_reader_prices.py", "args": ["--apply"]},
+  {"id": "etsy-listing-report-1", "script": "etsy_listing_report.py", "args": []}
 ]
