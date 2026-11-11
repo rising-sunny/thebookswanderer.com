@@ -192,14 +192,18 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 await client.call_tool("tbw_preview_draft", picked)
                 await client.call_tool("tbw_create_draft", picked)
                 await client.call_tool("tbw_create_draft", {"pid": "CJ-1"})
-                for bad in ({"vids": ["../x"]}, {"vids": []}):
+                await client.call_tool("tbw_create_draft", {"pid": "CJ-1", "vids": '["V-1", "V-2"]'})
+                await client.call_tool("tbw_create_draft", {"pid": "CJ-1", "vids": "V-1, V-2"})
+                for bad in ({"vids": ["../x"]}, {"vids": []}, {"vids": "[]"}, {"vids": '["../x"]'}, {"vids": ""}):
                     with self.assertRaises(Exception):
                         await client.call_tool("tbw_create_draft", {"pid": "CJ-1", **bad})
-        self.assertEqual(len(requests), 3)
+        self.assertEqual(len(requests), 5)
         for request in requests[:2]:
             body = json.loads(request.content)
             self.assertEqual(body["vids"], ["V-1", "V-2"])
             self.assertTrue(body["variant_gallery_only"])
+        for request in requests[3:]:  # ids sent as text: JSON list or comma separated
+            self.assertEqual(json.loads(request.content)["vids"], ["V-1", "V-2"])
         default = json.loads(requests[2].content)
         self.assertIsNone(default["vids"]);self.assertFalse(default["variant_gallery_only"])
 
