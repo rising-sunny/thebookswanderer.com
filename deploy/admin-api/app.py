@@ -4,6 +4,7 @@ import os
 import re
 import sqlite3
 import sys
+from typing import Annotated
 from contextlib import closing
 from pathlib import Path
 
@@ -222,6 +223,9 @@ async def cj_product(pid: str = PathParam(pattern=CJ_ID)):
 class Draft(BaseModel):
     pid: str = Field(pattern=CJ_ID)
     vid: str | None = Field(default=None, pattern=CJ_ID)
+    vids: list[Annotated[str, Field(pattern=CJ_ID)]] | None = Field(
+        default=None, min_length=1, max_length=100)
+    variant_gallery_only: bool = False
     title: str | None = Field(default=None, min_length=3, max_length=300)
     category: str = Field(default="", max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)
@@ -281,6 +285,7 @@ def new_draft(draft):
     return {
         "cj_pid": draft.pid, "cj_vid": draft.vid, "title": draft.title,
         "category": draft.category, "price_usd": draft.price_usd,
+        "cj_vids": draft.vids, "variant_gallery_only": draft.variant_gallery_only,
     }
 
 @app.post("/drafts/preview")

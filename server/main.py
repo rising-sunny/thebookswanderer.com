@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from xml.sax.saxutils import escape as xml_escape
 
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -205,9 +205,20 @@ class DraftIn(BaseModel):
 
     cj_pid: str = Field(pattern=r"^[A-Za-z0-9-]{1,64}$")
     cj_vid: str | None = Field(default=None, pattern=r"^[A-Za-z0-9-]{1,64}$")
+    # Only these CJ variants are imported (None = all); the gallery can then be
+    # limited to their own photos so product-level CJ images are left out.
+    cj_vids: list[str] | None = Field(default=None, min_length=1, max_length=100)
+    variant_gallery_only: bool = False
     title: str | None = Field(default=None, min_length=3, max_length=300)
     category: str = Field(default="", max_length=120)
     price_usd: float | None = Field(default=None, gt=0, le=10000)
+
+    @field_validator("cj_vids")
+    @classmethod
+    def _vids_shape(cls, value):
+        if value is not None and not all(re.fullmatch(r"[A-Za-z0-9-]{1,64}", v) for v in value):
+            raise ValueError("invalid variant id")
+        return value
 
 
 class DraftUpdateIn(BaseModel):
@@ -1804,11 +1815,20 @@ def _cj_import_plan(
     price_usd: float | None = None,
     description: str | None = None,
     category: str = "",
+    vids: list[str] | None = None,
+    variant_gallery_only: bool = False,
 ) -> dict:
-    """Store rows for one CJ product with all variants. Writes nothing."""
+    """Store rows for one CJ product (all variants, or just `vids`). Writes nothing."""
     cj_variants = details.get("variants") or []
     if not cj_variants:
         raise HTTPException(400, "CJ product has no variants")
+    if vids:
+        known = {str(v.get("vid")) for v in cj_variants}
+        missing = [v for v in vids if v not in known]
+        if missing:
+            raise HTTPException(400, "Unknown CJ variant ids: " + ", ".join(missing[:5]))
+        cj_variants = [v for v in cj_variants if str(v.get("vid")) in set(vids)]
+        details = {**details, "variants": cj_variants}
 
     default = _pick_variant(details, cj_vid)
     title = title or details.get("productNameEn") or "Untitled"
@@ -1824,11 +1844,12 @@ def _cj_import_plan(
     for v in cj_variants:
         if v.get("variantImage") and str(v["variantImage"]) not in gallery:
             gallery.append(str(v["variantImage"]))
-    for u in details.get("productImageSet") or []:
-        if u and str(u) not in gallery:
-            gallery.append(str(u))
-    if details.get("bigImage") and str(details["bigImage"]) not in gallery:
-        gallery.append(str(details["bigImage"]))
+    if not variant_gallery_only or not gallery:
+        for u in details.get("productImageSet") or []:
+            if u and str(u) not in gallery:
+                gallery.append(str(u))
+        if details.get("bigImage") and str(details["bigImage"]) not in gallery:
+            gallery.append(str(details["bigImage"]))
 
     default_cost = float(default.get("variantSellPrice") or details.get("sellPrice") or 0)
     default_price = (
@@ -1985,6 +2006,7 @@ async def internal_create_draft(
     plan = _cj_import_plan(
         db, details, cj_pid=body.cj_pid, cj_vid=body.cj_vid, title=body.title,
         price_usd=body.price_usd, category=body.category,
+        vids=body.cj_vids, variant_gallery_only=body.variant_gallery_only,
     )
     if preview:
         return {"ok": True, "created": False, "preview": plan}

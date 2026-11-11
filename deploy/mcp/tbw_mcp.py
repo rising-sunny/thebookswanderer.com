@@ -367,9 +367,10 @@ def create_server(config, admin_key, state_directory, transport=None):
             params=params,
         )
 
-    def draft(pid, vid, title, category, price_usd):
+    def draft(pid, vid, title, category, price_usd, vids=None, variant_gallery_only=False):
         return {"pid": pid, "vid": vid, "title": title,
-                "category": category, "price_usd": price_usd}
+                "category": category, "price_usd": price_usd,
+                "vids": vids, "variant_gallery_only": variant_gallery_only}
 
     @server.tool(annotations=SUPPLIER)
     async def tbw_preview_draft(
@@ -378,17 +379,22 @@ def create_server(config, admin_key, state_directory, transport=None):
         title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
         category: Annotated[str, Field(max_length=120)] = "",
         price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | None,
+                        Field(min_length=1, max_length=100)] = None,
+        variant_gallery_only: bool = False,
     ) -> dict:
         """Show the hidden store product a CJ import would create. Writes nothing.
 
         Returns the slug, default variant, every variant with its cost and
         retail price, and images. If the CJ product is already in the store it
         returns that product instead. Without price_usd each variant gets the
-        store's suggested price; vid picks the default variant.
+        store's suggested price; vid picks the default variant. vids limits the
+        import to those variants (default: all); variant_gallery_only keeps only
+        those variants' own photos in the gallery, not CJ's product images.
         """
         return await bridge.request(
             "POST", "/drafts/preview",
-            payload=draft(pid, vid, title, category, price_usd),
+            payload=draft(pid, vid, title, category, price_usd, vids, variant_gallery_only),
         )
 
     @server.tool(annotations=DRAFT)
@@ -398,16 +404,20 @@ def create_server(config, admin_key, state_directory, transport=None):
         title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
         category: Annotated[str, Field(max_length=120)] = "",
         price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
+        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | None,
+                        Field(min_length=1, max_length=100)] = None,
+        variant_gallery_only: bool = False,
     ) -> dict:
         """Create a hidden draft product from CJ with the same fields as the preview.
 
         Show tbw_preview_draft to the owner first. The draft is inactive: not
         listed, not purchasable and not pinned. It has no description yet.
         Does nothing if the CJ product is already in the store. Never
-        publishes, orders or pays.
+        publishes, orders or pays. vids / variant_gallery_only work as in the preview.
         """
         return await bridge.request(
-            "POST", "/drafts", payload=draft(pid, vid, title, category, price_usd),
+            "POST", "/drafts",
+            payload=draft(pid, vid, title, category, price_usd, vids, variant_gallery_only),
         )
 
     @server.tool(annotations=STORE_WRITE)
