@@ -71,3 +71,28 @@ if __name__ == '__main__':
         im = Image.open(f'{name}.png'); bg = Image.new('RGBA', im.size, navy); bg.alpha_composite(im)
         bg.convert('RGB').resize((750, 900), Image.LANCZOS).save(f'{name}_prev.jpg', quality=90)
     s = Image.new('RGB', (1500, 900)); s.paste(Image.open('pi_spiral_prev.jpg'), (0, 0)); s.paste(Image.open('pi_walk_prev.jpg'), (750, 0)); s.save('both.jpg', quality=90)
+
+
+def spiral_apparel(out='pi-day-spiral-apparel-4500x5100.png'):
+    """Bolder spiral for garments: ~1,100 larger, brighter digits that read from across a room."""
+    ds = pi_digits(1500)
+    im = Image.new('RGBA', (4500, 5100), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    f = ImageFont.truetype(str(FONT), 118)
+    try: f.set_variation_by_name('SemiBold')
+    except Exception: pass
+    cx, cy = 2250, 2300
+    pitch, step, r_max = 140.0, 112.0, 2080
+    b = pitch / (2*math.pi); theta = 3.2; i = 0
+    while i < len(ds):
+        r = b * theta
+        if r > r_max: break
+        x = cx + r*math.cos(theta); y = cy + r*math.sin(theta)
+        col = PAL[int(ds[i])]
+        d.text((x, y), ds[i], font=f, fill=col + (255,), anchor='mm')
+        theta += step / math.sqrt(r*r + b*b); i += 1
+    big = ImageFont.truetype(str(FONT), 420)
+    d.text((cx, cy), 'π', font=big, fill=(233, 216, 166, 255), anchor='mm')
+    cap = ImageFont.truetype(str(SP/'fonts'/'EBGaramond-Italic.ttf'), 150)
+    d.text((2250, 4720), '3.14159265358979…  ·  every digit computed', font=cap, fill=(233, 216, 166, 255), anchor='mm')
+    im.save(out, optimize=True)
+    return i
