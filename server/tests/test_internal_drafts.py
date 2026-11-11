@@ -84,6 +84,26 @@ class Drafts(unittest.TestCase):
         self.assertFalse(again['created']);self.assertTrue(again['existing']['draft'])
         self.assertEqual(self.count(), 1);self.assertEqual(self.cj.await_count, 1)
 
+    def test_imports_only_chosen_variants_and_their_photos(self):
+        full = self.post(preview=True).json()['preview']['product']
+        self.assertIn('https://img.example/a.jpg', full['gallery_json'])
+        only = self.post(preview=True, cj_vids=['V2'], variant_gallery_only=True)
+        self.assertEqual(only.status_code, 200)
+        plan = only.json()['preview']
+        self.assertEqual([v['name'] for v in plan['variants']], ['Large'])
+        self.assertEqual(plan['product']['cj_vid'], 'V2')
+        keep = self.post(preview=True, cj_vids=['V1'], variant_gallery_only=True).json()['preview']['product']
+        self.assertEqual(keep['gallery_json'], '["https://img.example/s.jpg"]')
+        bare = self.post(preview=True, cj_vids=['V2'], variant_gallery_only=True).json()['preview']['product']
+        self.assertIn('big.jpg', bare['gallery_json'])  # no variant photo: fall back to CJ images
+        self.assertEqual(self.post(preview=True, cj_vids=['NOPE']).status_code, 400)
+        self.assertEqual(self.post(cj_vids=['../x']).status_code, 422)
+        self.assertEqual(self.post(cj_vids=[]).status_code, 422)
+        created = self.post(cj_vids=['V1'], variant_gallery_only=True).json()
+        self.assertEqual(created['variants'], 1)
+        with self.sessions() as db:self.assertEqual(db.query(ProductVariant).count(), 1)
+        self.assertEqual(self.count(), 1)
+
     def test_validates_input(self):
         self.assertEqual(self.post(cj_pid='../x').status_code, 422)
         self.assertEqual(self.post(price_usd=0).status_code, 422)

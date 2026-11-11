@@ -178,6 +178,31 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("a" * 40, serialized)
             self.assertNotIn("s" * 40, serialized)
 
+    async def test_draft_tools_can_pick_variants(self):
+        requests = []
+        def handler(request):
+            requests.append(request)
+            return httpx2.Response(200, json={"created": True})
+        with tempfile.TemporaryDirectory() as temporary:
+            server = create_server(
+                config(), "a" * 40, temporary, httpx2.MockTransport(handler)
+            )
+            async with Client(server) as client:
+                picked = {"pid": "CJ-1", "vids": ["V-1", "V-2"], "variant_gallery_only": True}
+                await client.call_tool("tbw_preview_draft", picked)
+                await client.call_tool("tbw_create_draft", picked)
+                await client.call_tool("tbw_create_draft", {"pid": "CJ-1"})
+                for bad in ({"vids": ["../x"]}, {"vids": []}):
+                    with self.assertRaises(Exception):
+                        await client.call_tool("tbw_create_draft", {"pid": "CJ-1", **bad})
+        self.assertEqual(len(requests), 3)
+        for request in requests[:2]:
+            body = json.loads(request.content)
+            self.assertEqual(body["vids"], ["V-1", "V-2"])
+            self.assertTrue(body["variant_gallery_only"])
+        default = json.loads(requests[2].content)
+        self.assertIsNone(default["vids"]);self.assertFalse(default["variant_gallery_only"])
+
     async def test_draft_tools_forward_only_their_fields(self):
         requests = []
         def handler(request):
@@ -273,6 +298,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(json.loads(requests[1].content), {
             "pid": "CJ-1", "vid": None, "title": None,
             "category": "", "price_usd": 19.99,
+            "vids": None, "variant_gallery_only": False,
         })
 
     async def test_client_redirects(self):

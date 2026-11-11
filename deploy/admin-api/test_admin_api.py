@@ -189,6 +189,22 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(failed.status_code, 502)
         self.assertNotIn("upstream-secret", failed.text)
         self.assertEqual(len(calls), 2)
+        picked = []
+        def pick(request):
+            picked.append(json.loads(request.content))
+            return httpx.Response(200, json={"created": False, "preview": {}})
+        with patch.object(admin, "store_transport", httpx.MockTransport(pick)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            kept = {"pid": "CJ-NEW", "vids": ["V-1", "V-2"], "variant_gallery_only": True}
+            self.assertEqual(self.client.post(
+                "/drafts/preview", headers=self.headers, json=kept).status_code, 200)
+            for bad in ({"vids": ["../x"]}, {"vids": []}):
+                self.assertEqual(self.client.post(
+                    "/drafts/preview", headers=self.headers, json={"pid": "CJ-NEW", **bad}
+                ).status_code, 422)
+        self.assertEqual(picked[0]["cj_vids"], ["V-1", "V-2"])
+        self.assertTrue(picked[0]["variant_gallery_only"])
+        self.assertEqual(len(picked), 1)
         crosslist = lambda request: httpx.Response(502, json={"detail": "Printify POST /x: bad"})
         with patch.object(admin, "store_transport", httpx.MockTransport(crosslist)), \
                 patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
