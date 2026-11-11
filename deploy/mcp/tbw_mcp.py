@@ -367,7 +367,23 @@ def create_server(config, admin_key, state_directory, transport=None):
             params=params,
         )
 
+    def variant_ids(vids):
+        """A list of CJ variant ids; clients without the schema send it as JSON text."""
+        if isinstance(vids, str):
+            text = vids.strip()
+            try:
+                vids = json.loads(text)
+            except ValueError:
+                vids = [part.strip() for part in text.split(",")]
+        if vids is None:
+            return None
+        if (not isinstance(vids, list) or not 1 <= len(vids) <= 100
+                or not all(isinstance(v, str) and re.fullmatch(CJ_ID, v) for v in vids)):
+            raise ToolError("vids must be 1 to 100 CJ variant ids")
+        return vids
+
     def draft(pid, vid, title, category, price_usd, vids=None, variant_gallery_only=False):
+        vids = variant_ids(vids)
         return {"pid": pid, "vid": vid, "title": title,
                 "category": category, "price_usd": price_usd,
                 "vids": vids, "variant_gallery_only": variant_gallery_only}
@@ -379,8 +395,8 @@ def create_server(config, admin_key, state_directory, transport=None):
         title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
         category: Annotated[str, Field(max_length=120)] = "",
         price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
-        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | None,
-                        Field(min_length=1, max_length=100)] = None,
+        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | str | None,
+                        Field(max_length=2000)] = None,
         variant_gallery_only: bool = False,
     ) -> dict:
         """Show the hidden store product a CJ import would create. Writes nothing.
@@ -404,8 +420,8 @@ def create_server(config, admin_key, state_directory, transport=None):
         title: Annotated[str | None, Field(min_length=3, max_length=300)] = None,
         category: Annotated[str, Field(max_length=120)] = "",
         price_usd: Annotated[float | None, Field(gt=0, le=10000)] = None,
-        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | None,
-                        Field(min_length=1, max_length=100)] = None,
+        vids: Annotated[list[Annotated[str, Field(pattern=CJ_ID)]] | str | None,
+                        Field(max_length=2000)] = None,
         variant_gallery_only: bool = False,
     ) -> dict:
         """Create a hidden draft product from CJ with the same fields as the preview.
