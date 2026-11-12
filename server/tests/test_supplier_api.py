@@ -196,6 +196,73 @@ class SupplierApi(unittest.TestCase):
         self.assertIn(b'false', body)
         self.assertNotIn(b'local_file', body)
 
+    def test_page_reel_runs_start_upload_publish_for_the_configured_page_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory)
+            (assets / 'products').mkdir()
+            (assets / 'products' / 'reel.mp4').write_bytes(b'FAKE-REEL-BYTES')
+            seen = []
+            def handler(request):
+                seen.append(request)
+                if request.url.host == 'rupload.facebook.com':
+                    return httpx.Response(200, json={'success': True})
+                if b'upload_phase=start' in request.content:
+                    return httpx.Response(200, json={'video_id': '777', 'upload_url': 'https://x'})
+                return httpx.Response(200, json={'success': True})
+            def send(body, p='/12345/video_reels', preview=True, code=None, method='POST'):
+                data = {'method': method, 'path': p, 'body': body}
+                if code: data['code'] = code
+                return self.call('meta', data, preview=preview)
+            ok = {'local_file': 'products/reel.mp4', 'description': 'A mug. https://example.com/p?utm_source=facebook'}
+            with patch.object(supplier_api, 'ASSETS_DIR', assets), \
+                    patch.object(supplier_api.httpx, 'AsyncClient',
+                                 lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                    patch.dict(os.environ, {'FB_PAGE_TOKEN': 'page-token', 'FB_PAGE_ID': '12345'}):
+                for bad, kw in ((ok, {'p': '/99999/video_reels'}), (ok, {'method': 'PUT'}), (ok, {'p': '/12345/video_reels?x=1'}),
+                                ({**ok, 'title': 'T'}, {}), ({'local_file': ok['local_file']}, {}),
+                                ({**ok, 'description': ''}, {}), ({**ok, 'description': 'x' * 2001}, {}),
+                                ({**ok, 'file_url': 'https://example.com/a.mp4'}, {}),
+                                ({**ok, 'local_file': '../outside.mp4'}, {}), ({**ok, 'local_file': 'products/missing.mp4'}, {})):
+                    self.assertEqual(send(bad, **kw).status_code, 422, (bad, kw))
+                self.assertEqual(seen, [])
+                preview = send(ok)
+                self.assertEqual(preview.status_code, 200)
+                self.assertFalse(preview.json()['executed']);self.assertEqual(seen, [])
+                done = send(ok, preview=False, code=preview.json()['code'])
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual(done.json()['data'], {'success': True, 'video_id': '777'})
+        self.assertEqual([str(r.url) for r in seen], [
+            'https://graph.facebook.com/v21.0/12345/video_reels',
+            'https://rupload.facebook.com/video-upload/v21.0/777',
+            'https://graph.facebook.com/v21.0/12345/video_reels'])
+        self.assertEqual(seen[0].headers['Authorization'], 'Bearer page-token')
+        self.assertEqual(seen[1].headers['Authorization'], 'OAuth page-token')
+        self.assertEqual((seen[1].headers['offset'], seen[1].headers['file_size']), ('0', str(len(b'FAKE-REEL-BYTES'))))
+        self.assertEqual(seen[1].content, b'FAKE-REEL-BYTES')
+        for needle in (b'upload_phase=finish', b'video_id=777', b'video_state=PUBLISHED', b'description=A+mug'):
+            self.assertIn(needle, seen[2].content)
+        self.assertNotIn(b'local_file', seen[2].content)
+
+    def test_page_reel_reports_the_first_failing_step(self):
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory)
+            (assets / 'reel.mp4').write_bytes(b'X')
+            seen = []
+            def handler(request):
+                seen.append(request)
+                return httpx.Response(400, json={'error': {'message': 'start refused'}})
+            body = {'local_file': 'reel.mp4', 'description': 'Hi'}
+            with patch.object(supplier_api, 'ASSETS_DIR', assets), \
+                    patch.object(supplier_api.httpx, 'AsyncClient',
+                                 lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                    patch.dict(os.environ, {'FB_PAGE_TOKEN': 'page-token', 'FB_PAGE_ID': '12345'}):
+                data = {'method': 'POST', 'path': '/12345/video_reels', 'body': body}
+                code = self.call('meta', data, preview=True).json()['code']
+                done = self.call('meta', {**data, 'code': code})
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual(done.json()['status'], 400)
+        self.assertEqual(len(seen), 1)
+
     def test_etsy_listing_video_uploads_from_the_assets_folder(self):
         with tempfile.TemporaryDirectory() as directory:
             assets = Path(directory)

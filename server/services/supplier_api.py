@@ -55,7 +55,12 @@ _PRIVATE = re.compile(
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 VIDEO_SUFFIXES = {".mp4", ".mov"}
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
-_META_VIDEO_PATH = re.compile(r"/act_\d{1,25}/advideos")
+_META_VIDEO_PATH = re.compile(r"/act_\d{1,25}/advideos|/\d{1,25}/video_reels")
+# A reel for the Facebook Page: the body is only local_file and description; the three steps Meta
+# needs (start, upload, publish) are done here, and only for the Page this server is configured for.
+_META_REEL_PATH = re.compile(r"/(\d{1,25})/video_reels")
+META_RUPLOAD = "https://rupload.facebook.com/video-upload/v21.0"
+MAX_REEL_TEXT = 2000
 _ETSY_VIDEO_PATH = re.compile(r"/application/shops/\d{1,15}/listings/\d{1,15}/videos")
 _VIDEO_PATHS = {"meta": _META_VIDEO_PATH, "etsy": _ETSY_VIDEO_PATH}
 
@@ -76,6 +81,45 @@ def meta_local_video(body: Any) -> Path | None:
     if path.stat().st_size > MAX_VIDEO_BYTES:
         raise ValueError("local_file is larger than the 100 MB limit")
     return path
+
+
+def _check_page_reel(path: str, body: dict) -> None:
+    page = (os.getenv("FB_PAGE_ID") or "").strip()
+    found = _META_REEL_PATH.fullmatch(path)
+    if not page or not found or found.group(1) != page:
+        raise ValueError("Reels can only be posted to the Page this server is configured for")
+    if set(body) != {"local_file", "description"}:
+        raise ValueError("A reel body is only local_file and description")
+    text = body["description"]
+    if not isinstance(text, str) or not text.strip() or len(text) > MAX_REEL_TEXT:
+        raise ValueError(f"description must be 1 to {MAX_REEL_TEXT} characters")
+
+
+async def _meta_reel(client: httpx.AsyncClient, token: str, page: str, video: Path, text: str):
+    """Start, upload and publish a Facebook Reel; the first failing step is what comes back."""
+    auth = {"Authorization": "Bearer " + token}
+    start = await client.post(f"{META_GRAPH}/{page}/video_reels", headers=auth, data={"upload_phase": "start"})
+    try:
+        video_id = start.json()["video_id"] if start.status_code < 400 else None
+    except (ValueError, KeyError, TypeError):
+        video_id = None
+    if not video_id:
+        return start
+    data = video.read_bytes()
+    sent = await client.post(f"{META_RUPLOAD}/{video_id}", content=data, headers={
+        "Authorization": "OAuth " + token, "offset": "0", "file_size": str(len(data)),
+        "Content-Type": "application/octet-stream"})
+    if sent.status_code >= 400:
+        return sent
+    done = await client.post(f"{META_GRAPH}/{page}/video_reels", headers=auth, data={
+        "upload_phase": "finish", "video_id": video_id, "video_state": "PUBLISHED", "description": text})
+    try:
+        out = done.json()
+    except ValueError:
+        return done
+    if done.status_code < 400 and isinstance(out, dict):
+        return httpx.Response(done.status_code, json={**out, "video_id": video_id})
+    return done
 
 
 def _form_fields(body: dict) -> dict[str, str]:
@@ -114,9 +158,11 @@ def check(supplier: str, method: str, path: str, body: Any = None) -> None:
             raise PermissionError("Alura credits are almost used up; check /usage before more research")
     if supplier in _VIDEO_PATHS and method != "GET" and isinstance(body, dict) and "local_file" in body:
         if method != "POST" or not _VIDEO_PATHS[supplier].fullmatch(path.split("?")[0]):
-            raise ValueError("local_file is only for POST /act_<id>/advideos (Meta) "
+            raise ValueError("local_file is only for POST /act_<id>/advideos or /<page id>/video_reels (Meta) "
                              "or POST /application/shops/<id>/listings/<id>/videos (Etsy)")
         meta_local_video(body)
+        if supplier == "meta" and _META_REEL_PATH.fullmatch(path.split("?")[0]):
+            _check_page_reel(path, body)
     if supplier == "meta" and method != "GET" and not orders_enabled():
         _check_meta_ad_write(method, path, body)
         if _META_AD_PATH.fullmatch(path.split("?")[0]):
@@ -235,6 +281,9 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
         headers = {"Authorization": "Bearer " + token}
         video = meta_local_video(body)
         if video is not None:
+            if _META_REEL_PATH.fullmatch(path):
+                return await _meta_reel(client, token, _META_REEL_PATH.fullmatch(path).group(1), video,
+                                        body["description"])
             return await client.post(url, headers=headers, data=_form_fields(body),
                                      files={"source": (video.name, video.read_bytes(), "video/mp4")})
     elif supplier == "alura":
