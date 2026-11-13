@@ -80,6 +80,9 @@ def main() -> int:
             ) and bool(p.variants)
         print(f"{'create' if new else 'update'} {p.slug}: ${p.price_usd:.2f} active={p.active} "
               f"variants={len(spec.get('variants', []))} files={'ok' if files_ok else 'MISSING — upload at /admin/digital/'}")
+        if supplier == "lulu" and not spec.get("variants"):
+            print("  ! a Lulu book needs at least one variant: without it the shop cannot quote or print it. Keeping it hidden.")
+            p.active = False
         if p.active and not files_ok:
             print("  ! active without its files: buyers could pay and get nothing. Keeping it hidden.")
             p.active = False

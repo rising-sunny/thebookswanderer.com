@@ -69,6 +69,10 @@ async def main(slug: str, activate: bool) -> int:
         if not p or not p.lulu_package:
             print(f"{slug}: create it first with scripts/digital_products.py --apply {slug}")
             return 1
+        if not p.variants:
+            print(f"{slug}: no variants. Add one to digital_products.json and run scripts/digital_products.py --apply {slug} first: "
+                  "without a variant the shop cannot quote or print the book.")
+            return 1
         files, pages = install(slug)
         for v in p.variants:
             v.digital_file, v.print_cover = files["interior"], files["cover"]

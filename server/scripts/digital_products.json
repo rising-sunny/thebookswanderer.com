@@ -374,7 +374,13 @@
       "/assets/products/christmas-time-journal/open.jpg",
       "/assets/products/christmas-time-journal/wrap.jpg"
     ],
-    "active": false
+    "active": false,
+    "variants": [
+      {
+        "name": "Hardcover",
+        "image_url": "/assets/products/christmas-time-journal/main.jpg"
+      }
+    ]
   },
   {
     "slug": "reading-challenge-journal-2027",
@@ -390,6 +396,12 @@
       "/assets/products/reading-challenge-journal-2027/pages.jpg",
       "/assets/products/reading-challenge-journal-2027/wrap.jpg"
     ],
-    "active": false
+    "active": false,
+    "variants": [
+      {
+        "name": "Paperback",
+        "image_url": "/assets/products/reading-challenge-journal-2027/main.jpg"
+      }
+    ]
   }
 ]
