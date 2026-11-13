@@ -544,7 +544,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=7" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
-<script src="/product.js?v=cart-feedback-20261031" defer></script>
+<script src="/product.js?v=desc-sticky-20261113" defer></script>
 </body>
 </html>
 """
