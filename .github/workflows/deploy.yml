@@ -57,9 +57,9 @@ jobs:
         run: |
           scp -o BatchMode=yes \
             index.html styles.css app.js product.html product.js cart.html cart.js \
-            checkout.html checkout.js affiliate-data.js pick.html pick.js about.html press.html \
+            checkout.html checkout.js about.html press.html \
             contact.html privacy.html shipping-returns.html robots.txt llms.txt sitemap.xml \
-            affiliate-products.json track.js i18n.js googleca903f9ea8fb8e9e.html \
+            track.js i18n.js googleca903f9ea8fb8e9e.html \
             c8e661e720274c3e3e3035210af1a952.txt \
             "$VPS_HOST:$REMOTE/"
           for f in logo.png logo.webp logo-hero.webp logo-email.png og-default.jpg \

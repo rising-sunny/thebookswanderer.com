@@ -178,8 +178,7 @@ CATEGORIES: list[dict[str, Any]] = [
             (
                 "We curate accessories that pair with popular Kindles (and similar "
                 "devices) — magnetic closures, soft exteriors, and colors that match a "
-                "literary rather than tech-store aesthetic. Pair with our Amazon e-reader "
-                "picks if you are still choosing a device."
+                "literary rather than tech-store aesthetic."
             ),
         ],
         "guides_h": "Guides that help",
