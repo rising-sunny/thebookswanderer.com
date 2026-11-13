@@ -2402,7 +2402,7 @@ async def internal_supplier_api(
     except PermissionError as exc:
         raise HTTPException(403, str(exc)) from None
     request_info = {"supplier": supplier, "method": body.method, "path": body.path}
-    if body.method != "GET":
+    if not supplier_api.is_read(supplier, body.method, body.path):
         action = ["supplier-api", supplier, body.method, body.path, body.body]
         if preview:
             return {"ok": True, "executed": False, **request_info, "body": body.body,

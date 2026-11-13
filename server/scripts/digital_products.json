@@ -344,5 +344,21 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "the-book-club-kit",
+    "title": "The Book Club Kit Printable, Book Club Planner, Discussion Questions, Voting Ballots, Bingo and Host Checklist (PDF)",
+    "price_usd": 7.99,
+    "category": "printables",
+    "description": "A printable kit to run a book club all year: choose the books, vote, host the evenings and keep a record, with 126 discussion questions, four bingo cards and a page for every gathering.\n\nWhat's inside (30 pages):\n• A club charter, a members page, a year-at-a-glance calendar and a nominations sheet\n• Ballots (rank your top three) and a tally sheet to find the winner\n• An evening in ninety minutes, a host's checklist and printable invitations\n• 126 question cards to cut out: 54 for any book, plus 18 each for romance and romantasy, mystery and thriller, classics, and nonfiction and memoir\n• Twelve icebreaker cards for the first ten minutes\n• Four book club bingo cards of moments every club knows\n• A verdict page to rate each book, three pages of gathering notes, a year in review and an awards page\n\nFormats: US Letter and A4, both in one ZIP. Print at home on plain paper (white background, light on ink) or use the PDF in GoodNotes, Notability or any PDF app on a tablet.\n\nWorks for any book, any genre and any size of club. For a book club that reads Pride and Prejudice, see our Watch Party Kit.\n\nInstant download: you get the link by email right after checkout. Digital product, nothing is shipped. For personal use.",
+    "image_url": "/assets/products/book-club-kit/main.jpg",
+    "gallery": [
+      "/assets/products/book-club-kit/plan.jpg",
+      "/assets/products/book-club-kit/vote.jpg",
+      "/assets/products/book-club-kit/cards.jpg",
+      "/assets/products/book-club-kit/bingo.jpg",
+      "/assets/products/book-club-kit/host.jpg"
+    ],
+    "active": true
   }
 ]

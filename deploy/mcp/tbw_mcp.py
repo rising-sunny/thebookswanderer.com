@@ -90,7 +90,7 @@ class AdminBridge:
             )
             or re.fullmatch(r"/products/[1-9][0-9]{0,9}/unpublish(/preview)?", path)
             or re.fullmatch(
-                r"/suppliers/(cj|printify|lulu|prodigi|slant3d|etsy|meta|pinterest|alura)/api", path
+                r"/suppliers/(cj|printify|lulu|prodigi|slant3d|etsy|meta|pinterest|alura|googleads)/api", path
             )
             or path == "/crosslist/from-etsy"
             or re.fullmatch(r"/crosslist/to-etsy/[1-9][0-9]{0,9}", path)
@@ -330,7 +330,7 @@ def create_server(config, admin_key, state_directory, transport=None):
             "GET", f"/products/{product_id}/shipping", params=params
         )
 
-    Supplier = Literal["cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest", "alura"]
+    Supplier = Literal["cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest", "alura", "googleads"]
     ApiPath = Annotated[str, Field(min_length=1, max_length=800)]
 
     @server.tool(annotations=SUPPLIER)
@@ -343,6 +343,8 @@ def create_server(config, admin_key, state_directory, transport=None):
         v4.0), "/filaments" (Slant 3D v2),
         "/application/shops/{shop_id}/listings/active" (Etsy v3),
         "/{page_id}/posts" (Meta Graph v21.0), "/boards" (Pinterest v5),
+        "/customers:listAccessibleCustomers" (Google Ads; reports and keyword
+        ideas are POST reads through tbw_supplier_write, no code needed),
         "/research/keywords?q=desk%20mat" (Alura v1, read-only, costs API credits;
         every reply carries credits.cost and credits.remaining).
         Customer personal data and tokens are redacted and long responses are
@@ -368,7 +370,9 @@ def create_server(config, admin_key, state_directory, transport=None):
         approved this exact request: sends it once. Codes expire after 10-20
         minutes. Public posts (Meta, Pinterest) and Etsy listings go live at
         once. Orders, payments, Etsy receipts and Meta/Pinterest ads are
-        refused unless the owner enabled them on the VPS.
+        refused unless the owner enabled them on the VPS. Google Ads: reports
+        (googleAds:search) and keyword ideas run at once; changes are creates
+        that stay PAUSED, under a daily budget limit set on the server.
         """
         payload = {"method": method, "path": path, "body": body, "code": code}
         return await bridge.request(

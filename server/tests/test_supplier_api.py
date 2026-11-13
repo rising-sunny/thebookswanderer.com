@@ -263,6 +263,107 @@ class SupplierApi(unittest.TestCase):
         self.assertEqual(done.json()['status'], 400)
         self.assertEqual(len(seen), 1)
 
+    def test_google_ads_reads_are_free_and_changes_stay_paused_under_a_cap(self):
+        seen = []
+        def handler(request):
+            seen.append(request)
+            if request.url.host == 'oauth2.googleapis.com':
+                return httpx.Response(200, json={'access_token': 'at-123', 'expires_in': 3600})
+            return httpx.Response(200, json={'results': [], 'resourceName': 'customers/1234567890/campaigns/9'})
+        env = {'GOOGLE_ADS_CLIENT_ID': 'cid', 'GOOGLE_ADS_CLIENT_SECRET': 'csecret', 'GOOGLE_ADS_REFRESH_TOKEN': 'rtoken-xyz',
+               'GOOGLE_ADS_LOGIN_CUSTOMER_ID': '847-250-1882', 'GOOGLE_ADS_CUSTOMER_ID': '123-456-7890',
+               'TBW_GOOGLE_ADS_MAX_DAILY_BUDGET_MICROS': '5000000'}
+        def send(body, path, method='POST', preview=False, code=None):
+            data = {'method': method, 'path': path, 'body': body}
+            if code: data['code'] = code
+            return self.call('googleads', data, preview=preview)
+        mutate = lambda r: f'/customers/1234567890/{r}:mutate'
+        supplier_api._gads_token = None
+        with patch.object(supplier_api.httpx, 'AsyncClient',
+                          lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                patch.dict(os.environ, env):
+            # Reads need no code, even asked as a preview, and use the refresh token.
+            done = send({'query': 'SELECT campaign.id FROM campaign'}, '/customers/1234567890/googleAds:search', preview=True)
+            self.assertEqual(done.status_code, 200);self.assertTrue(done.json()['executed'])
+            self.assertEqual([str(r.url) for r in seen], [
+                'https://oauth2.googleapis.com/token',
+                'https://googleads.googleapis.com/v26/customers/1234567890/googleAds:search'])
+            self.assertIn(b'rtoken-xyz', seen[0].content)
+            self.assertEqual(seen[1].headers['Authorization'], 'Bearer at-123')
+            self.assertEqual(seen[1].headers['login-customer-id'], '8472501882')
+            self.assertNotIn('developer-token', seen[1].headers)
+            self.assertNotIn('rtoken-xyz', done.text);self.assertNotIn('csecret', done.text)
+            self.assertEqual(send(None, '/customers:listAccessibleCustomers', method='GET').status_code, 200)
+            self.assertEqual(send({'keywordSeed': {'keywords': ['book club']}}, '/customers/1234567890:generateKeywordIdeas').status_code, 200)
+            self.assertEqual(len(seen), 4)  # the access token was reused
+            seen.clear()
+            # Not the configured account, other paths and other methods.
+            for path in ('/customers/9999999999/googleAds:search', '/customers/9999999999/campaigns:mutate',
+                         '/customers/1234567890/billingSetups:mutate', '/customers/1234567890/campaigns/9', '/x'):
+                self.assertEqual(send({'operations': []}, path).status_code, 422, path)
+            self.assertEqual(send(None, '/customers/1234567890/campaigns', method='GET').status_code, 422)
+            self.assertEqual(send({'operations': []}, mutate('campaigns'), method='PUT').status_code, 422)
+            ok_campaign = {'operations': [{'create': {'name': 'TBW test', 'status': 'PAUSED'}}]}
+            bad = [
+                {'operations': [{'create': {'name': 'x'}}]},                                       # no status: would default to enabled
+                {'operations': [{'create': {'name': 'x', 'status': 'ENABLED'}}]},
+                {'operations': [{'update': {'resourceName': 'customers/1234567890/campaigns/9', 'status': 'ENABLED'}, 'updateMask': 'status'}]},
+                {'operations': [{'update': {'resourceName': 'customers/1234567890/campaigns/9', 'name': 'x', 'status': 'PAUSED'}, 'updateMask': 'status,name'}]},
+                {'operations': [{'remove': 'customers/1234567890/campaigns/9'}]},
+                {'operations': [{'create': {'status': 'PAUSED'}}], 'extra': 1},
+                {'operations': []},
+                {'operations': [{'create': {'status': 'PAUSED', 'totalAmountMicros': '1000'}}]},
+            ]
+            for body in bad:
+                self.assertEqual(send(body, mutate('campaigns')).status_code, 403 if body.get('operations') and 'extra' not in body else 422, body)
+            for micros in ('6000000', '0', 'many'):
+                self.assertEqual(send({'operations': [{'create': {'amountMicros': micros}}]}, mutate('campaignBudgets')).status_code, 403, micros)
+            self.assertEqual(send({'operations': [{'update': {'resourceName': 'x', 'amountMicros': '9'}, 'updateMask': 'amountMicros'}]},
+                                  mutate('campaignBudgets')).status_code, 403)
+            self.assertEqual(send({'operations': [{'create': {'status': 'ENABLED'}}]}, mutate('adGroupAds')).status_code, 403)
+            self.assertEqual(seen, [])
+            # A paused campaign needs the preview code; pausing later is allowed; keywords inside a paused ad group are plain creates.
+            preview = send(ok_campaign, mutate('campaigns'), preview=True)
+            self.assertEqual(preview.status_code, 200);self.assertFalse(preview.json()['executed']);self.assertEqual(seen, [])
+            self.assertEqual(send(ok_campaign, mutate('campaigns')).status_code, 409)  # no code
+            made = send(ok_campaign, mutate('campaigns'), code=preview.json()['code'])
+            self.assertEqual(made.status_code, 200);self.assertEqual(len(seen), 1)
+            seen.clear()
+            pause = {'operations': [{'update': {'resourceName': 'customers/1234567890/campaigns/9', 'status': 'PAUSED'}, 'updateMask': 'status'}]}
+            self.assertEqual(self.call('googleads', {'method': 'POST', 'path': mutate('campaigns'), 'body': pause}, preview=True).status_code, 200)
+            keyword = {'operations': [{'create': {'adGroup': 'customers/1234567890/adGroups/5', 'status': 'ENABLED', 'keyword': {'text': 'book club', 'matchType': 'PHRASE'}}}]}
+            self.assertEqual(send(keyword, mutate('adGroupCriteria'), preview=True).status_code, 200)
+            self.assertEqual(seen, [])
+        # With no budget limit on the server, changes are off, but a dry run (validateOnly) is fine.
+        no_cap = {**env, 'TBW_GOOGLE_ADS_MAX_DAILY_BUDGET_MICROS': ''}
+        with patch.dict(os.environ, no_cap):
+            self.assertEqual(send(ok_campaign, mutate('campaigns'), preview=True).status_code, 403)
+            self.assertEqual(send({**ok_campaign, 'validateOnly': True}, mutate('campaigns'), preview=True).status_code, 200)
+
+    def test_google_ads_authorization_problems_are_clear_and_secret_free(self):
+        def failing(error):
+            def handler(request):
+                if request.url.host == 'oauth2.googleapis.com':
+                    return httpx.Response(400, json={'error': error, 'error_description': 'secret rtoken-xyz detail'})
+                return httpx.Response(200, json={})
+            return handler
+        env = {'GOOGLE_ADS_CLIENT_ID': 'cid', 'GOOGLE_ADS_CLIENT_SECRET': 'csecret', 'GOOGLE_ADS_REFRESH_TOKEN': 'rtoken-xyz',
+               'GOOGLE_ADS_CUSTOMER_ID': '1234567890'}
+        body = {'method': 'POST', 'path': '/customers/1234567890/googleAds:search', 'body': {'query': 'SELECT campaign.id FROM campaign'}}
+        for error, expected in (('invalid_grant', 'authorization expired'), ('invalid_client', 'authentication failed')):
+            supplier_api._gads_token = None
+            with patch.object(supplier_api.httpx, 'AsyncClient',
+                              lambda **kw: REAL_CLIENT(transport=httpx.MockTransport(failing(error)), **{k: v for k, v in kw.items() if k != 'transport'})), \
+                    patch.dict(os.environ, env):
+                response = self.call('googleads', body)
+            self.assertEqual(response.status_code, 502);self.assertIn(expected, response.text)
+            self.assertNotIn('rtoken-xyz', response.text);self.assertNotIn('csecret', response.text)
+        supplier_api._gads_token = None
+        with patch.dict(os.environ, {**env, 'GOOGLE_ADS_REFRESH_TOKEN': ''}):
+            self.assertIn('not configured', self.call('googleads', body).text)
+        with patch.dict(os.environ, {**env, 'GOOGLE_ADS_CUSTOMER_ID': ''}):
+            self.assertEqual(self.call('googleads', body).status_code, 422)
+
     def test_etsy_listing_video_uploads_from_the_assets_folder(self):
         with tempfile.TemporaryDirectory() as directory:
             assets = Path(directory)

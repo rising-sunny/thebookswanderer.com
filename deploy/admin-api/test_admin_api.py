@@ -289,6 +289,23 @@ class AdminApiTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[3].content),
                          {"country_code": "MX", "variant_id": None, "quantity": 1})
 
+    def test_google_ads_is_a_known_supplier_and_goes_through_the_store(self):
+        draft_key = self.key.parent / "draft"
+        draft_key.write_text("d" * 40)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={"executed": True, "status": 200, "data": {}})
+        body = {"method": "POST", "path": "/customers/1234567890/googleAds:search",
+                "body": {"query": "SELECT campaign.id FROM campaign"}}
+        with patch.object(admin, "store_transport", httpx.MockTransport(handler)), \
+                patch.dict(os.environ, {"TBW_DRAFT_KEY_FILE": str(draft_key)}):
+            self.assertEqual(self.client.post("/suppliers/googleads/api", json=body).status_code, 401)
+            done = self.client.post("/suppliers/googleads/api", headers=self.headers, json=body)
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual([r.url.path for r in calls], ["/api/internal/suppliers/googleads/api"])
+        self.assertEqual(calls[0].headers["Authorization"], "Bearer " + "d" * 40)
+
     def test_supplier_api_goes_through_the_store(self):
         draft_key = self.key.parent / "draft"
         draft_key.write_text("d" * 40)
