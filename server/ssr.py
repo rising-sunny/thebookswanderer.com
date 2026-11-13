@@ -223,6 +223,13 @@ def _related_block_html(related: list[dict[str, Any]]) -> str:
 </section>"""
 
 
+# Search-result titles for products whose full title is far longer than Google shows. Only the
+# <title> and the social titles use it; the page heading and the Product JSON-LD keep the full title.
+SEO_TITLES = {
+    "reading-challenge-kit-2027": "2027 Reading Challenge Kit Printable",
+}
+
+
 def render_product_page(
     detail: dict[str, Any],
     *,
@@ -232,7 +239,10 @@ def render_product_page(
 ) -> str:
     """Full HTML document for a store product (CJ catalog)."""
     title = detail.get("title") or "Product"
-    page_title = f"{title} | The Books Wanderer"
+    seo_title = SEO_TITLES.get(detail.get("slug") or "")
+    page_title = f"{seo_title or title} | The Books Wanderer"
+    # product.js rebuilds the title after load; this tells it to keep the search title.
+    seo_title_meta = f'\n    <meta name="seo-title" content="{_esc(seo_title)}">' if seo_title else ""
     desc = (detail.get("description") or "").strip()
     if not desc:
         desc = (
@@ -473,7 +483,7 @@ def render_product_page(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{_esc(page_title)}</title>
+    <title>{_esc(page_title)}</title>{seo_title_meta}
     <meta name="description" content="{_esc(meta_desc)}">
     <meta name="robots" content="index,follow,max-image-preview:large">
     <link rel="canonical" href="{_esc(canonical)}">
@@ -544,7 +554,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=7" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
-<script src="/product.js?v=desc-sticky-20261113" defer></script>
+<script src="/product.js?v=seo-title-20261113" defer></script>
 </body>
 </html>
 """
