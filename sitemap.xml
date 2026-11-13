@@ -2,7 +2,7 @@
 <!--
   Fallback static sitemap for offline/static previews only.
   Production serves a LIVE sitemap from FastAPI: GET /sitemap.xml
-  (products from DB + affiliate picks + lastmod). Prefer the dynamic one.
+  (products from DB + lastmod). Prefer the dynamic one.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
