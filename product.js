@@ -66,6 +66,48 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
 
+    /**
+     * Product text is plain text: blank lines separate paragraphs, lines that
+     * start with a bullet become a list, and a short ALL-CAPS line is a small
+     * heading. Everything is escaped; line breaks inside a paragraph are kept.
+     */
+    function descriptionHtml(text) {
+        const bullet = /^(?:[•·▪◦*]|[-–])\s+(.*)$/;
+        const heading = /^\p{Lu}[\p{Lu}\d &'’().,/-]{2,40}$/u;
+        const out = [];
+        let para = [];
+        let list = [];
+        const flushPara = () => {
+            if (para.length) out.push(`<p>${para.map(escapeHtml).join("<br>")}</p>`);
+            para = [];
+        };
+        const flushList = () => {
+            if (list.length) out.push(`<ul>${list.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`);
+            list = [];
+        };
+        for (const raw of String(text ?? "").replace(/\r\n?/g, "\n").split("\n")) {
+            const line = raw.trim();
+            const item = line.match(bullet);
+            if (!line) {
+                flushPara();
+                flushList();
+            } else if (item) {
+                flushPara();
+                list.push(item[1]);
+            } else if (heading.test(line)) {
+                flushPara();
+                flushList();
+                out.push(`<h2 class="pdp__lead-h">${escapeHtml(line)}</h2>`);
+            } else {
+                flushList();
+                para.push(line);
+            }
+        }
+        flushPara();
+        flushList();
+        return out.join("");
+    }
+
     function normVid(v) {
         if (v == null || v === "" || v === "null") return null;
         const n = Number(v);
@@ -488,7 +530,7 @@
 </div>`
                 : "";
 
-        const desc = escapeHtml(product.description || "");
+        const desc = descriptionHtml(product.description || "");
         const sku = v?.cj_sku || product.cj_sku || "";
         const videoUrl = product.video_url || "";
         const videoPoster = product.video_poster || main || "";
@@ -521,7 +563,7 @@
   <p class="pdp__shipnote">${isDigital()
         ? "Instant download — PDF, no shipping"
         : product.supplier === "prodigi" ? "Printed to order · unframed · standard US shipping included" : "Standard US shipping included · other destinations quoted below"}</p>
-  ${desc ? `<p class="pdp__lead"${product.supplier === "prodigi" ? ' style="white-space:pre-line"' : ""}>${desc}</p>` : ""}
+  ${desc ? `<div class="pdp__lead">${desc}</div>` : ""}
   ${variantPicker}
   ${cartPanelHtml()}
   ${addBarHtml()}
@@ -556,9 +598,10 @@
     }
 
     /**
-     * Phones: the add button sits a screen or more below the photo, so a
-     * slim bar stays pinned to the bottom until the real button scrolls into
-     * view. It only forwards the tap, so the cart logic stays in one place.
+     * The add button often sits a screen or more below the photo (phones, and
+     * desktops with a long description), so a slim bar stays pinned to the
+     * bottom until the real button scrolls into view. It only forwards the
+     * tap, so the cart logic stays in one place.
      */
     let stickyBuy = null;
     function mountStickyBuy() {

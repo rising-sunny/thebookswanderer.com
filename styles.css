@@ -1118,6 +1118,32 @@ a.add-to-cart {
     margin: 0 0 var(--sp-5);
 }
 
+.pdp__lead p {
+    margin: 0 0 var(--sp-3);
+}
+
+.pdp__lead ul {
+    margin: 0 0 var(--sp-3);
+    padding-left: 1.15em;
+}
+
+.pdp__lead li {
+    margin: 0 0 0.35em;
+}
+
+.pdp__lead > :last-child {
+    margin-bottom: 0;
+}
+
+.pdp__lead-h {
+    margin: var(--sp-4) 0 var(--sp-2);
+    font-family: inherit;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+}
+
 .pdp__variants {
     margin: 0 0 var(--sp-5);
     padding: var(--sp-4);
@@ -3216,42 +3242,52 @@ a.add-to-cart {
     }
 }
 
-/* Pinned add-to-cart on phones; product.js shows it while the real button is off screen. */
+/* Pinned add-to-cart; product.js shows it while the real button is off screen.
+   Full width on phones, a centred pill on larger screens. */
 .pdp-sticky {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+    background: var(--bg-raised);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 18px rgba(16, 36, 26, 0.08);
+}
+
+.pdp-sticky[hidden] {
     display: none;
 }
 
-@media (max-width: 860px) {
+body:has(.pdp-sticky) {
+    padding-bottom: 72px;
+}
+
+.pdp-sticky__price {
+    font-weight: 700;
+    color: var(--green-900);
+}
+
+.pdp-sticky .btn {
+    flex: 1;
+    max-width: 240px;
+}
+
+@media (min-width: 861px) {
     .pdp-sticky {
-        position: fixed;
-        inset: auto 0 0 0;
-        z-index: 40;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--sp-3);
-        padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
-        background: var(--bg-raised);
-        border-top: 1px solid var(--line);
-        box-shadow: 0 -6px 18px rgba(16, 36, 26, 0.08);
+        inset: auto 0 var(--sp-4) 0;
+        width: min(520px, calc(100% - 2 * var(--sp-4)));
+        margin-inline: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--r-md);
     }
 
-    .pdp-sticky[hidden] {
-        display: none;
-    }
-
-    body:has(.pdp-sticky) {
-        padding-bottom: 72px;
-    }
-
-    .pdp-sticky__price {
-        font-weight: 700;
-        color: var(--green-900);
-    }
-
-    .pdp-sticky .btn {
-        flex: 1;
-        max-width: 240px;
+    /* The cookie strip sits above the pinned bar instead of covering it. */
+    body:has(.pdp-sticky:not([hidden])) .consent {
+        bottom: calc(var(--sp-4) + 72px);
     }
 }
 
