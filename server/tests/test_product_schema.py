@@ -90,6 +90,20 @@ class ProductSchemaTests(unittest.TestCase):
         self.assertIn('$9.99–$19.99 USD', page)
         self.assertEqual([d["@type"] for d in markup.documents], ["Product", "BreadcrumbList"])
 
+    def test_long_titles_with_a_search_title_keep_the_full_name_on_the_page(self):
+        full = "2027 Reading Challenge Kit Printable, 52 Book Challenge Tracker, Reading Bingo and Journal Pages (PDF)"
+        self.detail.update(slug="reading-challenge-kit-2027", title=full)
+        page, markup = self.render()
+        self.assertIn("<title>2027 Reading Challenge Kit Printable | The Books Wanderer</title>", page)
+        self.assertIn('property="og:title" content="2027 Reading Challenge Kit Printable | The Books Wanderer"', page)
+        self.assertEqual(markup.product()["name"], full)
+        self.assertIn('<meta name="seo-title" content="2027 Reading Challenge Kit Printable">', page)
+        # Any other product keeps its own title in the tab and the results.
+        self.detail.update(slug="reading-accessory", title="Reading accessory")
+        page, _ = self.render()
+        self.assertIn("<title>Reading accessory | The Books Wanderer</title>", page)
+        self.assertNotIn('name="seo-title"', page)
+
     def test_variant_offers_have_exact_prices_skus_and_urls(self):
         _, markup = self.render()
         offers = markup.product()["offers"]

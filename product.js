@@ -441,7 +441,9 @@
         const variants = product.variants || [];
         const lifestyle = lifestyleImages();
 
-        const pageTitle = `${title} | The Books Wanderer`;
+        // The server may send a shorter search title (SEO_TITLES in server/ssr.py); keep it.
+        const seoTitle = document.querySelector('meta[name="seo-title"]')?.content || "";
+        const pageTitle = `${seoTitle || title} | The Books Wanderer`;
         document.title = pageTitle;
         const rawDesc = String(product.description || "")
             .replace(/[\u2018\u2019]/g, "'")
