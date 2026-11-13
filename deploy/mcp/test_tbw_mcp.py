@@ -212,6 +212,27 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             "end_date": "2026-11-12", "page": "reading-challenge-2027",
         })
 
+    async def test_google_ads_is_a_supplier_for_reads_and_writes(self):
+        requests = []
+        def handler(request):
+            requests.append(request)
+            return httpx2.Response(200, json={"ok": True})
+        with tempfile.TemporaryDirectory() as temporary:
+            server = create_server(
+                config(), "a" * 40, temporary, httpx2.MockTransport(handler)
+            )
+            async with Client(server) as client:
+                await client.call_tool("tbw_supplier_get", {
+                    "supplier": "googleads", "path": "/customers:listAccessibleCustomers"})
+                await client.call_tool("tbw_supplier_write", {
+                    "supplier": "googleads", "method": "POST",
+                    "path": "/customers/1234567890/googleAds:search",
+                    "body": {"query": "SELECT campaign.id FROM campaign"}})
+        self.assertEqual([(r.method, r.url.path) for r in requests],
+                         [("POST", "/suppliers/googleads/api")] * 2)
+        self.assertEqual(json.loads(requests[0].content),
+                         {"method": "GET", "path": "/customers:listAccessibleCustomers"})
+
     async def test_draft_tools_can_pick_variants(self):
         requests = []
         def handler(request):

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import re
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ from fastapi import HTTPException
 
 from services import cj, etsy, lulu, pinterest, printify, prodigi_store, slant3d
 
-SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest", "alura")
+SUPPLIERS = ("cj", "printify", "lulu", "prodigi", "slant3d", "etsy", "meta", "pinterest", "alura", "googleads")
 META_GRAPH = "https://graph.facebook.com/v21.0"
 # Alura (Etsy market research) is read-only here and bills API credits per call. The key lives only
 # in this server's environment (ALURA_API_KEY) and is never returned.
@@ -28,6 +29,21 @@ _ALURA_PATH = re.compile(r"/(me|me/workspaces|usage|usage/by-day|usage/events|la
                          r"|research(/[A-Za-z0-9_-]{1,80}){1,6})")
 _ALURA_FREE = re.compile(r"/(me|me/workspaces|usage|usage/by-day|usage/events|languages|categories(/[0-9]{1,12})?)")
 _alura_remaining: int | None = None  # last "Alura-Credits-Remaining" seen
+
+# Google Ads: reports and keyword ideas are reads; changes are creates that stay PAUSED, under a
+# daily budget cap set on this server. Nothing is ever switched on, raised or removed here (the
+# owner does that in Google Ads). The OAuth refresh token, client secret and customer ids live only
+# in this server's environment (GOOGLE_ADS_*) and are never returned.
+GOOGLE_ADS_HOST = "https://googleads.googleapis.com"
+_GADS_ID = r"[0-9]{10}"
+_GADS_LIST = re.compile(r"/customers:listAccessibleCustomers")
+_GADS_READ = re.compile(rf"/customers/({_GADS_ID})(/googleAds:(search|searchStream)|:generateKeywordIdeas)")
+_GADS_MUTATE = re.compile(
+    rf"/customers/({_GADS_ID})/(campaignBudgets|campaigns|adGroups|adGroupAds|adGroupCriteria|campaignCriteria"
+    r"|assets|assetGroups|assetGroupAssets|assetGroupSignals):mutate")
+_GADS_PAUSED = {"campaigns", "adGroups", "adGroupAds", "assetGroups"}  # resources that run when enabled
+_GADS_BLOCKED_KEYS = {"totalAmountMicros"}
+_gads_token: tuple[str, float] | None = None  # (access token, monotonic expiry)
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 LIMIT = 60_000
 
@@ -122,6 +138,100 @@ async def _meta_reel(client: httpx.AsyncClient, token: str, page: str, video: Pa
     return done
 
 
+def google_ads_customer() -> str:
+    return re.sub(r"\D", "", os.getenv("GOOGLE_ADS_CUSTOMER_ID") or "")
+
+
+def google_ads_max_budget_micros() -> int:
+    try:
+        return max(0, int(os.getenv("TBW_GOOGLE_ADS_MAX_DAILY_BUDGET_MICROS", "0").strip() or 0))
+    except ValueError:
+        return 0
+
+
+def is_read(supplier: str, method: str, path: str) -> bool:
+    """Calls that only read: no preview code needed (GET, and Google Ads reports and keyword ideas)."""
+    if method == "GET":
+        return True
+    return supplier == "googleads" and method == "POST" and bool(
+        _GADS_READ.fullmatch(path) or _GADS_LIST.fullmatch(path))
+
+
+def _check_google_ads(method: str, path: str, body: Any) -> None:
+    if method == "GET":
+        if not _GADS_LIST.fullmatch(path):
+            raise ValueError("Only GET /customers:listAccessibleCustomers is available for Google Ads")
+        return
+    if method != "POST":
+        raise ValueError("Google Ads calls are GET or POST only")
+    mine = google_ads_customer()
+    if _GADS_READ.fullmatch(path):
+        if not mine or _GADS_READ.fullmatch(path).group(1) != mine:
+            raise ValueError("Google Ads is only available for the configured account")
+        return
+    found = _GADS_MUTATE.fullmatch(path)
+    if not found:
+        raise ValueError("That Google Ads path is not available here")
+    if not mine or found.group(1) != mine:
+        raise ValueError("Google Ads is only available for the configured account")
+    resource = found.group(2)
+    if not isinstance(body, dict) or not set(body) <= {"operations", "validateOnly", "partialFailure"}:
+        raise ValueError("A Google Ads change body is operations, validateOnly and partialFailure only")
+    operations = body.get("operations")
+    if not isinstance(operations, list) or not 1 <= len(operations) <= 50 \
+            or not all(isinstance(op, dict) for op in operations):
+        raise ValueError("operations must be a list of 1 to 50 operations")
+    limit = google_ads_max_budget_micros()
+    if body.get("validateOnly") is not True and not limit:
+        raise PermissionError("Google Ads changes are disabled until a daily budget limit is set on the server")
+    for key, _ in _walk(body):
+        if key in _GADS_BLOCKED_KEYS:
+            raise PermissionError(f"{key} is not allowed here; use a daily budget")
+    for op in operations:
+        kinds = set(op) - {"updateMask"}
+        if kinds == {"update"}:
+            # Only to pause something that already exists.
+            update = op["update"] if isinstance(op["update"], dict) else {}
+            if resource not in _GADS_PAUSED or op.get("updateMask") != "status" \
+                    or str(update.get("status", "")).upper() != "PAUSED" or set(update) - {"resourceName", "status"}:
+                raise PermissionError("Google Ads objects can only be created paused or paused later; "
+                                      "turn them on in Google Ads")
+            continue
+        if kinds != {"create"} or "updateMask" in op or not isinstance(op["create"], dict):
+            raise PermissionError("Google Ads operations here are creates (or pausing); nothing is changed or removed")
+        item = op["create"]
+        if resource in _GADS_PAUSED and str(item.get("status", "")).upper() != "PAUSED":
+            raise PermissionError("New Google Ads campaigns, ad groups and ads must be created with status PAUSED")
+        if resource == "campaignBudgets":
+            try:
+                amount = int(str(item.get("amountMicros", "")))
+            except ValueError:
+                raise PermissionError("amountMicros must be a whole number (daily budget)") from None
+            if amount <= 0 or (limit and amount > limit):
+                raise PermissionError(f"amountMicros must be above 0 and within the limit of {limit}")
+
+
+async def _google_ads_token(client: httpx.AsyncClient) -> str:
+    global _gads_token
+    if _gads_token and _gads_token[1] > time.monotonic() + 60:
+        return _gads_token[0]
+    values = {k: (os.getenv(f"GOOGLE_ADS_{k.upper()}") or "").strip()
+              for k in ("client_id", "client_secret", "refresh_token")}
+    if not all(values.values()):
+        raise SupplierAPIError("Google Ads is not configured")
+    response = await client.post("https://oauth2.googleapis.com/token", data={**values, "grant_type": "refresh_token"})
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+    if response.status_code != 200 or not isinstance(data, dict) or not data.get("access_token"):
+        if isinstance(data, dict) and data.get("error") == "invalid_grant":
+            raise SupplierAPIError("Google Ads authorization expired or revoked; authorize again")
+        raise SupplierAPIError("Google Ads authentication failed or not connected")
+    _gads_token = (str(data["access_token"]), time.monotonic() + float(data.get("expires_in") or 3000))
+    return _gads_token[0]
+
+
 def _form_fields(body: dict) -> dict[str, str]:
     out = {}
     for key, value in body.items():
@@ -145,6 +255,9 @@ def check(supplier: str, method: str, path: str, body: Any = None) -> None:
         raise ValueError("Unknown supplier")
     if method not in METHODS:
         raise ValueError("Unsupported method")
+    if supplier == "googleads":
+        _check_google_ads(method, path, body)
+        return
     if not _PATH.fullmatch(path) or ".." in path or "//" in path:
         raise ValueError("Invalid path")
     if supplier == "alura":
@@ -286,6 +399,17 @@ async def _send(client: httpx.AsyncClient, supplier: str, method: str, path: str
                                         body["description"])
             return await client.post(url, headers=headers, data=_form_fields(body),
                                      files={"source": (video.name, video.read_bytes(), "video/mp4")})
+    elif supplier == "googleads":
+        version = (os.getenv("GOOGLE_ADS_API_VERSION") or "v26").strip()
+        if not re.fullmatch(r"v[0-9]{1,2}", version):
+            raise SupplierAPIError("Google Ads is not configured")
+        url = f"{GOOGLE_ADS_HOST}/{version}{path}"
+        headers = {"Authorization": "Bearer " + await _google_ads_token(client)}
+        login = re.sub(r"\D", "", os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID") or "")
+        if login:
+            headers["login-customer-id"] = login
+        if (os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN") or "").strip():  # optional since Sept 2026
+            headers["developer-token"] = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN").strip()
     elif supplier == "alura":
         key = (os.getenv("ALURA_API_KEY") or "").strip()
         if not key:
