@@ -48,23 +48,17 @@ from services import image_mirror  # noqa: E402
 from services import shipping as shipping_service  # noqa: E402
 from services.countries import DESTINATIONS  # noqa: E402
 from ssr import (  # noqa: E402
-    affiliate_by_slug,
     render_catalog_page,
     inject_home_seo,
-    load_affiliate_catalog,
     render_collection_not_found,
     render_collection_page,
     render_collections_index,
-    render_pick_not_found,
-    render_pick_page,
     render_product_not_found,
     render_product_page,
 )
 from urls import (  # noqa: E402
     PUBLIC_BASE,
     collection_url,
-    pick_path,
-    pick_url,
     product_path,
     product_url,
 )
@@ -599,25 +593,18 @@ async def product_page_pretty(slug: str, request: Request, variant: str | None =
     return HTMLResponse(i18n.localize(page, lang, path))
 
 
+# The Amazon picks were removed from the site. Their old URLs (and the legacy pick.html) go to the closest guide.
+PICKS_REDIRECT = "/guides/best-ereader-accessories/"
+
+
 @app.api_route("/pick.html", methods=["GET", "HEAD"])
-async def pick_page_legacy(slug: str | None = Query(None)):
-    """Legacy query URL → permanent redirect to /picks/{slug}."""
-    if not slug or not slug.strip():
-        return HTMLResponse(render_pick_not_found(""), status_code=404)
-    pick = affiliate_by_slug(slug.strip())
-    if not pick:
-        return HTMLResponse(render_pick_not_found(slug), status_code=404)
-    return RedirectResponse(url=pick_path(pick["slug"]), status_code=301)
+async def pick_page_legacy():
+    return RedirectResponse(url=PICKS_REDIRECT, status_code=301)
 
 
-@app.get("/picks/{slug}", response_class=HTMLResponse)
+@app.api_route("/picks/{slug}", methods=["GET", "HEAD"])
 async def pick_page_pretty(slug: str):
-    """Canonical Amazon affiliate pick PDP (SSR)."""
-    pick = affiliate_by_slug(slug.strip())
-    if not pick:
-        return HTMLResponse(render_pick_not_found(slug), status_code=404)
-    canonical = pick_url(pick["slug"])
-    return HTMLResponse(render_pick_page(pick, canonical=canonical))
+    return RedirectResponse(url=PICKS_REDIRECT, status_code=301)
 
 
 @app.api_route("/es/", methods=["GET", "HEAD"], response_class=HTMLResponse)
@@ -625,7 +612,7 @@ async def pick_page_pretty(slug: str):
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 @app.api_route("/index.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home_page_ssr(request: Request, db: Session = Depends(get_db)):
-    """Home with crawlable product + affiliate + category cards in the HTML."""
+    """Home with crawlable product and category cards in the HTML."""
     template_path = Path(__file__).resolve().parent.parent / "index.html"
     try:
         raw = template_path.read_text(encoding="utf-8")
@@ -647,10 +634,7 @@ def home_page_ssr(request: Request, db: Session = Depends(get_db)):
     categories = []
     for c in cat_service.all_categories():
         categories.append(i18n.category({**c, "product_count": counts.get(c["slug"], 0)}, lang))
-    aff = load_affiliate_catalog()
-    html_out = inject_home_seo(
-        raw, products=products, affiliate=aff, categories=categories
-    )
+    html_out = inject_home_seo(raw, products=products, categories=categories)
     if lang == "es":
         html_out = html_out.replace(
             '<link rel="canonical" href="https://thebookswanderer.com/">',
@@ -862,7 +846,7 @@ def _abs_url(u: str) -> str:
 
 @app.get("/sitemap.xml")
 def sitemap_xml(db: Session = Depends(get_db)):
-    """Dynamic sitemap from live catalog (products + picks + collections)."""
+    """Dynamic sitemap from live catalog (products + collections)."""
     site_root = Path(__file__).resolve().parent.parent
     urls: list[tuple[str, str, str, str]] = []  # loc, lastmod, changefreq, priority
 
@@ -918,14 +902,6 @@ def sitemap_xml(db: Session = Depends(get_db)):
                     prio,
                 )
             )
-
-    aff_path = site_root / "affiliate-products.json"
-    aff_mod = _file_mtime_iso(aff_path)
-    for pick in load_affiliate_catalog().get("products") or []:
-        slug = (pick.get("slug") or "").strip()
-        if not slug:
-            continue
-        urls.append((pick_url(slug), aff_mod, "weekly", "0.9"))
 
     for p in rows:
         urls.append(

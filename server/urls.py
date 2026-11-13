@@ -19,18 +19,6 @@ def product_url(slug: str, *, base: str | None = None) -> str:
     return f"{root}{product_path(slug)}"
 
 
-def pick_path(slug: str) -> str:
-    s = (slug or "").strip()
-    if not s:
-        return "/#ereaders"
-    return f"/picks/{quote(s, safe='-_.~')}"
-
-
-def pick_url(slug: str, *, base: str | None = None) -> str:
-    root = (base or PUBLIC_BASE).rstrip("/")
-    return f"{root}{pick_path(slug)}"
-
-
 def collection_path(slug: str) -> str:
     s = (slug or "").strip()
     if not s:

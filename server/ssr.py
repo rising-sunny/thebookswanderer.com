@@ -547,7 +547,6 @@ def render_product_page(
         </nav>
         <div class="footer__bottom" style="border:0;padding-top:var(--sp-5)">
         <p class="footer__quote">“For those who wander between pages.”</p>
-        <p class="footer__affiliate">As an Amazon Associate I earn from qualifying purchases.</p>
         <p class="footer__legal">&copy; 2026 The Books Wanderer · {_esc_text(title)}</p>
     </div>
     </div>
@@ -582,228 +581,6 @@ def render_product_not_found(slug: str = "") -> str:
 """
 
 
-def load_affiliate_catalog() -> dict[str, Any]:
-    """Shared Amazon picks JSON (site root)."""
-    for path in (
-        SITE_ROOT / "affiliate-products.json",
-        ROOT / "data" / "affiliate_products.json",
-    ):
-        if path.is_file():
-            try:
-                return json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-    return {
-        "siteDisclosure": "As an Amazon Associate I earn from qualifying purchases.",
-        "linkDisclosure": "As an Amazon Associate we earn from qualifying purchases.",
-        "paidLinkLabel": "paid link",
-        "products": [],
-    }
-
-
-def affiliate_by_slug(slug: str) -> dict[str, Any] | None:
-    data = load_affiliate_catalog()
-    key = (slug or "").strip().lower()
-    for p in data.get("products") or []:
-        if str(p.get("slug", "")).lower() == key:
-            return p
-    return None
-
-
-def render_pick_page(pick: dict[str, Any], *, canonical: str) -> str:
-    """SSR for Amazon affiliate pick pages (avoid Soft 404)."""
-    cat = load_affiliate_catalog()
-    title = pick.get("title") or pick.get("shortTitle") or "Reader pick"
-    page_title = f"{title} | The Books Wanderer"
-    short = pick.get("shortTitle") or title
-    blurb = (pick.get("blurb") or "").strip()
-    desc = (pick.get("description") or blurb or title).strip()
-    # Prefer blurb for SERP (shorter, marketing-friendly); fall back to full description
-    meta_desc = _meta_description(blurb or desc)
-
-    img = pick.get("imageUrl") or ""
-    images = list(pick.get("images") or [])
-    if img and img not in images:
-        images.insert(0, img)
-    if not images and img:
-        images = [img]
-
-    bullets = pick.get("bullets") or []
-    bullet_html = "".join(f"<li>{_esc_text(b)}</li>" for b in bullets)
-    gallery = "".join(
-        f'<img {_cj_img_attrs(u, widths=(400, 600), sizes=SIZES_THUMB)} alt="{_esc(title)} photo {i + 1}" width="400" height="400" '
-        f'loading="lazy" style="max-width:46%;height:auto;margin:0.25rem;border-radius:8px;background:#fff">'
-        for i, u in enumerate(images[:8])
-    )
-    hero = images[0] if images else ""
-    amazon = pick.get("amazonUrl") or "#"
-    badge = pick.get("badge") or ""
-    merchant = pick.get("merchant") or "Amazon"
-    category = pick.get("category") or "E-readers"
-    disclosure = cat.get("siteDisclosure") or "As an Amazon Associate I earn from qualifying purchases."
-    paid = cat.get("paidLinkLabel") or "paid link"
-
-    pairs_html = ""
-    for x in pick.get("pairsWith") or []:
-        href = x.get("href") or (
-            f"/products/{_esc(x.get('slug'))}" if x.get("slug") else "#"
-        )
-        # href already needs raw path; escape attr only
-        label = x.get("label") or x.get("slug") or "Related"
-        pairs_html += (
-            f'<a class="pick-pair" href="{_esc(href)}">{_esc_text(label)}</a> '
-        )
-
-    # No usar @type Product en picks de Amazon.
-    #
-    # Estas paginas recomiendan un producto que vende Amazon, no nosotros: el
-    # precio cambia a diario y Associates no permite inventarlo. Un Product sin
-    # offers (o con Offer incompleto) lo reporta Search Console como product
-    # snippet invalido ("falta price en offers"). WebPage describe la pagina
-    # sin reclamar rich results de producto.
-    primary_img = (images[0] if images else None) or img or f"{PUBLIC_BASE}/assets/logo.png"
-    json_ld: dict[str, Any] = {
-        "@context": "https://schema.org",
-        "@type": "WebPage",
-        "name": page_title,
-        "description": meta_desc,
-        "url": canonical,
-        "isPartOf": {
-            "@type": "WebSite",
-            "name": "The Books Wanderer",
-            "url": f"{PUBLIC_BASE}/",
-        },
-        "primaryImageOfPage": {
-            "@type": "ImageObject",
-            "url": primary_img,
-        },
-        "about": {
-            "@type": "Thing",
-            "name": title,
-            "description": desc,
-        },
-    }
-    asin = (pick.get("asin") or "").strip()
-    if asin:
-        json_ld["about"]["identifier"] = asin
-
-    ld = json.dumps(json_ld, ensure_ascii=False)
-    v = _css_ver()
-    embed = json.dumps(cat, ensure_ascii=False)
-    social = _social_head(
-        title=page_title,
-        description=meta_desc,
-        canonical=canonical,
-        image=hero or img,
-        og_type="website",
-    )
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{_esc(page_title)}</title>
-    <meta name="description" content="{_esc(meta_desc)}">
-    <meta name="robots" content="index,follow,max-image-preview:large">
-    <link rel="canonical" href="{_esc(canonical)}">
-    {social}
-    <meta name="theme-color" content="#f8f2e5">
-    <link rel="icon" href="/assets/favicon.ico" sizes="any">
-    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v={_esc(v)}">
-    <script type="application/ld+json">{ld}</script>
-    <script type="application/json" id="affiliate-products-json">{embed}</script>
-</head>
-<body class="page-product page-pick">
-<a class="skip-link" href="#main">Skip to content</a>
-<header class="header is-stuck" id="header">
-    <div class="container header__inner">
-        <a class="brand" href="/" aria-label="The Books Wanderer, home">
-            <span class="brand__emblem" aria-hidden="true"></span>
-            <span class="brand__name">The Books Wanderer<span class="brand__tagline">Literary boutique</span></span>
-        </a>
-        <div class="actions">
-            <a class="icon-btn" href="/#ereaders" aria-label="Back to e-reader picks">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
-            </a>
-            <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
-                <span class="cart-count" id="cartCount" data-count="0">0</span>
-            </a>
-        </div>
-    </div>
-</header>
-<main id="main" class="pdp">
-    <div class="container">
-        <p class="pdp__crumb"><a href="/">Home</a> · <a href="/#ereaders">E-readers</a> · <span id="pickCrumb">{_esc_text(short)}</span></p>
-        <aside class="affiliate-disclosure affiliate-disclosure--page" role="note">
-            <p><strong>{_esc_text(disclosure)}</strong></p>
-            <p class="affiliate-disclosure__detail">{_esc_text(cat.get("linkDisclosure") or "")}</p>
-        </aside>
-        <div id="pickRoot" class="pdp__layout" data-ssr-pick="1" data-slug="{_esc(pick.get('slug') or '')}">
-            <article class="pdp-ssr" data-ssr="1">
-                <p class="eyebrow">{_esc_text(category)} · {_esc_text(merchant)}</p>
-                {f'<span class="badge badge--gold">{_esc_text(badge)}</span>' if badge else ""}
-                <h1>{_esc_text(title)}</h1>
-                {"<p class=\"pdp__blurb\">" + _esc_text(blurb) + "</p>" if blurb else ""}
-                {"<p class=\"pdp__desc\">" + _esc_text(desc) + "</p>" if desc else ""}
-                {f'<img src="{_esc(hero)}" alt="{_esc(title)}" width="800" height="800" style="max-width:min(100%,420px);height:auto;background:#fff;border-radius:12px">' if hero else ""}
-                {f"<section><h2>Highlights</h2><ul class=\"pick-bullets\">{bullet_html}</ul></section>" if bullet_html else ""}
-                {f"<section><h2>Gallery</h2><div>{gallery}</div></section>" if gallery else ""}
-                <section class="pick-cta" style="margin-top:1.5rem">
-                    <p><a class="btn pick-cta__btn" href="{_esc(amazon)}" target="_blank" rel="nofollow sponsored noopener">View on Amazon</a></p>
-                    <p class="pick-cta__meta"><span class="paid-link">({_esc_text(paid)})</span> · Sold by Amazon · Price shown on Amazon</p>
-                    <p class="pick-cta__note">You will leave The Books Wanderer and open Amazon.com. {_esc_text(disclosure)}</p>
-                </section>
-                {f'<section class="pick-pairs"><p class="eyebrow">Pairs with our shop</p><div class="pick-pairs__list">{pairs_html}</div></section>' if pairs_html else ""}
-            </article>
-        </div>
-    </div>
-</main>
-<footer class="footer" style="margin-top:var(--sp-8)">
-    <div class="container">
-        <nav class="footer__links" aria-label="Footer">
-            <a href="/about.html">About</a>
-            <a href="/guides/hold-a-book-open-one-handed/">Holding a book open</a>
-            <a href="/guides/gifts-for-book-lovers/">Gifts for book lovers</a>
-            <a href="/shipping-returns.html">Shipping &amp; returns</a>
-            <a href="/contact.html">Contact</a>
-            <a href="/privacy.html">Privacy &amp; cookies</a>
-        </nav>
-        <div class="footer__bottom" style="border:0;padding-top:var(--sp-5)">
-        <p class="footer__quote">“For those who wander between pages.”</p>
-        <p class="footer__affiliate">{_esc_text(disclosure)}</p>
-        <p class="footer__legal">&copy; 2026 The Books Wanderer · {_esc_text(title)}</p>
-    </div>
-    </div>
-</footer>
-<script src="/track.js?v=7" defer></script>
-<script src="/cart.js?v=cart-feedback-20261031" defer></script>
-<script src="/affiliate-data.js?v=5" defer></script>
-<script src="/pick.js?v=5" defer></script>
-</body>
-</html>
-"""
-
-
-def render_pick_not_found(slug: str = "") -> str:
-    return f"""<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"><title>Pick not found | The Books Wanderer</title>
-<meta name="robots" content="noindex,follow">
-</head><body class="container" style="padding:2rem">
-<h1>Pick not found</h1>
-<p>We could not find “{_esc_text(slug)}”.</p>
-<p><a href="/#ereaders">Browse e-reader picks</a></p>
-</body></html>
-"""
-
-
 def _site_header(*, back_href: str = "/products/", back_label: str = "Back to shop") -> str:
     return f"""
 <header class="header is-stuck" id="header">
@@ -835,7 +612,6 @@ def _site_footer(*, note: str = "") -> str:
 <footer class="footer" style="margin-top:var(--sp-8)">
     <div class="container footer__bottom" style="border:0;padding-top:var(--sp-5)">
         <p class="footer__quote">“For those who wander between pages.”</p>
-        <p class="footer__affiliate">As an Amazon Associate I earn from qualifying purchases.</p>
         {note_html}
         <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
     </div>
@@ -1379,33 +1155,6 @@ def _product_card_html(p: dict[str, Any]) -> str:
 </article>"""
 
 
-def _affiliate_card_html(p: dict[str, Any], *, paid_label: str = "paid link") -> str:
-    title = p.get("shortTitle") or p.get("title") or "E-reader"
-    slug = p.get("slug") or ""
-    detail = f"/picks/{_esc(slug)}"
-    img = p.get("imageUrl") or ""
-    blurb = p.get("blurb") or ""
-    amazon = p.get("amazonUrl") or "#"
-    badge = p.get("badge") or ""
-    badge_html = f'<span class="badge badge--gold">{_esc_text(badge)}</span>' if badge else ""
-    return f"""
-<article class="product product--affiliate" data-ssr-card="1">
-  <a class="product__link" href="{detail}" aria-label="View {_esc(title)}">
-    <div class="product__media pick-media">{badge_html}
-      <img src="{_esc(img)}" alt="{_esc(title)}" width="600" height="600" loading="lazy">
-    </div>
-  </a>
-  <div class="product__body">
-    <p class="product__cat">{_esc_text(p.get("merchant") or "Amazon")} · {_esc_text(p.get("category") or "E-readers")}</p>
-    <h3><a href="{detail}">{_esc_text(title)}</a></h3>
-    <p class="product__blurb-sm">{_esc_text(blurb)}</p>
-    <p class="product__price product__price--note"><strong>See price on Amazon</strong></p>
-    <a class="add-to-cart" href="{_esc(amazon)}" target="_blank" rel="nofollow sponsored noopener">View on Amazon</a>
-    <p class="paid-link-note"><span class="paid-link">({_esc_text(paid_label)})</span> · Affiliate</p>
-  </div>
-</article>"""
-
-
 # Christmas shelf on the home page, in display order. The section is
 # dropped from the page when none of these are live.
 CHRISTMAS_SLUGS = (
@@ -1491,36 +1240,19 @@ def inject_home_seo(
     html_doc: str,
     *,
     products: list[dict[str, Any]],
-    affiliate: dict[str, Any] | None = None,
     categories: list[dict[str, Any]] | None = None,
 ) -> str:
     """Inject crawlable, current product data into the homepage template."""
     if '<body data-home-design="atelier">' in html_doc:
         return _inject_home_edit(html_doc, products)
-    aff = affiliate or load_affiliate_catalog()
-    paid = aff.get("paidLinkLabel") or "paid link"
     prod_html = "\n".join(_product_card_html(p) for p in products)
-    aff_html = "\n".join(
-        _affiliate_card_html(p, paid_label=paid) for p in (aff.get("products") or [])
-    )
     cat_html = "\n".join(_category_tile_html(c) for c in (categories or []))
-    embed = (
-        f'<script type="application/json" id="affiliate-products-json">'
-        f"{json.dumps(aff, ensure_ascii=False)}"
-        f"</script>"
-    )
 
     html_doc = _inject_christmas_shelf(html_doc, products)
     if prod_html:
         html_doc = html_doc.replace(
             '<p class="catalog-loading" id="catalogLoading">Loading products…</p>',
             prod_html,
-            1,
-        )
-    if aff_html:
-        html_doc = html_doc.replace(
-            '<p class="catalog-loading">Loading e-reader picks…</p>',
-            aff_html,
             1,
         )
     if cat_html:
@@ -1535,13 +1267,6 @@ def inject_home_seo(
             1,
         )
 
-    # Embed affiliate JSON before affiliate-data.js
-    if "affiliate-products-json" not in html_doc:
-        html_doc = html_doc.replace(
-            '<script src="affiliate-data.js',
-            embed + '\n<script src="affiliate-data.js',
-            1,
-        )
     # Ensure absolute OG / logo URLs when template used relative paths
     html_doc = html_doc.replace(
         'content="assets/og-default.jpg"',

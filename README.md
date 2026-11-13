@@ -87,7 +87,7 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Production VPS runs the same tree un
 
 - Catalog + categories: `index.html`, `app.js`
 - PDP: pretty URLs `/products/{slug}` (legacy `product.html?slug=` 301s), `product.js`
-- Affiliate picks: `/picks/{slug}` (legacy `pick.html?slug=` 301s)
+- Removed Amazon picks: `/picks/{slug}` and `pick.html` 301 to `/guides/best-ereader-accessories/`
 - Sitemap: dynamic `GET /sitemap.xml` from FastAPI (live catalog + lastmod)
 - Brand assets: optimized `assets/logo.webp` (CSS), `assets/og-default.jpg` (1200×630 OG/Twitter), favicons
   - Rebuild: `python server/scripts/optimize_brand_assets.py`
