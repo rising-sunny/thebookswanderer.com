@@ -160,6 +160,7 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                 "tbw_get_prodigi_product", "tbw_quote_shipping",
                 "tbw_supplier_get", "tbw_supplier_write",
                 "tbw_draft_from_etsy", "tbw_publish_to_etsy",
+                "tbw_seo_query", "tbw_seo_inspect_url",
             })
             writers = {"tbw_create_draft", "tbw_update_draft", "tbw_publish_draft",
                        "tbw_delete_draft", "tbw_unpublish_product", "tbw_supplier_write",
@@ -177,6 +178,39 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertNotIn("a" * 40, serialized)
             self.assertNotIn("s" * 40, serialized)
+
+    async def test_search_console_tools_call_the_local_read_only_service(self):
+        seen = []
+        def handler(request):
+            seen.append(request)
+            if request.url.path == "/inspect":
+                return httpx2.Response(500, json={"detail": "not available"})
+            return httpx2.Response(200, json={"rows": []})
+        real = httpx2.AsyncClient
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch("tbw_mcp.httpx2.AsyncClient",
+                      lambda **kw: real(transport=httpx2.MockTransport(handler), **{k: v for k, v in kw.items() if k != "transport"})):
+            server = create_server(config(), "a" * 40, temporary)
+            async with Client(server) as client:
+                await client.call_tool("tbw_seo_query", {
+                    "start_date": "2026-10-16", "end_date": "2026-11-12",
+                    "dimensions": ["query"], "page": "reading-challenge-2027", "row_limit": 20,
+                })
+                with self.assertRaises(ToolError):
+                    await client.call_tool("tbw_seo_inspect_url", {"url": "https://thebookswanderer.com/x"})
+                for bad in ({"url": "https://example.com/x"}, {"url": "http://thebookswanderer.com/x"}):
+                    with self.assertRaises(Exception):
+                        await client.call_tool("tbw_seo_inspect_url", bad)
+                with self.assertRaises(Exception):
+                    await client.call_tool("tbw_seo_query", {"dimensions": ["email"]})
+                with self.assertRaises(Exception):
+                    await client.call_tool("tbw_seo_query", {"row_limit": 1000})
+        self.assertEqual([str(r.url) for r in seen], ["http://127.0.0.1:8881/query", "http://127.0.0.1:8881/inspect"])
+        self.assertEqual(seen[0].headers["Authorization"], "Bearer " + "a" * 40)
+        self.assertEqual(json.loads(seen[0].content), {
+            "dimensions": ["query"], "row_limit": 20, "start_date": "2026-10-16",
+            "end_date": "2026-11-12", "page": "reading-challenge-2027",
+        })
 
     async def test_draft_tools_can_pick_variants(self):
         requests = []
