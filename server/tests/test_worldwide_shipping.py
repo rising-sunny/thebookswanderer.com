@@ -76,6 +76,25 @@ class Quotes(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(r['logistic_name'],'Lulu GROUND')
         self.assertEqual(r['legs'][0]['shipping_level'],'GROUND')
 
+    async def test_lulu_quote_sends_the_recipient_tax_id_to_the_cost_calculation(self):
+        sent=[]
+        async def api(method,path,json=None):
+            if path=='/shipping-options/':
+                return [{'level':'MAIL','cost_excl_tax':'8'}]
+            addr=json['shipping_address']
+            sent.append((addr.get('country_code'),addr.get('recipient_tax_id')))
+            if addr.get('country_code')=='MX' and not addr.get('recipient_tax_id'):
+                raise lulu.LuluError('POST /print-job-cost-calculations/: HTTP 400',{'errors':'recipient_tax_id'})
+            return {'total_cost_incl_tax':'9' if addr.get('country_code')=='US' else '14'}
+        mx={'street1':'Av Juarez 1','city':'Ciudad de Mexico','state':'CMX','postcode':'06000','phone_number':'+525555550100','recipient_tax_id':'XAXX010101000'}
+        with patch.object(shipping,'lulu_line',return_value={'page_count':56,'quantity':1,'pod_package_id':'package'}),patch.object(lulu,'request',side_effect=api):
+            r=await shipping.quote([item('lulu',price=24.99)],'MX',mx)
+            self.assertTrue(r['available'])
+            self.assertIn(('MX','XAXX010101000'),sent)
+            shipping._cache.clear()
+            with self.assertRaises(shipping.QuoteError):
+                await shipping.quote([item('lulu',price=24.99)],'MX',{k:v for k,v in mx.items() if k!='recipient_tax_id'})
+
     async def test_partial_address_is_an_estimate_and_digital_needs_no_delivery(self):
         with patch.object(printify,'shipping_cost',AsyncMock(return_value=10)):
             r=await shipping.quote([item()], 'IN', {})
