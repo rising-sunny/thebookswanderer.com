@@ -375,5 +375,21 @@
       "/assets/products/christmas-time-journal/wrap.jpg"
     ],
     "active": false
+  },
+  {
+    "slug": "reading-challenge-journal-2027",
+    "supplier": "lulu",
+    "lulu_package": "0583X0827FCSTDPB080CW444GXX",
+    "title": "The 2027 Reading Challenge Journal: A5 Paperback, 52-Book Tracker, Bingo and Reviews",
+    "price_usd": 24.99,
+    "category": "books",
+    "description": "A printed journal for the 2027 reading challenge: fifty-two prompts, one a week, none of them assigned. A checklist of all 52 prompts, a bookshelf to colour (one spine per book), four bingo cards, a page for every month and a review for each of the 52 books.\n\nWhat's inside (56 full-colour pages):\n• Cover, a name page and how to use the journal\n• Goals for the year, and the 52-prompt checklist over two pages\n• The bookshelf tracker: colour one spine for every book you finish\n• Four bingo cards with different mixes of prompts\n• Twelve monthly logs for titles, pages and stars\n• 26 review pages, two books to a page: 52 reviews in all\n• To-be-read and did-not-finish lists, a page of lines worth keeping, the year in books and two pages of notes\n\nA5 (148 × 210 mm) perfect-bound paperback, full-colour pages on coated white paper. Printed to order and shipped in 3–5 business days, then 1–2 weeks by post. The same pages as our printable 2027 Reading Challenge Kit, in a book you can carry.\n\nFree shipping to the United States, United Kingdom, Canada, Australia, Germany, France, the Netherlands and Ireland. English edition.",
+    "image_url": "/assets/products/reading-challenge-journal-2027/main.jpg",
+    "gallery": [
+      "/assets/products/reading-challenge-journal-2027/open.jpg",
+      "/assets/products/reading-challenge-journal-2027/pages.jpg",
+      "/assets/products/reading-challenge-journal-2027/wrap.jpg"
+    ],
+    "active": false
   }
 ]
