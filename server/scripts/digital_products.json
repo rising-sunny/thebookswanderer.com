@@ -360,5 +360,17 @@
       "/assets/products/book-club-kit/host.jpg"
     ],
     "active": true
+  },
+  {
+    "slug": "christmas-time-journal",
+    "supplier": "lulu",
+    "lulu_package": "0583X0827BWSTDCW060UW444MXX",
+    "title": "Christmas Time: A Hardcover Journal, A5, Ruled Pages",
+    "price_usd": 34.99,
+    "category": "books",
+    "description": "A hardcover journal for the books, the notes and the quiet hours of the season. The cover carries \"Christmas Time,\" a Victorian wood engraving from the Illustrated London News of 19 December 1857, set on forest green with a gold frame.\n\nWhat's inside (120 pages):\n• Title page and a page for your name\n• 117 ruled pages with a wider inside margin, for reading notes, quotes, lists and letters\n\nA5 (148 × 210 mm) casebound hardcover, matte laminated cover, black-and-white interior on uncoated white paper. Printed to order and shipped in 3–5 business days, then 1–2 weeks by post.\n\nFree shipping to the United States, United Kingdom, Canada, Australia, Germany, France, the Netherlands and Ireland.\n\nCover art: wood engraving by Harvey Orrin Smith after W. Hemsley, 1857. The Metropolitan Museum of Art, Open Access.",
+    "image_url": "/assets/products/christmas-time-journal/main.jpg",
+    "gallery": [],
+    "active": false
   }
 ]
