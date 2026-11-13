@@ -30,6 +30,7 @@
   {"id": "annotated-pp-tote-gallery", "script": "import_printify_products.py", "args": ["--slug", "annotated-pride-and-prejudice-tote", "--no-pin"]},
   {"id": "reading-challenge-kit-create", "script": "digital_products.py", "args": ["--apply", "reading-challenge-kit-2027"]},
   {"id": "pp-watch-party-kit-create", "script": "digital_products.py", "args": ["--apply", "pride-and-prejudice-watch-party-kit"]},
+  {"id": "book-club-kit-create", "script": "digital_products.py", "args": ["--apply", "the-book-club-kit"]},
   {"id": "math-art-book-standard-create", "script": "digital_products.py", "args": ["--apply", "math-art-coffee-table-book-standard"]},
   {"id": "math-art-book-standard-link", "script": "link_print_files.py", "args": ["math-art-coffee-table-book-standard", "math-art-book-interior.pdf", "math-art-book-cover.pdf"]},
   {"id": "math-art-book-standard-validate", "script": "validate_lulu_files.py", "args": ["math-art-coffee-table-book-standard"]},
