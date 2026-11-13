@@ -215,6 +215,9 @@ async def _quote(cart, country, address=None, *, free_us=True):
                 if complete:
                     rate_addr = lulu.address("Rate estimate", address.get("street1", ""), address.get("street2", ""),
                         address.get("city", ""), address.get("state", ""), country, address.get("postcode", ""), address.get("phone_number", ""))
+                    # Brazil, Chile and Mexico: Lulu's cost calculation rejects the address without the recipient's tax id.
+                    if (address.get("recipient_tax_id") or "").strip():
+                        rate_addr["recipient_tax_id"] = address["recipient_tax_id"].strip()
                     async def cost(dest, ship_level):
                         return await lulu.request("POST", "/print-job-cost-calculations/", json={"line_items": lines, "shipping_address": dest, "shipping_option": ship_level})
                     calc = await cached(["lulu-cost", lines, rate_addr, level], lambda: cost(rate_addr, level))

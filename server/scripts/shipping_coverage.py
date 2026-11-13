@@ -11,6 +11,7 @@ messages. Needs the store's .env on the server.
   python scripts/shipping_coverage.py --supplier printify --limit 5
   python scripts/shipping_coverage.py --slug kerstnacht-poster
   python scripts/shipping_coverage.py --countries US,GB,ES,AR,MX,BR
+  python scripts/shipping_coverage.py --why MX,BR,AR,CL         # why Lulu will not quote these: its own error codes
 """
 from __future__ import annotations
 
@@ -78,7 +79,64 @@ async def one(product, variant, cc):
         return "err", 0.0, type(exc).__name__
 
 
+async def why(countries) -> int:
+    """Ask Lulu directly, for the first active Lulu book, why a country does not quote. Prints only error code/path/message."""
+    import re
+    from services import lulu
+    db = SessionLocal()
+    product = next((p for p in db.query(Product).filter(Product.active.is_(True), Product.supplier == "lulu").order_by(Product.id).all()
+                    if any(v.active for v in (p.variants or []))), None)
+    if not product:
+        print("no active Lulu book with a variant"); return 1
+    variant = next(v for v in product.variants if v.active)
+    lines = [shipping.lulu_line(product, variant, 1)]
+    print(f"probe with {product.slug}\n")
+
+    def short(exc):
+        payload = getattr(exc, "payload", None)
+        found = []
+        def walk(x):
+            if isinstance(x, dict):
+                if "code" in x and ("path" in x or "message" in x):
+                    found.append(f"{x.get('code')}:{x.get('path','')}:{str(x.get('message',''))[:70]}")
+                for v in x.values(): walk(v)
+            elif isinstance(x, list):
+                for v in x: walk(v)
+        walk(payload)
+        text = "; ".join(found) or re.sub(r"https?://\S+", "[url]", str(payload)[:200])
+        return f"{str(exc).split(':')[0]} -> {text}"
+
+    for cc in countries:
+        s, city, state, zipc = SAMPLE[cc]
+        base = {"name": "Rate estimate", "street1": s, "city": city, "postcode": zipc, "country_code": cc, "phone_number": PHONE}
+        print(f"== {cc}")
+        for label, extra in (("state as typed", {"state_code": state} if state else {}),
+                             ("no state", {}),
+                             ("with tax id", {**({"state_code": state} if state else {}), "recipient_tax_id": "12345678901"})):
+            addr = {**base, **extra}
+            try:
+                opts = await lulu.request("POST", "/shipping-options/", {"currency": "USD", "line_items": lines, "shipping_address": addr})
+                levels = ",".join(sorted({o.get("level") for o in (opts or []) if o.get("level")})) or "none"
+                print(f"  shipping-options [{label}]: ok, levels {levels}")
+            except lulu.LuluError as exc:
+                print(f"  shipping-options [{label}]: {short(exc)}")
+            try:
+                await lulu.request("POST", "/print-job-cost-calculations/", {"line_items": lines, "shipping_address": addr, "shipping_option": "MAIL"})
+                print(f"  cost calculation [{label}]: ok")
+            except lulu.LuluError as exc:
+                print(f"  cost calculation [{label}]: {short(exc)}")
+            await asyncio.sleep(0.4)
+    db.close()
+    return 0
+
+
 async def main(args) -> int:
+    if args.why:
+        codes = [c.strip().upper() for c in args.why.split(",") if c.strip()]
+        bad = [c for c in codes if c not in SAMPLE]
+        if bad:
+            print("no sample address for:", ", ".join(bad)); return 2
+        return await why(codes)
     countries = [c.strip().upper() for c in args.countries.split(",") if c.strip()] if args.countries else list(SAMPLE)
     bad = [c for c in countries if c not in SAMPLE]
     if bad:
@@ -121,5 +179,5 @@ async def main(args) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int)
+    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int); ap.add_argument("--why")
     raise SystemExit(asyncio.run(main(ap.parse_args())))
