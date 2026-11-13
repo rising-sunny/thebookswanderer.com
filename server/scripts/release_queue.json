@@ -56,5 +56,6 @@
   {"id": "christmas-time-journal-install", "script": "install_print_bundle.py", "args": ["christmas-time-journal", "--activate"]},
   {"id": "kerstnacht-poster-import", "script": "import_printify_products.py", "args": ["--slug", "kerstnacht-poster", "--no-pin"]},
   {"id": "reading-challenge-journal-create", "script": "digital_products.py", "args": ["--apply", "reading-challenge-journal-2027"]},
-  {"id": "reading-challenge-journal-validate", "script": "install_print_bundle.py", "args": ["reading-challenge-journal-2027"]}
+  {"id": "reading-challenge-journal-validate", "script": "install_print_bundle.py", "args": ["reading-challenge-journal-2027"]},
+  {"id": "reading-challenge-journal-activate", "script": "install_print_bundle.py", "args": ["reading-challenge-journal-2027", "--activate"]}
 ]
