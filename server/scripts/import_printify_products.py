@@ -261,6 +261,27 @@ PRODUCTS = [
                    "16\u2033 x 20\u2033": 29.99, "16\u2033 x 24\u2033": 31.99, "18\u2033 x 24\u2033": 31.99,
                    "20\u2033 x 30\u2033": 34.99, "24\u2033 x 36\u2033": 42.99, "30\u2033 x 40\u2033": 74.99},
     },
+    {
+        # created by scripts/create_printify_poster.py as a copy of the annotated poster (same blueprint and provider)
+        "slug": "kerstnacht-poster",
+        "printify_id": "6af72615bac43e873e075609",
+        "title": "Christmas Eve (Kerstnacht) Poster, Van Hoytema 1894 Lithograph, Matte Print",
+        "category": "decor",
+        "description": (
+            "Two snowy owls, a flight of geese and a star over a frozen holly wood: \"Christmas Eve\" "
+            "(Kerstnacht), a lithograph by Theodorus van Hoytema from 1894, in the public domain and "
+            "reproduced from the Metropolitan Museum of Art's Open Access collection. Museum-style matte "
+            "paper on a warm paper tone with a small caption; sizes from 11 x 14 to 18 x 24 in; frame not "
+            "included. Printed to order in the US; check your destination for delivery availability and "
+            "the total."
+        ),
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # 18 x 24, same blueprint as the annotated poster
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99, "12\u2033 x 18\u2033": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "16\u2033 x 24\u2033": 31.99, "18\u2033 x 24\u2033": 31.99},
+    },
 ]
 
 
