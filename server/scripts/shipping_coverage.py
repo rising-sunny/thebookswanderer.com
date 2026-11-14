@@ -13,6 +13,7 @@ messages. Needs the store's .env on the server.
   python scripts/shipping_coverage.py --countries US,GB,ES,AR,MX,BR
   python scripts/shipping_coverage.py --why MX,BR,AR,CL         # why Lulu will not quote these: its own error codes
   python scripts/shipping_coverage.py --why-printify letters-from-the-library --countries US,CA,GB,DE,AU
+  python scripts/shipping_coverage.py --why-cj baker-street-book-nook-kit      # CJ's own reply for one product
 """
 from __future__ import annotations
 
@@ -157,7 +158,35 @@ async def why_printify(slug, countries) -> int:
     return 0
 
 
+async def why_cj(slug) -> int:
+    """Ask CJ directly why one product will not quote: its own reply for the origins and a few destinations."""
+    import re
+    from services import cj
+    db = SessionLocal()
+    p = db.query(Product).filter(Product.slug == slug, Product.supplier == "cj").first()
+    if not p:
+        print("no CJ product with that slug"); return 1
+    v = next((v for v in (p.variants or []) if v.active), None)
+    vid = (v.cj_vid if v else p.cj_vid) or ""
+    print(f"probe with {p.slug}: variant id {vid or '(none)'}, stored origin {p.from_country or '(none)'}, active={bool(p.active)}\n")
+    for origin in dict.fromkeys([(p.from_country or "CN").upper(), "CN", "US"]):
+        for dest in ("US", "GB", "DE"):
+            try:
+                opts = await cj.freight_calculate(start_country=origin, end_country=dest, products=[{"vid": vid, "quantity": 1}],
+                                                  zip_code="20540" if dest == "US" else None)
+                names = ", ".join(sorted({str(o.get("logisticName")) for o in (opts or [])})) or "no options"
+                print(f"{origin}->{dest}: {len(opts or [])} option(s): {names}")
+            except cj.CJError as exc:
+                detail = re.sub(r"https?://\S+", "[url]", str(getattr(exc, "payload", ""))[:240])
+                print(f"{origin}->{dest}: {str(exc)[:90]} | {detail}")
+            await asyncio.sleep(0.5)
+    db.close()
+    return 0
+
+
 async def main(args) -> int:
+    if args.why_cj:
+        return await why_cj(args.why_cj)
     if args.why_printify:
         codes = [c.strip().upper() for c in (args.countries or "US,CA,GB,DE,AU,MX").split(",") if c.strip()]
         bad = [c for c in codes if c not in SAMPLE]
@@ -212,5 +241,5 @@ async def main(args) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int); ap.add_argument("--why"); ap.add_argument("--why-printify", dest="why_printify")
+    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int); ap.add_argument("--why"); ap.add_argument("--why-printify", dest="why_printify"); ap.add_argument("--why-cj", dest="why_cj")
     raise SystemExit(asyncio.run(main(ap.parse_args())))
