@@ -169,7 +169,10 @@ async def _quote(cart, country, address=None, *, free_us=True):
                     baseline = await cached(["printify", lines, "US"], lambda: printify.shipping_cost(lines, "US"))
             except printify.PrintifyError as exc:
                 # A transport/auth error must not be presented as a permanent country exclusion.
-                if re.search(r"not (?:supported|available)|cannot ship|can't ship|no shipping|unable to ship|shipping.*unavailable", str(exc), re.I):
+                # Printify puts the reason in the payload ("Validation failed." is only the headline): a provider with
+                # no shipping profile for the country answers "Cannot find line items for requested shipping".
+                reason = f"{exc} {getattr(exc, 'payload', '')}"
+                if re.search(r"not (?:supported|available)|cannot ship|can't ship|no shipping|unable to ship|shipping.*unavailable|cannot find line items for requested shipping", reason, re.I):
                     raise unavailable(names) from None
                 raise QuoteError("Delivery could not be confirmed for these items and destination. Please check your address or try again.", products=names) from None
             retail = surcharge(actual, baseline, country, free_us)
