@@ -12,6 +12,7 @@ messages. Needs the store's .env on the server.
   python scripts/shipping_coverage.py --slug kerstnacht-poster
   python scripts/shipping_coverage.py --countries US,GB,ES,AR,MX,BR
   python scripts/shipping_coverage.py --why MX,BR,AR,CL         # why Lulu will not quote these: its own error codes
+  python scripts/shipping_coverage.py --why-printify letters-from-the-library --countries US,CA,GB,DE,AU
 """
 from __future__ import annotations
 
@@ -130,7 +131,39 @@ async def why(countries) -> int:
     return 0
 
 
+async def why_printify(slug, countries) -> int:
+    """Ask Printify directly why one product will not quote for a country. Prints only its error text, trimmed."""
+    import re
+    from services import printify
+    db = SessionLocal()
+    p = db.query(Product).filter(Product.slug == slug, Product.supplier == "printify").first()
+    v = next((v for v in (p.variants if p else []) if v.active), None)
+    if not p or not v:
+        print("no active Printify product with that slug and a variant"); return 1
+    lines = [{"product_id": p.printify_product_id, "variant_id": int(v.printify_variant_id), "quantity": 1}]
+    print(f"probe with {p.slug} (variant {v.name})\n")
+    for cc in countries:
+        a = address(cc)
+        addr = {"country": cc, "region": a["state"] if cc == "US" else a["state"], "zip": a["postcode"], "city": a["city"], "address1": a["street1"]}
+        addr = {k: val for k, val in addr.items() if val}
+        try:
+            cost = await printify.shipping_cost(lines, cc, addr)
+            print(f"{cc}: ok, standard {cost:.2f}")
+        except printify.PrintifyError as exc:
+            detail = re.sub(r"https?://\S+", "[url]", str(getattr(exc, "payload", ""))[:260])
+            print(f"{cc}: {str(exc)[:90]} | {detail}")
+        await asyncio.sleep(0.4)
+    db.close()
+    return 0
+
+
 async def main(args) -> int:
+    if args.why_printify:
+        codes = [c.strip().upper() for c in (args.countries or "US,CA,GB,DE,AU,MX").split(",") if c.strip()]
+        bad = [c for c in codes if c not in SAMPLE]
+        if bad:
+            print("no sample address for:", ", ".join(bad)); return 2
+        return await why_printify(args.why_printify, codes)
     if args.why:
         codes = [c.strip().upper() for c in args.why.split(",") if c.strip()]
         bad = [c for c in codes if c not in SAMPLE]
@@ -179,5 +212,5 @@ async def main(args) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int); ap.add_argument("--why")
+    ap.add_argument("--supplier"); ap.add_argument("--slug"); ap.add_argument("--countries"); ap.add_argument("--limit", type=int); ap.add_argument("--why"); ap.add_argument("--why-printify", dest="why_printify")
     raise SystemExit(asyncio.run(main(ap.parse_args())))
