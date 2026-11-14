@@ -58,6 +58,20 @@ class Quotes(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(error.exception.reason,'no_route')
         self.assertEqual(error.exception.products,['A reading accessory'])
 
+    async def test_printify_country_without_a_shipping_profile_is_no_route_not_a_bad_address(self):
+        no_profile=printify.PrintifyError('Validation failed.',{'errors':{'reason':'Failed to create shipping parameters. Cannot find line items for requested shipping.'}})
+        with patch.object(printify,'shipping_cost',AsyncMock(side_effect=no_profile)):
+            with self.assertRaises(shipping.QuoteError) as error:
+                await shipping.quote([item()], 'GB', ADDR)
+        self.assertEqual((error.exception.status,error.exception.reason),(400,'no_route'))
+        self.assertEqual(error.exception.products,['A reading accessory'])
+        shipping._cache.clear()
+        other=printify.PrintifyError('Validation failed.',{'errors':{'reason':'Invalid postal code'}})
+        with patch.object(printify,'shipping_cost',AsyncMock(side_effect=other)):
+            with self.assertRaises(shipping.QuoteError) as error:
+                await shipping.quote([item()], 'GB', ADDR)
+        self.assertNotEqual(error.exception.reason,'no_route')
+
     async def test_provider_failure_is_not_permanent_country_exclusion(self):
         with patch.object(shipping.cj,'freight_calculate',AsyncMock(side_effect=shipping.cj.CJError('temporarily down'))):
             with self.assertRaises(shipping.QuoteError) as error:
