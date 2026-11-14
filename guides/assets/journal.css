@@ -1197,3 +1197,61 @@ html[lang="es"] .j-pick--own h4::after {
 .j-prose .guide-grid {
     padding-left: 0;
 }
+
+/* Free-printable sign-up box (guides about the 2027 reading challenge) */
+.j-signup {
+    margin: var(--sp-7) 0;
+    padding: var(--sp-5);
+    border: 1px solid rgba(43, 82, 64, 0.18);
+    border-radius: var(--r-lg);
+    background: #fff;
+}
+
+.j-signup h3 {
+    margin: 0 0 var(--sp-2);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.7rem);
+    line-height: 1.2;
+    color: var(--green-900);
+}
+
+.j-signup p {
+    margin: 0 0 var(--sp-3);
+    color: var(--ink-muted);
+}
+
+.j-signup form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0 0 var(--sp-2);
+}
+
+.j-signup input[type="email"] {
+    flex: 1 1 14rem;
+    min-width: 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid rgba(43, 82, 64, 0.35);
+    border-radius: var(--r-md);
+    font: inherit;
+    color: var(--green-900);
+    background: #fff;
+}
+
+.j-signup .btn {
+    flex: 0 0 auto;
+}
+
+.j-signup__status {
+    min-height: 1.2em;
+    margin: 0 0 var(--sp-2);
+    font-size: 0.95rem;
+    color: var(--green-900);
+}
+
+.j-signup__fine {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}

@@ -30,7 +30,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css?v=32">
-    <link rel="stylesheet" href="/guides/assets/journal.css?v=5">
+    <link rel="stylesheet" href="/guides/assets/journal.css?v=6">
 
     <script type="application/ld+json">
 {
@@ -225,6 +225,18 @@
                 </div>
             </aside>
 
+            <aside class="j-signup" aria-labelledby="signupTitle">
+                <h3 id="signupTitle">Get the 2027 challenge as a free printable</h3>
+                <p>All 52 prompts on one page with a line for each title, plus a page to log your year month by month. We email the PDF straight away.</p>
+                <form data-guide-signup data-lang="en" data-source="guide-compared-2027" novalidate>
+                    <label class="visually-hidden" for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email" required>
+                    <button class="btn" type="submit">Send me the PDF</button>
+                </form>
+                <p class="j-signup__status" role="status" aria-live="polite"></p>
+                <p class="j-signup__fine">You also join our monthly reading letter: one a month at most, one click to leave.</p>
+            </aside>
+
             <p>We will update this page when the Popsugar and Buzzword 2027 lists appear, and the date at the top will change.</p>
 
             <h2 id="sources">Sources</h2>
@@ -332,6 +344,7 @@
 })();
 </script>
 <script src="/track.js?v=7" defer></script>
+<script src="/guides/assets/guide-signup.js?v=1" defer></script>
 <script src="/cart.js?v=4" defer></script>
 </body>
 </html>
