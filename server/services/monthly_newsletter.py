@@ -23,6 +23,49 @@ TIPS = {
  'es': ['Vuelve a un libro que subrayaste hace años.', 'Intercambia una recomendación con alguien cercano.', 'Haz espacio para diez páginas tranquilas.', 'Prueba una historia ambientada en un lugar que no conoces.', 'Lee un capítulo al aire libre.', 'Guarda una frase que te haya hecho detenerte.', 'Elige un libro corto para una tarde larga.', 'Vuelve a un autor que te gustaba.', 'Empieza un cuaderno de descubrimientos lectores.', 'Anota un fragmento junto a su número de página.', 'Regala un libro con una nota escrita a mano.', 'Recuerda una historia que se haya quedado contigo.']}
 TEMPLATES = Environment(loader=FileSystemLoader(str(Path(__file__).resolve().parents[1]/'templates')), autoescape=select_autoescape(['html']))
 
+# Hand-written issues. A period listed here replaces the generic copy and pins the products;
+# any other month keeps the rotating shelf above. Prices come from the catalogue, never from here.
+EDITIONS = {'2026-12': {
+ 'en': {
+  'subject': 'Your 2027 reading year, still blank',
+  'preheader': 'Three ten-minute rituals, one book to start on January 1st, and a free challenge.',
+  'heading': 'A reading year, still unwritten',
+  'intro': "December is the month of lists: gifts, groceries, regrets, resolutions. So here is one more, and it is the nicest of them all: the books you haven't read yet. Nothing crossed off, nothing abandoned, every page still ahead of you. Let's get it ready before the year turns.",
+  'rituals_title': 'Three ten-minute rituals for a good start',
+  'rituals': [
+   ('Choose your first book.', "Not the best book on your shelf; the one you are actually looking forward to. Put it on top of the pile now, so January 1st already has a yes waiting."),
+   ('Pick a number, not a verdict.', 'Fifty-two is one a week. Twenty-six is one every other week. Twelve is one a month, and perfectly respectable. Any number you finish beats the one you abandon in March.'),
+   ('Give your list a home.', 'A list that lives in a drawer gets forgotten; one that sits next to your reading chair gets finished. Pin it up, tuck it into a notebook, or give it a book of its own.')],
+  'feature_intro': 'If a book of its own sounds right, this is the one we made for it:',
+  'feature_slug': 'reading-challenge-journal-2027',
+  'feature_title': 'The 2027 Reading Challenge Journal',
+  'feature_blurb': 'The challenge, bound. The 52 prompts as a checklist, a bookshelf where you colour one spine for every book you finish, four bingo cards, a page for every month and room to review all fifty-two books. A5 paperback, 56 full-colour pages. It is printed to order (a few working days, then shipping), so order a little ahead if you want it in your hands on January 1st.',
+  'feature_cta': 'See the journal',
+  'shelf': ['readers-2027-desk-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
+  'closing': 'One small favour: tell us the first book of 2027. Just hit reply. It reaches a real person, and we read every one.'},
+ 'es': {
+  'subject': 'Tu año de lectura 2027, todavía en blanco',
+  'preheader': 'Tres rituales de diez minutos, un libro para empezar el 1 de enero y un reto gratis.',
+  'heading': 'Un año de lectura todavía por escribir',
+  'intro': 'Diciembre es el mes de las listas: regalos, compras, arrepentimientos, propósitos. Así que aquí va una más, y es la más bonita de todas: la de los libros que aún no has leído. Nada tachado, nada abandonado, todas las páginas por delante. Vamos a dejarla lista antes de que cambie el año.',
+  'rituals_title': 'Tres rituales de diez minutos para empezar bien',
+  'rituals': [
+   ('Elige tu primer libro.', 'No el mejor de tu estantería, sino el que de verdad te apetece leer. Ponlo ahora encima de la pila y el 1 de enero ya tendrá un sí esperándote.'),
+   ('Elige un número, no una sentencia.', 'Cincuenta y dos es un libro por semana. Veintiséis, uno cada quince días. Doce es uno al mes y es perfectamente digno. Cualquier cifra que termines vale más que la que abandonas en marzo.'),
+   ('Dale un hogar a tu lista.', 'Una lista guardada en un cajón se olvida; una junto a tu sillón de lectura se termina. Cuélgala, métela en una libreta o dale un libro propio.')],
+  'feature_intro': 'Si lo de un libro propio te suena bien, esto es lo que hicimos para eso:',
+  'feature_slug': 'reading-challenge-journal-2027',
+  'feature_title': 'El diario del reto de lectura 2027',
+  'feature_blurb': 'El reto, encuadernado. Las 52 consignas como lista de comprobación, una estantería donde coloreas un lomo por cada libro que termines, cuatro cartones de bingo, una página para cada mes y espacio para reseñar los cincuenta y dos libros. Tapa blanda A5, 56 páginas a todo color (las páginas están en inglés). Se imprime bajo pedido (unos días hábiles y luego el envío), así que pídelo con algo de margen si lo quieres en tus manos el 1 de enero.',
+  'feature_cta': 'Ver el diario',
+  'shelf': ['readers-2027-desk-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
+  'closing': 'Un pequeño favor: cuéntanos cuál será tu primer libro de 2027. Solo responde a este correo; lo lee una persona de verdad y los leemos todos.'}}}
+
+def _card(p,lang,period):
+    item=i18n.product(p,lang); image=item.get('image_url') or '/assets/logo-email.png'
+    if image.startswith('/'):image=PUBLIC_BASE+image
+    return {'title':item['title'],'image':image,'url':PUBLIC_BASE+('/es' if lang=='es' else '')+'/products/'+item['slug']+'?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_'+period}
+
 def validate_period(period):
     if not re.fullmatch(r'20\d{2}-(?:0[1-9]|1[0-2])',period):
         raise ValueError('Invalid monthly period')
@@ -48,9 +91,22 @@ def draft(lang, period, unsubscribe_url='', products=None):
             image=item.get('image_url') or '/assets/logo-email.png'
             if image.startswith('/'):image=PUBLIC_BASE+image
             items.append({'title':item['title'],'image':image,'url':PUBLIC_BASE+('/es' if es else '')+'/products/'+item['slug']+'?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_'+period})
+    ed=EDITIONS.get(period,{}).get(lang); extra={}; pre_text=[]; post_text=[]
+    if ed:
+        by_slug={p['slug']:p for p in products}
+        subject=ed['subject']+' · The Books Wanderer'; heading=ed['heading']; intro=ed['intro']
+        pinned=[_card(by_slug[s],lang,period) for s in ed['shelf'] if s in by_slug]
+        if pinned: items=pinned
+        extra={'preheader':ed['preheader'],'rituals_title':ed['rituals_title'],'rituals':ed['rituals'],'feature_intro':ed['feature_intro'],'closing':ed['closing']}
+        pre_text=[ed['rituals_title']]+[f'{i}. {t} {b}' for i,(t,b) in enumerate(ed['rituals'],1)]
+        feat=by_slug.get(ed['feature_slug'])
+        if feat:
+            extra['feature']=dict(_card(feat,lang,period),title=ed['feature_title'],blurb=ed['feature_blurb'],cta=ed['feature_cta'],price='${:.2f}'.format(feat['price_usd']))
+            pre_text+=[ed['feature_intro'],extra['feature']['title']+' — '+extra['feature']['price']+'\n'+ed['feature_blurb']+'\n'+extra['feature']['url']]
+        post_text=[ed['closing']]
     resource=PUBLIC_BASE+('/reto-de-lectura-2027/' if es else '/reading-challenge-2027/')+'?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_'+period
-    context={'lang':lang,'subject':subject,'heading':heading,'intro':intro,'month':f'{name} {year}','tip':TIPS[lang][month-1],'items':items,'resource':resource,'unsubscribe_url':unsubscribe_url,'base':PUBLIC_BASE}
-    text='\n\n'.join([heading,context['month'],intro,context['tip']]+[item['title']+'\n'+item['url'] for item in items]+[('Reto de Lectura 2027 gratuito: ' if es else 'Free 2027 Reading Challenge: ')+resource,('Darte de baja: ' if es else 'Unsubscribe: ')+unsubscribe_url])
+    context={'lang':lang,'subject':subject,'heading':heading,'intro':intro,'month':f'{name} {year}','tip':TIPS[lang][month-1],'items':items,'resource':resource,'unsubscribe_url':unsubscribe_url,'base':PUBLIC_BASE,**extra}
+    text='\n\n'.join([heading,context['month'],intro]+pre_text+[context['tip']]+[item['title']+'\n'+item['url'] for item in items]+[('Reto de Lectura 2027 gratuito: ' if es else 'Free 2027 Reading Challenge: ')+resource]+post_text+[('Darte de baja: ' if es else 'Unsubscribe: ')+unsubscribe_url])
     return {'subject':subject,'html':TEMPLATES.get_template('monthly_newsletter.html').render(**context),'text':text}
 
 def unsubscribe_link(email):
