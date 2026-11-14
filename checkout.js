@@ -400,9 +400,9 @@
         <input id="coZip" name="zip" type="text" autocomplete="postal-code">
       </label>
       <label class="field" id="coTaxField" hidden>
-        <span>Recipient tax ID (CPF/CNPJ, RUT or RFC)</span>
+        <span>Recipient tax ID (CUIT/CUIL, CPF/CNPJ, RUT or RFC)</span>
         <input id="coTaxId" name="tax_id" type="text" maxlength="80" autocomplete="off">
-        <small>Required for printed books sent to Brazil, Chile or Mexico.</small>
+        <small>Required for printed books sent to Argentina, Brazil, Chile or Mexico.</small>
       </label>
       </div>
     </fieldset>
@@ -438,7 +438,7 @@
 
         const form = document.getElementById("checkoutForm");
         function showTaxField() {
-            const required = ["BR", "CL", "MX"].includes(formValues().shipping_country_code) && items.some((i) => i.supplier === "lulu");
+            const required = ["AR", "BR", "CL", "MX"].includes(formValues().shipping_country_code) && items.some((i) => i.supplier === "lulu");
             const field = document.getElementById("coTaxField");
             if (field) field.hidden = !required;
             const input = document.getElementById("coTaxId");

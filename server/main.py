@@ -1178,7 +1178,7 @@ async def checkout(body: CheckoutIn, db: Session = Depends(get_db)):
         raise HTTPException(422, "Please complete the shipping address.")
 
     if any(p.supplier == lulu_service.SUPPLIER for p, _, _ in cart):
-        if body.shipping_country_code.upper() in {"BR", "CL", "MX"} and not re.fullmatch(r"[A-Za-z0-9.\-/ ]{6,30}", body.recipient_tax_id.strip()):
+        if body.shipping_country_code.upper() in {"AR", "BR", "CL", "MX"} and not re.fullmatch(r"[A-Za-z0-9.\-/ ]{6,30}", body.recipient_tax_id.strip()):
             raise HTTPException(422, "Please provide the recipient tax ID required for printed books to this country.")
         try:
             lulu_service.address(

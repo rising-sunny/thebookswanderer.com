@@ -76,6 +76,13 @@ class Quotes(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(r['logistic_name'],'Lulu GROUND')
         self.assertEqual(r['legs'][0]['shipping_level'],'GROUND')
 
+    def test_lulu_argentine_provinces_become_iso_codes_and_other_countries_are_untouched(self):
+        for typed,code in (('Córdoba','X'),('Capital Federal','C'),('CABA','C'),('Provincia de Buenos Aires','B'),
+                           ('Tierra del Fuego','V'),('b','B'),('C','C'),('Tucumán','T')):
+            self.assertEqual(lulu.state_code('AR',typed),code,typed)
+        self.assertEqual(lulu.state_code('DE','Bayern'),'Bayern')
+        self.assertEqual(lulu.state_code('CA','Ontario'),'ON')
+
     async def test_lulu_quote_sends_the_recipient_tax_id_to_the_cost_calculation(self):
         sent=[]
         async def api(method,path,json=None):

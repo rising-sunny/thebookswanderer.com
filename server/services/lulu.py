@@ -21,6 +21,7 @@ import hmac
 import os
 import re
 import time
+import unicodedata
 from typing import Any
 
 import httpx
@@ -35,6 +36,15 @@ CA_PROVINCES = {
     "newfoundland and labrador": "NL", "nova scotia": "NS", "ontario": "ON",
     "prince edward island": "PE", "quebec": "QC", "québec": "QC", "saskatchewan": "SK",
     "northwest territories": "NT", "nunavut": "NU", "yukon": "YT",
+}
+# ISO 3166-2:AR codes, which Lulu checks against the postal code and city. "buenos aires" is the province;
+# the city is written C.A.B.A. / Capital Federal.
+AR_PROVINCES = {
+    "ciudad autonoma de buenos aires": "C", "capital federal": "C", "caba": "C", "c.a.b.a.": "C",
+    "buenos aires": "B", "catamarca": "K", "chaco": "H", "chubut": "U", "cordoba": "X", "corrientes": "W",
+    "entre rios": "E", "formosa": "P", "jujuy": "Y", "la pampa": "L", "la rioja": "F", "mendoza": "M",
+    "misiones": "N", "neuquen": "Q", "rio negro": "R", "salta": "A", "san juan": "J", "san luis": "D",
+    "santa cruz": "Z", "santa fe": "S", "santiago del estero": "G", "tierra del fuego": "V", "tucuman": "T",
 }
 AU_STATES = {
     "new south wales": "NSW", "victoria": "VIC", "queensland": "QLD", "western australia": "WA",
@@ -87,6 +97,10 @@ def state_code(country: str, province: str) -> str:
     country = (country or "").upper()
     if country == "US":
         return region_code(p)
+    if country == "AR":
+        folded = "".join(c for c in unicodedata.normalize("NFD", p.lower()) if unicodedata.category(c) != "Mn")
+        folded = re.sub(r"^provincia de ", "", folded).strip()
+        return AR_PROVINCES.get(folded, p.upper() if len(p) <= 3 else p)
     table = {"CA": CA_PROVINCES, "AU": AU_STATES}.get(country, {})
     return table.get(p.lower(), p.upper() if len(p) <= 3 else p)
 
