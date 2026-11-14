@@ -156,6 +156,18 @@ class MonthlyTests(Fixture):
   with patch.object(monthly.mail,'_send_sync',return_value=False) as send:
    result=monthly.run(send=True,now=self.NOW);monthly.run(send=True,now=self.NOW.replace(day=2));self.assertEqual(send.call_count,1);self.assertEqual(result['counts']['uncertain'],1)
 
+ def test_december_issue_features_the_journal_with_the_catalogue_price(self):
+  def prod(slug,price):return {'slug':slug,'title':slug,'price_usd':price,'image_url':'/assets/products/'+slug+'/main.jpg'}
+  shelf=[prod('reading-challenge-journal-2027',24.99),prod('readers-2027-desk-calendar',19.0),prod('reading-passport-printed',19.99)]
+  for lang in ('en','es'):
+   dec=monthly.draft(lang,'2026-12','https://example.com/u',shelf)
+   self.assertIn('/products/reading-challenge-journal-2027?',dec['text']);self.assertIn('$24.99',dec['html']);self.assertIn('readers-2027-desk-calendar',dec['html'])
+   self.assertIn('2027',dec['subject']);self.assertIn('https://example.com/u',dec['html'])
+  # Without the product the letter still renders (no feature block), and other months keep the rotating shelf.
+  self.assertNotIn('$24.99',monthly.draft('en','2026-12','',[prod('reading-passport-printed',19.99)])['html'])
+  jan=monthly.draft('en','2027-01','',shelf)
+  self.assertIn('January reading letter',jan['subject']);self.assertNotIn('ten-minute rituals',jan['html'])
+
  def test_first_issue_and_dry_run_never_send_mail(self):
   self.add_sub('reader@example.com')
   with patch.object(monthly.mail,'_send_sync') as send:
