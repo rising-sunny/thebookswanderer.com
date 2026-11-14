@@ -816,13 +816,16 @@ _WELCOME = {
         },
         2: {
             "subject": "Your reading year, on paper",
-            "pre": "A kit to print, or a passport to hold.",
+            "pre": "A kit to print, a journal to fill, or a passport to hold.",
             "eyebrow": "From the shop",
             "paras": [
-                "If the challenge made you want the whole year in one place, there are two things we made "
+                "If the challenge made you want the whole year in one place, there are a few things we made "
                 "for exactly that.",
                 "The first is the Reading Challenge Kit ($7.99): 27 printable pages with a 52-spine bookshelf "
                 "tracker, four bingo cards, monthly logs, reviews, and TBR and DNF lists. US Letter and A4.",
+                "If you would rather have the challenge printed and bound, the 2027 Reading Challenge Journal "
+                "is an A5 paperback ($24.99): the 52 prompts, a bookshelf to colour, four bingo cards, a page "
+                "for every month and room to review each of the 52 books.",
                 "If you would rather hold something in your hands, there is the Wanderer's Reading Passport. "
                 "It's a reading journal disguised as a passport. Each book you finish gets a numbered "
                 "boarding pass (departure, arrival, seat, rating), favourite lines are declared at customs, "
@@ -833,7 +836,8 @@ _WELCOME = {
                 "other destinations are quoted before payment.",
             ],
             "cta": ("See the printable kit", "/products/reading-challenge-kit-2027"),
-            "cta2": ("Or see the Reading Passport", "/products/reading-passport-printed"),
+            "cta2": ("Or the printed 2027 journal ($24.99)", "/products/reading-challenge-journal-2027"),
+            "cta3": ("Or see the Reading Passport", "/products/reading-passport-printed"),
             "after": "No pressure: the challenge works on any scrap of paper. We just think it looks better stamped.",
         },
         3: {
@@ -873,14 +877,17 @@ _WELCOME = {
         },
         2: {
             "subject": "Tu año de lectura, en papel",
-            "pre": "Un kit para imprimir o un pasaporte para tener en las manos.",
+            "pre": "Un kit para imprimir, un diario para rellenar o un pasaporte para tener en las manos.",
             "eyebrow": "De la tienda",
             "paras": [
-                "Si el reto te dejó con ganas de tener todo el año en un solo lugar, hicimos dos cosas "
+                "Si el reto te dejó con ganas de tener todo el año en un solo lugar, hicimos varias cosas "
                 "justo para eso.",
                 "La primera es el kit del reto de lectura (7,99 USD): 27 páginas imprimibles con una "
                 "estantería de 52 lomos, cuatro cartones de bingo, registros mensuales, reseñas y listas de "
                 "pendientes y abandonados. Carta y A4. Las páginas del kit están en inglés.",
+                "Si prefieres el reto impreso y encuadernado, el diario del reto de lectura 2027 es una tapa "
+                "blanda A5 (24,99 USD): las 52 consignas, una estantería para colorear, cuatro cartones de "
+                "bingo, una página para cada mes y espacio para reseñar los 52 libros. Las páginas están en inglés.",
                 "Si prefieres tener algo en las manos, está el Pasaporte del lector. "
                 "Es un diario de lectura disfrazado de pasaporte. Cada libro que terminas tiene su tarjeta de "
                 "embarque numerada (salida, llegada, asiento, valoración), las frases favoritas se declaran en "
@@ -891,7 +898,8 @@ _WELCOME = {
                 "EE. UU.; otros destinos se cotizan antes del pago.",
             ],
             "cta": ("Ver el kit imprimible", "/es/products/reading-challenge-kit-2027"),
-            "cta2": ("O ver el Pasaporte del lector", "/es/products/reading-passport-printed"),
+            "cta2": ("O el diario impreso 2027 (24,99 USD)", "/es/products/reading-challenge-journal-2027"),
+            "cta3": ("O ver el Pasaporte del lector", "/es/products/reading-passport-printed"),
             "after": "Sin presión: el reto funciona en cualquier papel. Solo creemos que se ve mejor sellado.",
         },
         3: {
@@ -993,8 +1001,11 @@ async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str, s
     # Optional second link (a product to see after the main action).
     cta2 = w.get("cta2")
     href2 = f"{base}{cta2[1]}{'&' if '?' in cta2[1] else '?'}{utm}_b" if cta2 else ""
+    cta3 = w.get("cta3")
+    href3 = f"{base}{cta3[1]}{'&' if '?' in cta3[1] else '?'}{utm}_c" if cta3 else ""
     text = "\n\n".join(w["paras"]) + f"\n\n{w['cta'][0]}: {href}\n\n" \
         + (f"{cta2[0]}: {href2}\n\n" if cta2 else "") \
+        + (f"{cta3[0]}: {href3}\n\n" if cta3 else "") \
         + f"{w['after']}\n\n— The Books Wanderer\n\n" + f"{leave}: {unsubscribe_url}\n"
     body = "".join(
         f'<p style="margin:0 0 16px;font-family:Georgia,Times,serif;font-size:16px;line-height:1.6;color:#2b2b2b">'
@@ -1003,6 +1014,9 @@ async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str, s
     if cta2:
         body += (f'<p style="margin:0 0 24px;text-align:center;font-family:Georgia,Times,serif;font-size:15px">'
                  f'<a href="{_esc(href2)}" style="color:#1b3728">{_esc(cta2[0])}</a></p>')
+    if cta3:
+        body += (f'<p style="margin:0 0 24px;text-align:center;font-family:Georgia,Times,serif;font-size:15px">'
+                 f'<a href="{_esc(href3)}" style="color:#1b3728">{_esc(cta3[0])}</a></p>')
     body += (f'<p style="margin:0 0 16px;font-family:Georgia,Times,serif;font-size:15px;line-height:1.6;color:#555">'
              f'{_esc(w["after"])}</p>'
              f'<p style="margin:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8a8a">'
