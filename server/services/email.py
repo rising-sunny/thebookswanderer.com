@@ -991,9 +991,91 @@ _WELCOME_COLORING = {
 }
 
 
+# Sign-ups from the Jane Austen guides (source "austen-...") get the Austen reading plan instead of the
+# challenge PDF. Step 3 falls back to the common gift-guide letter.
+_WELCOME_AUSTEN = {
+    "en": {
+        1: {
+            "subject": "Your Jane Austen reading plan is here",
+            "pre": "Six novels, one plan, and a rest week after each one.",
+            "eyebrow": "Welcome",
+            "paras": [
+                "Thank you for joining us. As promised, here is your free Jane Austen reading plan for 2027: "
+                "the six novels in an order that starts with Pride and Prejudice, a weekly chapter grid with a "
+                "tick box for each week, and a rest week after every book.",
+                "Print it on Letter or A4 and stick it inside a notebook or on the fridge. If you fall behind, "
+                "skip ahead rather than back: a week of three chapters still counts. All six novels are in the "
+                "public domain, so you can read them free on Project Gutenberg or Standard Ebooks, or borrow them "
+                "from your library.",
+            ],
+            "cta": ("Download the plan (PDF)", "/assets/downloads/jane-austen-reading-plan-2027.pdf"),
+            "after": "We write once a month at most: new arrivals, a few reading picks, nothing else. "
+                     "If you just hit reply, it reaches a real person.",
+        },
+        2: {
+            "subject": "Reading Austen with company",
+            "pre": "A watch party kit and a puzzle book for Austen readers.",
+            "eyebrow": "From the shop",
+            "paras": [
+                "If you would like company while you read, we made two things for Austen readers.",
+                "The first is the Pride and Prejudice Watch Party Kit ($6.99): 18 printable pages with a nine-week "
+                "reading plan, a who-is-who page for 17 characters, four bingo cards, twelve lines to listen for "
+                "and a party planner. It works with any adaptation, or with the book alone.",
+                "The second is the Jane Austen Puzzle Book ($22.99, printed): word searches, cryptograms, "
+                "crosswords and quote puzzles, with a chapter for each of the six novels. The printed edition "
+                "includes standard US shipping; other destinations are quoted before payment.",
+            ],
+            "cta": ("See the watch party kit", "/products/pride-and-prejudice-watch-party-kit"),
+            "cta2": ("Or the Jane Austen Puzzle Book", "/products/jane-austen-puzzle-book"),
+            "after": "No pressure: the reading plan is yours to keep either way.",
+        },
+    },
+    "es": {
+        1: {
+            "subject": "Aquí está tu plan de lectura de Jane Austen",
+            "pre": "Seis novelas, un plan y una semana de descanso tras cada una.",
+            "eyebrow": "Bienvenida",
+            "paras": [
+                "Gracias por suscribirte. Como prometimos, aquí tienes tu plan de lectura de Jane Austen para 2027, "
+                "gratis: las seis novelas en un orden que empieza con Orgullo y prejuicio, una cuadrícula semanal "
+                "de capítulos con una casilla para cada semana y una semana de descanso después de cada libro.",
+                "Imprímelo en A4 o Carta y pégalo en un cuaderno o en la nevera. Si te atrasas, salta hacia delante, "
+                "no hacia atrás: una semana de tres capítulos también cuenta. Las seis novelas son de dominio "
+                "público, así que puedes leerlas gratis (en inglés) en Project Gutenberg o Standard Ebooks, o "
+                "pedirlas prestadas en tu biblioteca.",
+            ],
+            "cta": ("Descargar el plan (PDF)", "/assets/downloads/plan-de-lectura-jane-austen-2027.pdf"),
+            "after": "Escribimos una vez al mes como mucho: novedades y algunas recomendaciones, nada más. "
+                     "Si respondes a este correo, lo lee una persona de verdad.",
+        },
+        2: {
+            "subject": "Leer a Austen en compañía",
+            "pre": "Un kit de fiesta de visionado y un libro de pasatiempos para lectores de Austen.",
+            "eyebrow": "De la tienda",
+            "paras": [
+                "Si quieres compañía mientras lees, hicimos dos cosas para lectores de Austen.",
+                "La primera es el kit de fiesta de Orgullo y prejuicio (6,99 USD): 18 páginas imprimibles con un plan "
+                "de lectura de nueve semanas, una página de quién es quién con 17 personajes, cuatro cartones de "
+                "bingo, doce frases que escuchar y un organizador de fiesta. Sirve con cualquier adaptación o con "
+                "el libro solo. Las páginas del kit están en inglés.",
+                "La segunda es el libro de pasatiempos de Jane Austen (22,99 USD, impreso): sopas de letras, "
+                "criptogramas, crucigramas y citas, con un capítulo para cada una de las seis novelas. La edición "
+                "impresa incluye el envío estándar a EE. UU.; otros destinos se cotizan antes del pago. Los "
+                "pasatiempos están en inglés.",
+            ],
+            "cta": ("Ver el kit de fiesta", "/es/products/pride-and-prejudice-watch-party-kit"),
+            "cta2": ("O el libro de pasatiempos de Jane Austen", "/es/products/jane-austen-puzzle-book"),
+            "after": "Sin presión: el plan de lectura es tuyo de todos modos.",
+        },
+    },
+}
+
+
 async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str, source: str = "") -> bool:
     lang = "es" if lang == "es" else "en"
-    w = (_WELCOME_COLORING[lang].get(step) if (source or "").startswith("coloring") else None) or _WELCOME[lang][step]
+    src = source or ""
+    variant = _WELCOME_COLORING if src.startswith("coloring") else _WELCOME_AUSTEN if src.startswith("austen") else None
+    w = (variant[lang].get(step) if variant else None) or _WELCOME[lang][step]
     base = _public_base()
     utm = f"utm_source=newsletter&utm_medium=email&utm_campaign=welcome_{step}"
     href = f"{base}{w['cta'][1]}{'&' if '?' in w['cta'][1] else '?'}{utm}"
