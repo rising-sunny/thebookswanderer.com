@@ -112,15 +112,16 @@ app.include_router(outreach_router)
 app.include_router(product_media_router)
 app.include_router(bonanza_orders_router)
 
+# Credentialed CORS only for the site itself. The local preview origins and "null" (sent by
+# file:// pages and sandboxed iframes, so any hostile page can claim it) are for development
+# only: they are added when APP_ENV says so, and never by default.
+_CORS_ORIGINS = [PUBLIC_BASE, "https://www.thebookswanderer.com"]
+if os.getenv("APP_ENV", "production").strip().lower() in {"dev", "development", "local", "test"}:
+    _CORS_ORIGINS += ["http://127.0.0.1:8765", "http://localhost:8765", "null"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        PUBLIC_BASE,
-        "https://www.thebookswanderer.com",
-        "http://127.0.0.1:8765",
-        "http://localhost:8765",
-        "null",
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -309,7 +310,8 @@ def _slugify(text: str) -> str:
 
 def _admin_ok(key: str) -> bool:
     expected = os.getenv("SECRET_KEY", "")
-    return bool(expected) and key == expected
+    # Constant-time comparison: a plain == leaks how many leading characters matched.
+    return bool(expected) and hmac.compare_digest(key.encode(), expected.encode())
 
 
 def _pick_variant(details: dict, preferred_vid: str | None) -> dict:
