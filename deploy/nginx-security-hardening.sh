@@ -21,10 +21,16 @@ APPLY=0
 SITE="${TBW_NGINX_SITE:-/etc/nginx/sites-enabled/thebookswanderer.com}"
 HEADERS="${TBW_NGINX_HEADERS:-/etc/nginx/snippets/tbw-security-headers.conf}"
 RATE="${TBW_NGINX_RATE:-/etc/nginx/conf.d/tbw-ratelimit.conf}"
+BK_ROOT="${TBW_NGINX_BACKUP_ROOT:-/root}"
 TEST_CMD="${TBW_NGINX_TEST:-nginx -t}"
 RELOAD_CMD="${TBW_NGINX_RELOAD:-systemctl reload nginx}"
 
 [ -f "$SITE" ] || { echo "Not found: $SITE" >&2; exit 1; }
+# sites-enabled/* are normally symlinks into sites-available. Always work on the real file:
+# `cp -a` of a symlink copies the link, and `cat backup > link` truncates the real file BEFORE
+# cat reads it (which is how a "restore" once emptied the site config).
+REAL=$(readlink -f "$SITE")
+[ -s "$REAL" ] || { echo "Refusing to run: $REAL is empty." >&2; exit 1; }
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -93,22 +99,28 @@ if [ "$APPLY" -ne 1 ]; then
   echo; echo "Dry run only. Re-run with --apply to write the files, test and reload nginx."; exit 0
 fi
 
-BK="/root/nginx-backup-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$BK"
-cp -a "$SITE" "$BK/site.conf"
-for f in "$HEADERS" "$RATE"; do [ -f "$f" ] && cp -a "$f" "$BK/$(basename "$f").old" || true; done
+BK="$BK_ROOT/nginx-backup-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$BK"
+cp -p "$REAL" "$BK/site.conf"                      # a real copy of the content, never a symlink
+SUM_BEFORE=$(sha256sum < "$REAL")
+for f in "$HEADERS" "$RATE"; do [ -f "$f" ] && cp -p "$(readlink -f "$f")" "$BK/$(basename "$f").old" || true; done
 mkdir -p "$(dirname "$HEADERS")" "$(dirname "$RATE")"
 install -m 644 "$WORK/headers.conf" "$HEADERS"
 install -m 644 "$WORK/ratelimit.conf" "$RATE"
-cat "$WORK/site.new" > "$SITE"
+cp "$WORK/site.new" "$REAL.tbw-new" && mv -f "$REAL.tbw-new" "$REAL"   # atomic replace of the real file
 
 if $TEST_CMD; then
   $RELOAD_CMD
   echo "OK: nginx reloaded. Backup in $BK"
 else
   echo "nginx -t FAILED: restoring the backup" >&2
-  cat "$BK/site.conf" > "$SITE"
+  cp -p "$BK/site.conf" "$REAL.tbw-new" && mv -f "$REAL.tbw-new" "$REAL"
   [ -f "$BK/$(basename "$HEADERS").old" ] && install -m 644 "$BK/$(basename "$HEADERS").old" "$HEADERS" || rm -f "$HEADERS"
   [ -f "$BK/$(basename "$RATE").old" ] && install -m 644 "$BK/$(basename "$RATE").old" "$RATE" || rm -f "$RATE"
-  $TEST_CMD >/dev/null 2>&1 && echo "Restored; nginx config is valid again." >&2
+  # Never claim success on a guess: the restored file must be byte-identical to what we started with.
+  if [ "$(sha256sum < "$REAL")" = "$SUM_BEFORE" ] && [ -s "$REAL" ]; then
+    $TEST_CMD >/dev/null 2>&1 && echo "Restored (checksum verified); nginx config is valid again." >&2
+  else
+    echo "WARNING: the restored file does not match the original. Backup copy: $BK/site.conf" >&2
+  fi
   exit 1
 fi
