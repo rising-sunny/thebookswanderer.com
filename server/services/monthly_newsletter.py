@@ -41,6 +41,11 @@ EDITIONS = {'2026-12': {
   'feature_title': 'The 2027 Reading Challenge Journal',
   'feature_blurb': 'The challenge, bound. The 52 prompts as a checklist, a bookshelf where you colour one spine for every book you finish, four bingo cards, a page for every month and room to review all fifty-two books. A5 paperback, 56 full-colour pages. It is printed to order (a few working days, then shipping), so order a little ahead if you want it in your hands on January 1st.',
   'feature_cta': 'See the journal',
+  'austen_title': 'Two dates for Austen readers',
+  'austen_text': "On 3 December Netflix releases a new six-part Pride and Prejudice, and on 16 December Jane Austen would turn 251. We wrote a short guide to the series (who plays whom, how it compares with the 1995 and 2005 versions, what to read first) and made a free plan to read all six of her novels in 2027.",
+  'austen_cta': 'Read the guide',
+  'austen_cta2': 'Get the free six-novel plan',
+  'austen_path': '/guides/pride-and-prejudice-netflix-series/',
   'shelf': ['readers-2027-desk-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
   'closing': 'One small favour: tell us the first book of 2027. Just hit reply. It reaches a real person, and we read every one.'},
  'es': {
@@ -58,6 +63,11 @@ EDITIONS = {'2026-12': {
   'feature_title': 'El diario del reto de lectura 2027',
   'feature_blurb': 'El reto, encuadernado. Las 52 consignas como lista de comprobación, una estantería donde coloreas un lomo por cada libro que termines, cuatro cartones de bingo, una página para cada mes y espacio para reseñar los cincuenta y dos libros. Tapa blanda A5, 56 páginas a todo color (las páginas están en inglés). Se imprime bajo pedido (unos días hábiles y luego el envío), así que pídelo con algo de margen si lo quieres en tus manos el 1 de enero.',
   'feature_cta': 'Ver el diario',
+  'austen_title': 'Dos fechas para lectores de Austen',
+  'austen_text': "El 3 de diciembre Netflix estrena una nueva Orgullo y prejuicio en seis partes, y el 16 de diciembre Jane Austen cumpliría 251 años. Escribimos una guía corta sobre la serie (quién interpreta a quién, cómo se compara con las versiones de 1995 y 2005, qué leer antes) e hicimos un plan gratis para leer sus seis novelas en 2027.",
+  'austen_cta': 'Leer la guía',
+  'austen_cta2': 'Recibir el plan gratis de seis novelas',
+  'austen_path': '/guides/orgullo-y-prejuicio-serie-netflix/',
   'shelf': ['readers-2027-desk-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
   'closing': 'Un pequeño favor: cuéntanos cuál será tu primer libro de 2027. Solo responde a este correo; lo lee una persona de verdad y los leemos todos.'}}}
 
@@ -103,6 +113,10 @@ def draft(lang, period, unsubscribe_url='', products=None):
         if feat:
             extra['feature']=dict(_card(feat,lang,period),title=ed['feature_title'],blurb=ed['feature_blurb'],cta=ed['feature_cta'],price='${:.2f}'.format(feat['price_usd']))
             pre_text+=[ed['feature_intro'],extra['feature']['title']+' — '+extra['feature']['price']+'\n'+ed['feature_blurb']+'\n'+extra['feature']['url']]
+        base_url = PUBLIC_BASE + ed['austen_path'] + '?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_' + period
+        extra['austen'] = {'title': ed['austen_title'], 'text': ed['austen_text'], 'cta': ed['austen_cta'], 'url': base_url,
+                           'cta2': ed['austen_cta2'], 'url2': base_url + '_plan#signupTitle'}
+        pre_text += [ed['austen_title'] + '\n' + ed['austen_text'] + '\n' + base_url + '\n' + ed['austen_cta2'] + ': ' + base_url + '_plan#signupTitle']
         post_text=[ed['closing']]
     resource=PUBLIC_BASE+('/reto-de-lectura-2027/' if es else '/reading-challenge-2027/')+'?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_'+period
     context={'lang':lang,'subject':subject,'heading':heading,'intro':intro,'month':f'{name} {year}','tip':TIPS[lang][month-1],'items':items,'resource':resource,'unsubscribe_url':unsubscribe_url,'base':PUBLIC_BASE,**extra}
