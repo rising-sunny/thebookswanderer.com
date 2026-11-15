@@ -624,15 +624,12 @@ async def stream(request: Request):
 async def live_dashboard(request: Request):
     if not _is_admin(request):
         return _login_redirect()
-    return templates.TemplateResponse("admin_live.html", {"request": request})
+    return templates.TemplateResponse(request, "admin_live.html")
 
 
 @router.get("/admin/live/login", response_class=HTMLResponse)
 async def live_login_page(request: Request, error: Optional[str] = None):
-    return templates.TemplateResponse("admin_live_login.html", {
-        "request": request,
-        "error": error,
-    })
+    return templates.TemplateResponse(request, "admin_live_login.html", {"error": error})
 
 
 @router.post("/admin/live/login")
@@ -889,9 +886,7 @@ async def history_data(request: Request, days: int = 30, db: Session = Depends(g
 async def history_page(request: Request, days: int = 30):
     if not _is_admin(request):
         return _login_redirect()
-    return templates.TemplateResponse("admin_live_history.html", {
-        "request": request, "default_days": days,
-    })
+    return templates.TemplateResponse(request, "admin_live_history.html", {"default_days": days})
 
 
 # ── Digital products: upload the files buyers download ───────────────────

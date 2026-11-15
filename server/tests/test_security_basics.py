@@ -26,6 +26,14 @@ class CorsTests(unittest.TestCase):
         self.assertNotIn("null", main._CORS_ORIGINS)
 
 
+class PageRenderTests(unittest.TestCase):
+    def test_admin_login_page_renders(self):
+        # Catches template-API breakage on framework upgrades (Starlette 1.x dropped the old signature).
+        r = TestClient(main.app).get("/admin/live/login")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("<form", r.text)
+
+
 class AdminKeyTests(unittest.TestCase):
     def test_only_the_exact_key_passes_and_an_unset_key_never_does(self):
         with patch.dict(os.environ, {"SECRET_KEY": "s3cret-value"}):
