@@ -9,7 +9,8 @@
 #                                                  Permissions-Policy, a CSP that only sets
 #                                                  frame-ancestors / base-uri / object-src
 #   /etc/nginx/conf.d/tbw-ratelimit.conf           per-IP limits: newsletter sign-up 5/min,
-#                                                  admin login 10/min, /api/ 10/s (burst 60)
+#                                                  admin login 10/min, /api/ 10/s (burst 60);
+#                                                  429 and log level are set in the server block
 # and patches the site file so that the server block and every location that repeats the HSTS
 # header (nginx only inherits add_header into a location that defines none) also include the headers.
 set -euo pipefail
@@ -46,8 +47,8 @@ map $request_uri $tbw_k_api        { default ""; ~^/api/                    $bin
 limit_req_zone $tbw_k_newsletter zone=tbw_newsletter:10m rate=5r/m;
 limit_req_zone $tbw_k_login      zone=tbw_login:10m      rate=10r/m;
 limit_req_zone $tbw_k_api        zone=tbw_api:10m        rate=10r/s;
-limit_req_status 429;
-limit_req_log_level warn;
+# limit_req_status / limit_req_log_level are set in the site's server block, not here: other config
+# on the host may already set them at http level, and nginx rejects a duplicate in the same context.
 EOF
 
 python3 - "$SITE" "$WORK/site.new" "$HEADERS" <<'PY'
@@ -56,6 +57,8 @@ site, out, headers = sys.argv[1:4]
 HSTS = 'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;'
 INCLUDE = f"include {headers};"
 LIMITS = [
+    "limit_req_status 429;",
+    "limit_req_log_level warn;",
     "limit_req zone=tbw_newsletter burst=3 nodelay;",
     "limit_req zone=tbw_login burst=5 nodelay;",
     "limit_req zone=tbw_api burst=60 nodelay;",
