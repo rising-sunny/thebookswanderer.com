@@ -403,5 +403,29 @@
         "image_url": "/assets/products/reading-challenge-journal-2027/main.jpg"
       }
     ]
+  },
+  {
+    "slug": "readers-memory-journal",
+    "title": "The Reader's Memory Journal Printable, Reading Diary for Book Lovers, Book Memory Pages and Reading Letters (PDF)",
+    "price_usd": 8.99,
+    "category": "printables",
+    "description": "A reading journal for keeping what a book felt like, not just that you read it. Where you were, who you were with, what was happening in your life, the line you want to keep, and a little box for a ticket or a pressed leaf.\n\nWhat's inside (32 pages, PDF):\n• 18 \"A Book to Remember\" pages: title, dates, stars, where you were, who gave it to you, how it felt, the line you will keep\n• \"My reading life\" prompts (the first book you remember, who taught you to read) and a \"Where I read\" page to draw or paste a photo\n• Two pages of lines to keep, with the book and the page number\n• Three letter pages: to a character, to an author, to your younger self as a reader\n• Books given and received, books that changed you, books to read again and ones you stopped without regret\n• \"My year in memories\" for the last evening of the year, plus an owner page with a To / From note if you give it as a gift\n\nIt is a keepsake, not a tracker. If you want the 52-prompt challenge with bingo and monthly logs, that is the 2027 Reading Challenge Kit; the two work well together.\n\nFormats: US Letter and A4, both in one download. Print at home on plain paper (white background, light on ink), or fill it in on a tablet in GoodNotes, Notability or any PDF app.\n\nInstant download: you get the link by email right after checkout. Digital product, nothing is shipped. English edition; a Spanish edition is available in the same listing.",
+    "image_url": "/assets/products/readers-memory-journal/main_en.jpg",
+    "gallery": [
+      "/assets/products/readers-memory-journal/inside_en.jpg",
+      "/assets/products/readers-memory-journal/memory_en.jpg",
+      "/assets/products/readers-memory-journal/letters_en.jpg"
+    ],
+    "variants": [
+      {
+        "name": "English",
+        "image_url": "/assets/products/readers-memory-journal/main_en.jpg"
+      },
+      {
+        "name": "Español",
+        "image_url": "/assets/products/readers-memory-journal/main_es.jpg"
+      }
+    ],
+    "active": false
   }
 ]
