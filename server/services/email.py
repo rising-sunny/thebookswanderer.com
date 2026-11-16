@@ -1071,10 +1071,140 @@ _WELCOME_AUSTEN = {
 }
 
 
+# Sign-ups from the reader-type quiz (/guides/what-kind-of-reader-are-you/) arrive with source "quiz-<type>".
+# cozy, annotator and wanderer get their own free reader card and a short pitch for three fitting products;
+# "challenger" keeps the common welcome (it already sends the free 52-book challenge) and "classic" gets the
+# Austen series (the free six-novel plan). Step 3 falls back to the common gift-guide letter.
+_QUIZ_AFTER = {
+    "en": "We write once a month at most: new arrivals, a few reading picks, nothing else. "
+          "If you just hit reply, it reaches a real person.",
+    "es": "Escribimos una vez al mes como mucho: novedades y algunas recomendaciones, nada más. "
+          "Si respondes a este correo, lo lee una persona de verdad.",
+}
+_QUIZ_CARDS = {
+    "quiz-cozy": {
+        "file": {"en": "reader-card-cozy", "es": "tarjeta-lector-acogedor"},
+        "products": ("stacked-books-table-lamp", "wooden-finger-book-holder", "kindle-magnetic-sleeve"),
+        "en": {
+            "s1": ("Your Cozy Nester reader card is here", "Three bookmarks, a nook checklist and a place for your comfort rereads.",
+                   "Thank you for taking the quiz and joining us. As promised, here is your free Cozy Nester reader card: "
+                   "two printable pages with three bookmarks to cut out, a reading-nook checklist and lists for your "
+                   "comfort rereads."),
+            "s2": ("A few things for the reading corner", "A lamp, a one-handed book holder and a sleeve for the e-reader.",
+                   "If you would like to make the corner even cozier, these are the three we would pick for a Cozy Nester: "
+                   "the Stacked Books Table Lamp, four stained-glass “books” that glow on a nightstand; the Wooden "
+                   "Finger Book Holder, which holds a paperback open with one hand so it can stay under the blanket; and "
+                   "the Kindle Magnetic Sleeve, for the e-reader that lives in a tote bag.",
+                   ("See the stacked books lamp", "Or the wooden finger book holder", "Or the Kindle magnetic sleeve")),
+        },
+        "es": {
+            "s1": ("Aquí está tu tarjeta de lector acogedor", "Tres marcapáginas, una lista para tu rincón y un sitio para tus relecturas.",
+                   "Gracias por hacer el test y suscribirte. Como prometimos, aquí tienes tu tarjeta de lector acogedor, "
+                   "gratis: dos páginas para imprimir con tres marcapáginas para recortar, una lista de comprobación de tu "
+                   "rincón de lectura y listas para tus relecturas."),
+            "s2": ("Algunas cosas para el rincón de lectura", "Una lámpara, un sujetalibros de una mano y una funda para el e-reader.",
+                   "Si quieres que tu rincón sea aún más acogedor, estas son las tres que elegiríamos para un lector "
+                   "acogedor: la lámpara de mesa de libros apilados, cuatro «libros» de vidrio de colores que "
+                   "brillan en la mesita de noche; el sujetalibros de dedo de madera, que mantiene un libro abierto con una "
+                   "mano y puede quedarse bajo la manta; y la funda magnética para Kindle, para el e-reader que vive en el bolso.",
+                   ("Ver la lámpara de libros apilados", "O el sujetalibros de dedo de madera", "O la funda magnética para Kindle")),
+        },
+    },
+    "quiz-annotator": {
+        "file": {"en": "reader-card-annotator", "es": "tarjeta-lector-anotador"},
+        "products": ("readers-memory-journal", "washi-sticker-book", "wooden-finger-book-holder"),
+        "en": {
+            "s1": ("Your Annotator reader card is here", "An annotation key, three bookmarks and room for the lines you copy.",
+                   "Thank you for taking the quiz and joining us. As promised, here is your free Annotator reader card: "
+                   "two printable pages with an annotation key of six symbols, three bookmarks to cut out and room for the "
+                   "lines you copy into a notebook."),
+            "s2": ("For readers who write in the margins", "A memory journal, washi stickers and a finger holder.",
+                   "If you like to keep what you read, these are the three we would pick for an Annotator: the Reader’s "
+                   "Memory Journal, a printable diary with a page for each book (where you were, who gave it to you, the "
+                   "line you keep); the Washi Sticker Book, for readers who keep a journal; and the Wooden Finger Book "
+                   "Holder, which frees the writing hand while you read.",
+                   ("See the Reader’s Memory Journal", "Or the washi sticker book", "Or the wooden finger book holder")),
+        },
+        "es": {
+            "s1": ("Aquí está tu tarjeta de anotador", "Una clave de anotaciones, tres marcapáginas y espacio para las frases que copias.",
+                   "Gracias por hacer el test y suscribirte. Como prometimos, aquí tienes tu tarjeta de anotador, gratis: "
+                   "dos páginas para imprimir con una clave de seis símbolos, tres marcapáginas para recortar y espacio "
+                   "para las frases que copias en una libreta."),
+            "s2": ("Para quienes escriben en los márgenes", "Un diario de memorias, pegatinas washi y un sujetalibros.",
+                   "Si te gusta guardar lo que lees, estas son las tres que elegiríamos para un anotador: el diario de "
+                   "memorias lectoras, un diario imprimible con una página para cada libro (dónde estabas, quién te lo "
+                   "regaló, la frase que te quedas); el libro de pegatinas washi, para lectores que llevan un diario; y el "
+                   "sujetalibros de dedo de madera, que libera la mano con la que escribes mientras lees.",
+                   ("Ver el diario de memorias lectoras", "O el libro de pegatinas washi", "O el sujetalibros de dedo de madera")),
+        },
+    },
+    "quiz-wanderer": {
+        "file": {"en": "reader-card-wanderer", "es": "tarjeta-lector-viajero"},
+        "products": ("reading-passport", "reading-passport-printed", "readers-memory-journal"),
+        "en": {
+            "s1": ("Your Wanderer reader card is here", "Three boarding-pass bookmarks and an Around the world in 12 books tracker.",
+                   "Thank you for taking the quiz and joining us. As promised, here is your free Wanderer reader card: two "
+                   "printable pages with three boarding-pass bookmarks to cut out and an “Around the world in 12 "
+                   "books” tracker, one country, one book, one month."),
+            "s2": ("A passport for the places you read", "The Reading Passport and a memory journal.",
+                   "If your books are tickets, these are the three we would pick for a Wanderer: the Wanderer’s Reading "
+                   "Passport, a reading journal disguised as a passport, with boarding passes and visa stamps, as a printable "
+                   "PDF; the same journal printed and bound as an A5 paperback; and the Reader’s Memory Journal, because "
+                   "where you read matters as much as what you read.",
+                   ("See the Reading Passport", "Or the printed Reading Passport", "Or the Reader’s Memory Journal")),
+        },
+        "es": {
+            "s1": ("Aquí está tu tarjeta de viajero", "Tres marcapáginas con forma de tarjeta de embarque y un registro de la vuelta al mundo en 12 libros.",
+                   "Gracias por hacer el test y suscribirte. Como prometimos, aquí tienes tu tarjeta de viajero, gratis: "
+                   "dos páginas para imprimir con tres marcapáginas con forma de tarjeta de embarque para recortar y un "
+                   "registro de «La vuelta al mundo en 12 libros»: un país, un libro, un mes."),
+            "s2": ("Un pasaporte para los lugares donde lees", "El pasaporte del lector y un diario de memorias.",
+                   "Si tus libros son billetes, estas son las tres que elegiríamos para un viajero: el pasaporte del "
+                   "lector, un diario de lectura disfrazado de pasaporte, con tarjetas de embarque y sellos, en PDF "
+                   "imprimible; el mismo diario impreso y encuadernado en tapa blanda A5; y el diario de memorias "
+                   "lectoras, porque dónde lees importa tanto como lo que lees.",
+                   ("Ver el pasaporte del lector", "O el pasaporte impreso", "O el diario de memorias lectoras")),
+        },
+    },
+}
+
+
+def _build_quiz_welcome():
+    out = {}
+    for src, card in _QUIZ_CARDS.items():
+        out[src] = {}
+        for lang in ("en", "es"):
+            data, pre = card[lang], "/es" if lang == "es" else ""
+            subj1, pre1, text1 = data["s1"]
+            subj2, pre2, text2, labels = data["s2"]
+            a, b, c = card["products"]
+            out[src][lang] = {
+                1: {"subject": subj1, "pre": pre1, "eyebrow": "Bienvenida" if lang == "es" else "Welcome",
+                    "paras": [text1, "Imprímela en A4 o Carta al 100 %, recorta por las líneas de puntos y deja un marcapáginas en el libro que leas esta noche. La tarjeta es tuya: imprime otra para un amigo si quieres."
+                              if lang == "es" else
+                              "Print it on Letter or A4 at 100%, cut along the dotted lines and slip a bookmark into whatever you are reading tonight. The card is yours to keep; print another one for a friend if you like."],
+                    "cta": ("Descargar tu tarjeta de lector (PDF)" if lang == "es" else "Download your reader card (PDF)",
+                            f"/assets/downloads/{card['file'][lang]}.pdf"),
+                    "after": _QUIZ_AFTER[lang]},
+                2: {"subject": subj2, "pre": pre2, "eyebrow": "De la tienda" if lang == "es" else "From the shop",
+                    "paras": [text2],
+                    "cta": (labels[0], f"{pre}/products/{a}"), "cta2": (labels[1], f"{pre}/products/{b}"),
+                    "cta3": (labels[2], f"{pre}/products/{c}"),
+                    "after": "Sin presión: la tarjeta de lector es tuya de todos modos." if lang == "es"
+                             else "No pressure: the reader card is yours either way."},
+            }
+    return out
+
+
+_WELCOME_QUIZ = _build_quiz_welcome()
+
+
 async def send_welcome(step: int, email: str, lang: str, unsubscribe_url: str, source: str = "") -> bool:
     lang = "es" if lang == "es" else "en"
     src = source or ""
-    variant = _WELCOME_COLORING if src.startswith("coloring") else _WELCOME_AUSTEN if src.startswith("austen") else None
+    variant = (_WELCOME_COLORING if src.startswith("coloring")
+               else _WELCOME_AUSTEN if src.startswith("austen") or src == "quiz-classic"
+               else _WELCOME_QUIZ.get(src))
     w = (variant[lang].get(step) if variant else None) or _WELCOME[lang][step]
     base = _public_base()
     utm = f"utm_source=newsletter&utm_medium=email&utm_campaign=welcome_{step}"
