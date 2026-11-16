@@ -44,9 +44,9 @@ class TrackingIngestionTests(unittest.TestCase):
         self.assertEqual(live._build_snapshot(self.db)["today"]["revenue"], 0)
 
     def test_challenge_events_and_returns_are_accepted(self):
-        for kind in ("challenge_request", "challenge_product_click", "purchase_return"):
+        for kind in ("challenge_request", "challenge_product_click", "quiz_complete", "purchase_return"):
             self.assertEqual(self.send(kind), {"ok":True})
-        self.assertEqual(self.db.query(LiveEvent).count(), 3)
+        self.assertEqual(self.db.query(LiveEvent).count(), 4)
 
     def test_unknown_event_does_not_write(self):
         self.assertEqual(self.send("fixture_unknown").status_code, 400)

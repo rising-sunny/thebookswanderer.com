@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Kind of Reader Are You? A 2-Minute Quiz and a Free Reader Card</title>
+    <meta name="description" content="Six quick questions to find your reader type (cozy, annotator, wanderer, challenger or classic) and get a free printable reader card with bookmarks.">
+    <meta name="theme-color" content="#10241a">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="canonical" href="https://thebookswanderer.com/guides/what-kind-of-reader-are-you/">
+    <link rel="alternate" hreflang="en" href="https://thebookswanderer.com/guides/what-kind-of-reader-are-you/">
+    <link rel="alternate" hreflang="es" href="https://thebookswanderer.com/guides/que-tipo-de-lector-eres/">
+    <link rel="alternate" hreflang="x-default" href="https://thebookswanderer.com/guides/what-kind-of-reader-are-you/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="The Books Wanderer">
+    <meta property="og:title" content="What Kind of Reader Are You? A 2-Minute Quiz and a Free Reader Card">
+    <meta property="og:description" content="Six quick questions to find your reader type (cozy, annotator, wanderer, challenger or classic) and get a free printable reader card with bookmarks.">
+    <meta property="og:url" content="https://thebookswanderer.com/guides/what-kind-of-reader-are-you/">
+    <meta property="og:image" content="https://thebookswanderer.com/guides/assets/og-reader-quiz.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=32">
+    <link rel="stylesheet" href="/guides/assets/journal.css?v=6">
+    <style>
+        .rq-progress {margin:0 0 1.2rem}
+        .rq-progress__track {height:8px;border-radius:99px;background:var(--cream-300);overflow:hidden}
+        .rq-progress__bar {height:100%;width:0;background:var(--green-700);transition:width .25s}
+        .rq-progress__text {display:block;margin-top:.35rem;font-size:.85rem;color:var(--ink-muted)}
+        .rq-q {border:1px solid rgba(43,82,64,.18);border-radius:14px;padding:1rem 1.1rem 1.1rem;margin:0 0 1rem;background:#fff;min-width:0}
+        .rq-q legend {padding:0 .4rem;font-family:var(--font-display);font-size:1.15rem;line-height:1.3;color:var(--green-900)}
+        .rq-opt {display:flex;gap:.7rem;align-items:flex-start;margin:.35rem 0 0;padding:.65rem .8rem;border:1px solid transparent;border-radius:10px;cursor:pointer;line-height:1.4}
+        .rq-opt:hover {background:var(--cream-100)}
+        .rq-opt input {margin-top:.25rem;accent-color:var(--green-700)}
+        .rq-opt.is-on {background:var(--green-100);border-color:var(--green-200)}
+        .rq-submit {margin:.4rem 0 1rem}
+        .rq-submit[disabled] {opacity:.5;cursor:not-allowed}
+        .rq-result {border:1px solid rgba(43,82,64,.18);border-radius:16px;background:#fff;overflow:hidden;margin:0 0 1.4rem}
+        .rq-result[hidden],.rq-form[hidden],.rq-intro[hidden],#quizSignup[hidden] {display:none}
+        .rq-result__top {display:flex;flex-wrap:wrap;gap:1.2rem;align-items:center;padding:1.2rem}
+        .rq-result__top img {width:min(15rem,100%);height:auto;border-radius:10px;flex:none;object-fit:cover;aspect-ratio:4/3}
+        .rq-result__top > div {flex:1 1 16rem}
+        .rq-kicker {margin:0 0 .2rem;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-600)}
+        .j-prose .rq-result h2 {margin:0 0 .5rem;outline:none;counter-increment:none}
+        .j-prose .rq-result h2::before {display:none}
+        .rq-picks {padding:0 1.2rem 1.2rem}
+        .rq-picks h3 {margin:.2rem 0 .6rem}
+        .rq-picks ul {list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
+        .rq-picks li {padding:.7rem .85rem;border:1px solid var(--line);border-radius:10px;background:var(--cream-50)}
+        .rq-picks a {font-weight:700;text-decoration:none}
+        .rq-picks span {display:block;color:var(--ink-muted);font-size:.93rem;margin-top:.1rem}
+        .rq-retake {margin:0 1.2rem 1.2rem}
+    </style>
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "What Kind of Reader Are You? A 2-Minute Quiz and a Free Reader Card",
+    "description": "Six quick questions to find your reader type (cozy, annotator, wanderer, challenger or classic) and get a free printable reader card with bookmarks.",
+    "url": "https://thebookswanderer.com/guides/what-kind-of-reader-are-you/",
+    "inLanguage": "en",
+    "image": "https://thebookswanderer.com/guides/assets/og-reader-quiz.jpg",
+    "dateModified": "2026-11-17",
+    "publisher": {
+        "@id": "https://thebookswanderer.com/#organization"
+    }
+}
+    </script>
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://thebookswanderer.com/"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "The Wanderer's Journal",
+            "item": "https://thebookswanderer.com/guides/"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "What kind of reader are you?",
+            "item": "https://thebookswanderer.com/guides/what-kind-of-reader-are-you/"
+        }
+    ]
+}
+    </script>
+</head>
+
+<body class="page-product">
+<div class="j-progress" id="jProgress" aria-hidden="true"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7"/></symbol></svg>
+<header class="header is-stuck" id="header">
+    <div class="container header__inner">
+        <a class="brand" href="/" aria-label="The Books Wanderer, home">
+            <span class="brand__emblem" aria-hidden="true"></span>
+            <span class="brand__name">
+                The Books Wanderer
+                <span class="brand__tagline">Literary boutique</span>
+            </span>
+        </a>
+        <nav class="nav" id="nav" aria-label="Primary" style="display:none"></nav>
+        <div class="actions">
+            <a class="icon-btn" href="/products/" aria-label="Back to shop">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
+            </a>
+            <a class="icon-btn" href="/cart.html" id="cartBtn" data-cart-btn aria-label="Shopping cart">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+                <span class="cart-count" id="cartCount" data-count="0" aria-hidden="true">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main id="main">
+    <section class="j-hero" data-mark="2026">
+        <div class="container">
+            <p class="j-crumb"><a href="/">Home</a> · <a href="/guides/">The Wanderer's Journal</a> · Quiz</p>
+            <p class="j-eyebrow"><a class="j-chip" href="/guides/">Reader quiz</a><span>2 min</span></p>
+            <h1 class="j-title">What kind of reader are you?</h1>
+            <p class="j-dek">Six quick questions, five reader types, and a free printable reader card that fits yours.</p>
+            <p class="j-meta">The Books Wanderer · Made for fun, not science · <a href="/guides/que-tipo-de-lector-eres/" hreflang="es" lang="es">Hacer el test en español</a></p>
+        </div>
+        <svg class="j-spines" viewBox="0 0 1036 64" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="0" y="10" width="16" height="54" rx="1.5" fill="#8b2f27"/><rect x="20" y="21" width="16" height="43" rx="1.5" fill="#2b5240"/><rect x="23" y="27" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="40" y="22" width="16" height="42" rx="1.5" fill="#e2c47c"/><rect x="43" y="28" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="60" y="19" width="16" height="45" rx="1.5" fill="#a9bfae"/><rect x="63" y="25" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="80" y="23" width="16" height="41" rx="1.5" fill="#8b2f27"/><rect x="100" y="7" width="16" height="57" rx="1.5" fill="#c1912f"/><rect x="120" y="17" width="16" height="47" rx="1.5" fill="#a9bfae"/><rect x="140" y="9" width="16" height="55" rx="1.5" fill="#8b2f27"/><rect x="160" y="30" width="16" height="34" rx="1.5" fill="#8b2f27"/><rect x="163" y="36" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="180" y="11" width="16" height="53" rx="1.5" fill="#d9662f"/><rect x="200" y="23" width="16" height="41" rx="1.5" fill="#e2c47c"/><rect x="203" y="29" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="220" y="18" width="16" height="46" rx="1.5" fill="#f0e8d6"/><rect x="240" y="5" width="16" height="59" rx="1.5" fill="#e4d9c1"/><rect x="260" y="14" width="16" height="50" rx="1.5" fill="#c1912f"/><rect x="263" y="20" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="280" y="8" width="16" height="56" rx="1.5" fill="#a63a2f"/><rect x="283" y="14" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="300" y="29" width="16" height="35" rx="1.5" fill="#a63a2f"/><rect x="320" y="10" width="16" height="54" rx="1.5" fill="#e4d9c1"/><rect x="340" y="26" width="16" height="38" rx="1.5" fill="#d9662f"/><rect x="360" y="12" width="16" height="52" rx="1.5" fill="#a9bfae"/><rect x="363" y="18" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="380" y="16" width="16" height="48" rx="1.5" fill="#8b2f27"/><rect x="383" y="22" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="400" y="19" width="16" height="45" rx="1.5" fill="#a63a2f"/><rect x="420" y="25" width="16" height="39" rx="1.5" fill="#8b2f27"/><rect x="423" y="31" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="440" y="14" width="16" height="50" rx="1.5" fill="#e4d9c1"/><rect x="460" y="25" width="16" height="39" rx="1.5" fill="#2b5240"/><rect x="480" y="15" width="16" height="49" rx="1.5" fill="#e2c47c"/><rect x="483" y="21" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="500" y="20" width="16" height="44" rx="1.5" fill="#e4d9c1"/><rect x="503" y="26" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="520" y="10" width="16" height="54" rx="1.5" fill="#c1912f"/><rect x="523" y="16" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="540" y="5" width="16" height="59" rx="1.5" fill="#e2c47c"/><rect x="560" y="28" width="16" height="36" rx="1.5" fill="#f0e8d6"/><rect x="580" y="21" width="16" height="43" rx="1.5" fill="#e2c47c"/><rect x="583" y="27" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="600" y="30" width="16" height="34" rx="1.5" fill="#f0e8d6"/><rect x="603" y="36" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="620" y="6" width="16" height="58" rx="1.5" fill="#8b2f27"/><rect x="640" y="9" width="16" height="55" rx="1.5" fill="#c1912f"/><rect x="643" y="15" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="660" y="29" width="16" height="35" rx="1.5" fill="#d9662f"/><rect x="680" y="21" width="16" height="43" rx="1.5" fill="#c1912f"/><rect x="683" y="27" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="700" y="17" width="16" height="47" rx="1.5" fill="#a9bfae"/><rect x="720" y="7" width="16" height="57" rx="1.5" fill="#e4d9c1"/><rect x="723" y="13" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="740" y="19" width="16" height="45" rx="1.5" fill="#e4d9c1"/><rect x="760" y="23" width="16" height="41" rx="1.5" fill="#a9bfae"/><rect x="763" y="29" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="780" y="4" width="16" height="60" rx="1.5" fill="#d9662f"/><rect x="800" y="4" width="16" height="60" rx="1.5" fill="#c1912f"/><rect x="803" y="10" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="820" y="29" width="16" height="35" rx="1.5" fill="#a63a2f"/><rect x="823" y="35" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="840" y="28" width="16" height="36" rx="1.5" fill="#f0e8d6"/><rect x="843" y="34" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="860" y="16" width="16" height="48" rx="1.5" fill="#8b2f27"/><rect x="863" y="22" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="880" y="11" width="16" height="53" rx="1.5" fill="#d9662f"/><rect x="900" y="30" width="16" height="34" rx="1.5" fill="#8b2f27"/><rect x="903" y="36" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="920" y="13" width="16" height="51" rx="1.5" fill="#8b2f27"/><rect x="923" y="19" width="10" height="2" fill="#10241a" opacity=".35"/><rect x="940" y="17" width="16" height="47" rx="1.5" fill="#f0e8d6"/><rect x="960" y="14" width="16" height="50" rx="1.5" fill="#a63a2f"/><rect x="980" y="20" width="16" height="44" rx="1.5" fill="#e4d9c1"/><rect x="1000" y="27" width="16" height="37" rx="1.5" fill="#8b2f27"/><rect x="1020" y="11" width="16" height="53" rx="1.5" fill="#c1912f"/><rect x="1023" y="17" width="10" height="2" fill="#10241a" opacity=".35"/></svg>
+    </section>
+
+    <div class="container j-layout">
+        <details class="j-toc" id="jToc" open>
+            <summary>On this page</summary>
+            <ol>
+                <li><a href="#quiz">The quiz</a></li>
+                <li><a href="#how">How it works</a></li>
+            </ol>
+        </details>
+
+        <article class="j-prose">
+            <div id="readerQuiz" data-lang="en">
+            <h2 id="quiz">The quiz</h2>
+            <p class="rq-intro">Pick the answer that is closest to what you actually do, not what you would like to do. There are no right answers.</p>
+            <noscript><p>This quiz needs JavaScript. Without it, our reading challenge is a good place to start: <a href="/reading-challenge-2027/">/reading-challenge-2027/</a></p></noscript>
+            <form class="rq-form" novalidate>
+                <div class="rq-progress"><div class="rq-progress__track"><div class="rq-progress__bar"></div></div><span class="rq-progress__text" aria-live="polite">0 / 6</span></div>
+                <fieldset class="rq-q">
+                    <legend>1. It is a rainy Sunday. How do you read?</legend>
+                    <label class="rq-opt"><input type="radio" name="q1" value="cozy" required><span>Blanket, something warm to drink, and a book I have read before</span></label>
+                    <label class="rq-opt"><input type="radio" name="q1" value="wanderer" required><span>A book set somewhere I have never been</span></label>
+                    <label class="rq-opt"><input type="radio" name="q1" value="classic" required><span>An old favourite: Austen, the Brontës, Dickens</span></label>
+                    <label class="rq-opt"><input type="radio" name="q1" value="annotator" required><span>Pen in hand, underlining as I go</span></label>
+                    <label class="rq-opt"><input type="radio" name="q1" value="challenger" required><span>With one eye on how many books I have finished this year</span></label>
+                </fieldset>
+                <fieldset class="rq-q">
+                    <legend>2. What is on your bedside table?</legend>
+                    <label class="rq-opt"><input type="radio" name="q2" value="challenger" required><span>A list of what I want to read next</span></label>
+                    <label class="rq-opt"><input type="radio" name="q2" value="wanderer" required><span>A map, or a travel book I keep meaning to finish</span></label>
+                    <label class="rq-opt"><input type="radio" name="q2" value="cozy" required><span>A lamp, a cushion and a pile of comfort rereads</span></label>
+                    <label class="rq-opt"><input type="radio" name="q2" value="classic" required><span>A thick clothbound classic</span></label>
+                    <label class="rq-opt"><input type="radio" name="q2" value="annotator" required><span>Pens, sticky tabs and a notebook</span></label>
+                </fieldset>
+                <fieldset class="rq-q">
+                    <legend>3. A friend asks what to read. You say…</legend>
+                    <label class="rq-opt"><input type="radio" name="q3" value="classic" required><span>Start with the classics. They have lasted for a reason</span></label>
+                    <label class="rq-opt"><input type="radio" name="q3" value="cozy" required><span>Something warm. It will feel like a hug</span></label>
+                    <label class="rq-opt"><input type="radio" name="q3" value="wanderer" required><span>This one. It is translated from a place you will want to visit</span></label>
+                    <label class="rq-opt"><input type="radio" name="q3" value="annotator" required><span>Read it with a pencil. There are lines you will want to keep</span></label>
+                    <label class="rq-opt"><input type="radio" name="q3" value="challenger" required><span>Add it to your list. It fits this month's prompt</span></label>
+                </fieldset>
+                <fieldset class="rq-q">
+                    <legend>4. How do you choose your next book?</legend>
+                    <label class="rq-opt"><input type="radio" name="q4" value="wanderer" required><span>By where it is set or where the author comes from</span></label>
+                    <label class="rq-opt"><input type="radio" name="q4" value="cozy" required><span>By mood: what do I feel like tonight?</span></label>
+                    <label class="rq-opt"><input type="radio" name="q4" value="annotator" required><span>A line I underlined in the last one led me to it</span></label>
+                    <label class="rq-opt"><input type="radio" name="q4" value="classic" required><span>Whichever classic I have not read yet</span></label>
+                    <label class="rq-opt"><input type="radio" name="q4" value="challenger" required><span>It is next on the plan</span></label>
+                </fieldset>
+                <fieldset class="rq-q">
+                    <legend>5. What do you do when you finish a great book?</legend>
+                    <label class="rq-opt"><input type="radio" name="q5" value="challenger" required><span>Log it, rate it and tick it off</span></label>
+                    <label class="rq-opt"><input type="radio" name="q5" value="annotator" required><span>Copy my favourite lines into a notebook</span></label>
+                    <label class="rq-opt"><input type="radio" name="q5" value="cozy" required><span>Sit with it for a while, with a hot drink</span></label>
+                    <label class="rq-opt"><input type="radio" name="q5" value="wanderer" required><span>Look up the place where it is set, or the author's life</span></label>
+                    <label class="rq-opt"><input type="radio" name="q5" value="classic" required><span>Find an adaptation and compare it with the book</span></label>
+                </fieldset>
+                <fieldset class="rq-q">
+                    <legend>6. The best present for a reader would be…</legend>
+                    <label class="rq-opt"><input type="radio" name="q6" value="challenger" required><span>A tracker for a 52-book challenge</span></label>
+                    <label class="rq-opt"><input type="radio" name="q6" value="cozy" required><span>A lamp or a soft blanket for the reading corner</span></label>
+                    <label class="rq-opt"><input type="radio" name="q6" value="wanderer" required><span>A passport-style journal for the places they read</span></label>
+                    <label class="rq-opt"><input type="radio" name="q6" value="classic" required><span>A beautiful edition of a classic, or a literary wall calendar</span></label>
+                    <label class="rq-opt"><input type="radio" name="q6" value="annotator" required><span>A good notebook and a pen that does not smudge</span></label>
+                </fieldset>
+                <button class="btn rq-submit" type="submit" disabled>Show my reader type</button>
+            </form>
+            <section class="rq-result" data-type="cozy" data-source="quiz-cozy" data-gift-title="Your Cozy Nester reader card (free printable)" data-gift-text="Two printable pages: three bookmarks to cut out, a reading-nook checklist and lists for your comfort rereads. We email it straight away." hidden>
+                <div class="rq-result__top">
+                    <img src="/assets/products/kindle-magnetic-sleeve/ambient-ai-20261020.jpg" alt="" width="600" height="450" loading="lazy">
+                    <div>
+                        <p class="rq-kicker">Your reader type</p>
+                        <h2>The Cozy Nester</h2>
+                        <p>Reading is where you go to feel at home. You reread the books that feel like a blanket, you notice the light in a room before the furniture, and you are happiest when the world is a little quieter than usual.</p>
+                    </div>
+                </div>
+                <div class="rq-picks">
+                    <h3>Three things we would pick for you</h3>
+                    <ul>
+                        <li><a href="/products/stacked-books-table-lamp">Stacked books table lamp</a> <span data-price-slug="stacked-books-table-lamp">from $25.99</span><span>Four stained-glass “books” that glow on a nightstand.</span></li>
+                        <li><a href="/products/wooden-finger-book-holder">Wooden finger book holder</a> <span data-price-slug="wooden-finger-book-holder">from $14.99</span><span>Holds a paperback open with one hand, under the blanket.</span></li>
+                        <li><a href="/products/kindle-magnetic-sleeve">Kindle magnetic sleeve</a> <span data-price-slug="kindle-magnetic-sleeve">$17.99</span><span>For the e-reader that lives in a tote bag.</span></li>
+                    </ul>
+                </div>
+                <button class="btn btn--sm rq-retake" type="button">Take it again</button>
+            </section>
+            <section class="rq-result" data-type="annotator" data-source="quiz-annotator" data-gift-title="Your Annotator reader card (free printable)" data-gift-text="Two printable pages: an annotation key with six symbols, three bookmarks to cut out and room for the lines you copy. We email it straight away." hidden>
+                <div class="rq-result__top">
+                    <img src="/assets/products/readers-memory-journal/card_en.jpg" alt="" width="600" height="450" loading="lazy">
+                    <div>
+                        <p class="rq-kicker">Your reader type</p>
+                        <h2>The Annotator</h2>
+                        <p>A book is not finished until you have argued with it. You read with a pencil, you trust a margin more than a review, and a page is a place to think.</p>
+                    </div>
+                </div>
+                <div class="rq-picks">
+                    <h3>Three things we would pick for you</h3>
+                    <ul>
+                        <li><a href="/products/readers-memory-journal">The Reader’s Memory Journal</a> <span data-price-slug="readers-memory-journal">$8.99</span><span>A page for each book: where you were, who gave it to you, the line you keep.</span></li>
+                        <li><a href="/products/washi-sticker-book">Washi sticker book</a> <span data-price-slug="washi-sticker-book">$13.99</span><span>For readers who keep a journal.</span></li>
+                        <li><a href="/products/wooden-finger-book-holder">Wooden finger book holder</a> <span data-price-slug="wooden-finger-book-holder">from $14.99</span><span>Frees the writing hand while you read.</span></li>
+                    </ul>
+                </div>
+                <button class="btn btn--sm rq-retake" type="button">Take it again</button>
+            </section>
+            <section class="rq-result" data-type="wanderer" data-source="quiz-wanderer" data-gift-title="Your Wanderer reader card (free printable)" data-gift-text="Two printable pages: three boarding-pass bookmarks and an “Around the world in 12 books” tracker. We email it straight away." hidden>
+                <div class="rq-result__top">
+                    <img src="/assets/products/reading-passport/main_en.jpg" alt="" width="600" height="450" loading="lazy">
+                    <div>
+                        <p class="rq-kicker">Your reader type</p>
+                        <h2>The Wanderer</h2>
+                        <p>Every book is a ticket to somewhere. You choose a book because of where it is set, you look up the map after a good chapter, and a translated novel feels like a small border crossing.</p>
+                    </div>
+                </div>
+                <div class="rq-picks">
+                    <h3>Three things we would pick for you</h3>
+                    <ul>
+                        <li><a href="/products/reading-passport">The Wanderer’s Reading Passport (printable)</a> <span data-price-slug="reading-passport">$8.99</span><span>A reading journal disguised as a passport, with boarding passes and visa stamps.</span></li>
+                        <li><a href="/products/reading-passport-printed">The Reading Passport, A5 paperback</a> <span data-price-slug="reading-passport-printed">$19.99</span><span>The same journal, printed and bound.</span></li>
+                        <li><a href="/products/readers-memory-journal">The Reader’s Memory Journal</a> <span data-price-slug="readers-memory-journal">$8.99</span><span>Where you read matters as much as what you read.</span></li>
+                    </ul>
+                </div>
+                <button class="btn btn--sm rq-retake" type="button">Take it again</button>
+            </section>
+            <section class="rq-result" data-type="challenger" data-source="quiz-challenger" data-gift-title="The free 2027 Reading Challenge (printable)" data-gift-text="All 52 prompts on one page with a line for each title, plus a page to log your year. We email the PDF straight away." hidden>
+                <div class="rq-result__top">
+                    <img src="/assets/products/reading-challenge-kit-2027/main.jpg" alt="" width="600" height="450" loading="lazy">
+                    <div>
+                        <p class="rq-kicker">Your reader type</p>
+                        <h2>The Challenger</h2>
+                        <p>A list is a promise to yourself. You like to know where you are in the year, a tick box is a small pleasure, and a good challenge pushes you toward books you would not have picked.</p>
+                    </div>
+                </div>
+                <div class="rq-picks">
+                    <h3>Three things we would pick for you</h3>
+                    <ul>
+                        <li><a href="/products/reading-challenge-kit-2027">The 2027 Reading Challenge Kit</a> <span data-price-slug="reading-challenge-kit-2027">$7.99</span><span>Bookshelf tracker, bingo cards, monthly logs and reviews. Prints at home.</span></li>
+                        <li><a href="/products/reading-challenge-journal-2027">The 2027 Reading Challenge Journal</a> <span data-price-slug="reading-challenge-journal-2027">$24.99</span><span>The challenge as an A5 paperback.</span></li>
+                        <li><a href="/products/wooden-reading-tracker">Wooden reading tracker</a> <span data-price-slug="wooden-reading-tracker">$18.99</span><span>A mini shelf that counts the books you finish this year.</span></li>
+                    </ul>
+                </div>
+                <button class="btn btn--sm rq-retake" type="button">Take it again</button>
+            </section>
+            <section class="rq-result" data-type="classic" data-source="quiz-classic" data-gift-title="The free Jane Austen reading plan for 2027 (printable)" data-gift-text="The six novels in a good order, with a weekly chapter grid and a rest week after each book. We email the PDF straight away." hidden>
+                <div class="rq-result__top">
+                    <img src="/assets/products/pride-prejudice-watch-party-kit/main.jpg" alt="" width="600" height="450" loading="lazy">
+                    <div>
+                        <p class="rq-kicker">Your reader type</p>
+                        <h2>The Classic Romantic</h2>
+                        <p>Some books have lasted two hundred years for a reason. You love a long-awaited letter, a candle-lit ballroom and a sentence that is both funny and true, and you are the first to compare the adaptation with the book.</p>
+                    </div>
+                </div>
+                <div class="rq-picks">
+                    <h3>Three things we would pick for you</h3>
+                    <ul>
+                        <li><a href="/products/pride-and-prejudice-watch-party-kit">Pride and Prejudice Watch Party Kit</a> <span data-price-slug="pride-and-prejudice-watch-party-kit">$6.99</span><span>A reading plan, a who-is-who page and bingo cards. Works with any adaptation.</span></li>
+                        <li><a href="/products/a-literary-year-2027-wall-calendar">A Literary Year: a 2027 wall calendar</a> <span data-price-slug="a-literary-year-2027-wall-calendar">$31.99</span><span>A classic book illustration for every month, with the authors born in it.</span></li>
+                        <li><a href="/products/jane-austen-puzzle-book">The Jane Austen Puzzle Book</a> <span data-price-slug="jane-austen-puzzle-book">$22.99</span><span>Word searches, cryptograms and crosswords for the six novels.</span></li>
+                    </ul>
+                </div>
+                <button class="btn btn--sm rq-retake" type="button">Take it again</button>
+            </section>
+            <aside class="j-signup" id="quizSignup" aria-labelledby="signupTitle" hidden>
+                <p class="rq-kicker">Your free gift</p>
+                <h3 id="signupTitle" class="rq-gift-title"></h3>
+                <p class="rq-gift-text"></p>
+                <form data-guide-signup data-lang="en" data-source="quiz" novalidate>
+                    <label class="visually-hidden" for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email" required>
+                    <button class="btn" type="submit">Send me my reader card</button>
+                </form>
+                <p class="j-signup__status" role="status" aria-live="polite"></p>
+                <p class="j-signup__fine">You also join our monthly reading letter: one a month at most, one click to leave.</p>
+            </aside>
+            </div>
+
+            <h2 id="how">How the quiz works</h2>
+            <p>There are five reader types: <strong>The Cozy Nester</strong>, <strong>The Annotator</strong>, <strong>The Wanderer</strong>, <strong>The Challenger</strong> and <strong>The Classic Romantic</strong>. Each answer points to one of them, and the type with the most answers wins. If two tie, the one you chose first wins.</p>
+            <p>It is a game, not a psychological test. Real readers are a mix, and the point is a conversation starter and a free printable that suits how you like to read. You can take it as often as you like, and the result is in the page address, so you can send it to a friend.</p>
+            <p>We do not store your answers. If you ask for the free gift we keep your email, as explained on the sign-up box, and send the printable for your type.</p>
+        </article>
+    </div>
+
+    <section class="j-related" aria-labelledby="relatedTitle">
+        <div class="container">
+            <h2 id="relatedTitle">Keep reading</h2>
+            <ul class="jx-grid">
+                <li class="jx-card" data-cat="gifts">
+                    <a class="jx-cover" href="/reading-challenge-2027/" tabindex="-1" aria-hidden="true"><svg aria-hidden="true"><use href="#i-book"/></svg><span>Reader quiz</span></a>
+                    <div class="jx-body">
+                        <h3><a href="/reading-challenge-2027/">The 2027 Reading Challenge</a></h3>
+                        <p>Fifty-two prompts, one a week. None of them tells you what to read.</p>
+                        <span class="jx-read">Read the prompts</span>
+                    </div>
+                </li>
+                <li class="jx-card" data-cat="gifts">
+                    <a class="jx-cover" href="/guides/gifts-for-book-lovers/" tabindex="-1" aria-hidden="true"><svg aria-hidden="true"><use href="#i-book"/></svg><span>Reader quiz</span></a>
+                    <div class="jx-body">
+                        <h3><a href="/guides/gifts-for-book-lovers/">Gifts for book lovers</a></h3>
+                        <p>By budget and by kind of reader, with Christmas order dates.</p>
+                        <span class="jx-read">Read the guide</span>
+                    </div>
+                </li>
+                <li class="jx-card" data-cat="gifts">
+                    <a class="jx-cover" href="/guides/pride-and-prejudice-netflix-series/" tabindex="-1" aria-hidden="true"><svg aria-hidden="true"><use href="#i-book"/></svg><span>Reader quiz</span></a>
+                    <div class="jx-body">
+                        <h3><a href="/guides/pride-and-prejudice-netflix-series/">Pride and Prejudice on Netflix</a></h3>
+                        <p>Who plays whom, how it compares, and what to read first.</p>
+                        <span class="jx-read">Read the guide</span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </section>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <nav class="footer__links" aria-label="Footer">
+            <a href="/about.html">About</a>
+            <a href="/shipping-returns.html">Shipping &amp; returns</a>
+            <a href="/contact.html">Contact</a>
+            <a href="/privacy.html">Privacy &amp; cookies</a>
+        </nav>
+        <div class="footer__bottom" style="border:0;padding-top:var(--sp-5)">
+            <p class="footer__quote">“For those who wander between pages.”</p>
+            <p class="footer__legal">&copy; 2026 The Books Wanderer</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+(function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var bar = $("jProgress"), art = document.querySelector(".j-prose");
+    function progress() {
+        var r = art.getBoundingClientRect(), total = r.height - window.innerHeight * 0.6;
+        bar.style.transform = "scaleX(" + Math.min(Math.max(-r.top / Math.max(total, 1), 0), 1) + ")";
+    }
+    window.addEventListener("scroll", progress, { passive: true });
+    progress();
+
+    var links = [].slice.call(document.querySelectorAll(".j-toc a")), map = {};
+    links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+    if ("IntersectionObserver" in window) {
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                    links.forEach(function (a) { a.classList.remove("is-active"); });
+                    if (map[e.target.id]) map[e.target.id].classList.add("is-active");
+                }
+            });
+        }, { rootMargin: "-20% 0px -70% 0px" });
+        Object.keys(map).forEach(function (id) { var h = $(id); if (h) io.observe(h); });
+    }
+    if (window.matchMedia("(max-width: 1019px)").matches) $("jToc").removeAttribute("open");
+
+    fetch("/api/products?limit=200&lang=en").then(function (r) { return r.json(); }).then(function (d) {
+        var by = {};
+        (d.products || []).forEach(function (p) { by[p.slug] = p; });
+        document.querySelectorAll("[data-price-slug]").forEach(function (el) {
+            var p = by[el.getAttribute("data-price-slug")];
+            if (p) el.textContent = "$" + Number(p.price_usd).toFixed(2);
+        });
+    }).catch(function () {});
+})();
+</script>
+<script src="/track.js?v=7" defer></script>
+<script src="/guides/assets/guide-signup.js?v=1" defer></script>
+<script src="/guides/assets/reader-quiz.js?v=1" defer></script>
+<script src="/cart.js?v=4" defer></script>
+</body>
+</html>
