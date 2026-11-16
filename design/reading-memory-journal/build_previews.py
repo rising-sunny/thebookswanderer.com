@@ -82,6 +82,11 @@ def make(lang):
     place(im, P[MEMORY], 880, (160, 70))
     caption(im, *cap["memory"]); im.save(OUT / f"memory_{lang}.jpg", quality=88)
 
+    im = Image.new("RGB", (1200, 900), BG)                         # shop-strip card (4:3, no caption)
+    place(im, P[MEMORY], 560, (560, 70), 3)
+    place(im, P[COVER], 560, (150, 110), -2)
+    im.save(OUT / f"card_{lang}.jpg", quality=88)
+
     im = Image.new("RGB", (W, H), BG)                              # 4. letters and quotes
     place(im, P[QUOTES], 560, (50, 330), -2)
     place(im, P[LETTER_AUTHOR], 560, (600, 290), 2)

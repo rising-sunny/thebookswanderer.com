@@ -158,10 +158,10 @@ class MonthlyTests(Fixture):
 
  def test_december_issue_features_the_journal_with_the_catalogue_price(self):
   def prod(slug,price):return {'slug':slug,'title':slug,'price_usd':price,'image_url':'/assets/products/'+slug+'/main.jpg'}
-  shelf=[prod('reading-challenge-journal-2027',24.99),prod('a-literary-year-2027-wall-calendar',31.99),prod('reading-passport-printed',19.99)]
+  shelf=[prod('reading-challenge-journal-2027',24.99),prod('a-literary-year-2027-wall-calendar',31.99),prod('reading-passport-printed',19.99),prod('readers-memory-journal',8.99)]
   for lang in ('en','es'):
    dec=monthly.draft(lang,'2026-12','https://example.com/u',shelf)
-   self.assertIn('/products/reading-challenge-journal-2027?',dec['text']);self.assertIn('$24.99',dec['html']);self.assertIn('a-literary-year-2027-wall-calendar',dec['html'])
+   self.assertIn('/products/reading-challenge-journal-2027?',dec['text']);self.assertIn('$24.99',dec['html']);self.assertIn('a-literary-year-2027-wall-calendar',dec['html']);self.assertIn('readers-memory-journal',dec['html'])
    self.assertIn('2027',dec['subject']);self.assertIn('https://example.com/u',dec['html'])
    self.assertIn('/guides/'+('pride-and-prejudice-netflix-series' if lang=='en' else 'orgullo-y-prejuicio-serie-netflix')+'/?utm_source=newsletter',dec['html']);self.assertIn('#signupTitle',dec['text'])
   # Without the product the letter still renders (no feature block), and other months keep the rotating shelf.

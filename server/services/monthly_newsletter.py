@@ -46,7 +46,7 @@ EDITIONS = {'2026-12': {
   'austen_cta': 'Read the guide',
   'austen_cta2': 'Get the free six-novel plan',
   'austen_path': '/guides/pride-and-prejudice-netflix-series/',
-  'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
+  'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'readers-memory-journal'],
   'closing': 'One small favour: tell us the first book of 2027. Just hit reply. It reaches a real person, and we read every one.'},
  'es': {
   'subject': 'Tu año de lectura 2027, todavía en blanco',
@@ -68,7 +68,7 @@ EDITIONS = {'2026-12': {
   'austen_cta': 'Leer la guía',
   'austen_cta2': 'Recibir el plan gratis de seis novelas',
   'austen_path': '/guides/orgullo-y-prejuicio-serie-netflix/',
-  'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'reading-log-bookmarks'],
+  'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'readers-memory-journal'],
   'closing': 'Un pequeño favor: cuéntanos cuál será tu primer libro de 2027. Solo responde a este correo; lo lee una persona de verdad y los leemos todos.'}}}
 
 def _card(p,lang,period):
