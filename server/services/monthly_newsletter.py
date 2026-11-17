@@ -46,6 +46,12 @@ EDITIONS = {'2026-12': {
   'austen_cta': 'Read the guide',
   'austen_cta2': 'Get the free six-novel plan',
   'austen_path': '/guides/pride-and-prejudice-netflix-series/',
+  'gifts_title': 'Last-minute gifts for readers',
+  'gifts_text': "If a reader is still on your list, here is the short version. Anything printed is made to order and needs time, and the cut-off dates are tight, so check the delivery estimate on the product page before you pay. The printable gifts do not wait for anyone: the Reader's Memory Journal, the 2027 Reading Challenge Kit and the Reading Passport arrive by email the minute you pay, even on Christmas Eve.",
+  'gifts_cta': 'See the gift guide',
+  'gifts_cta2': "The Memory Journal, by email in a minute",
+  'gifts_path': '/guides/gifts-for-book-lovers/',
+  'gifts_path2': '/products/readers-memory-journal',
   'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'readers-memory-journal'],
   'closing': 'One small favour: tell us the first book of 2027. Just hit reply. It reaches a real person, and we read every one.'},
  'es': {
@@ -68,6 +74,12 @@ EDITIONS = {'2026-12': {
   'austen_cta': 'Leer la guía',
   'austen_cta2': 'Recibir el plan gratis de seis novelas',
   'austen_path': '/guides/orgullo-y-prejuicio-serie-netflix/',
+  'gifts_title': 'Regalos de última hora para lectores',
+  'gifts_text': 'Si todavía te falta un regalo para alguien que lee, aquí va la versión corta. Todo lo impreso se hace bajo pedido y necesita tiempo, y las fechas límite son ajustadas, así que mira el plazo estimado en la página del producto antes de pagar. Los regalos imprimibles no esperan a nadie: el diario de memorias lectoras, el kit del reto de lectura 2027 y el pasaporte del lector llegan por correo en cuanto pagas, incluso en Nochebuena.',
+  'gifts_cta': 'Ver ideas de regalo',
+  'gifts_cta2': 'El diario de memorias, por correo en un minuto',
+  'gifts_path': '/guides/regalos-pequenos-para-lectores/',
+  'gifts_path2': '/es/products/readers-memory-journal',
   'shelf': ['a-literary-year-2027-wall-calendar', 'reading-passport-printed', 'readers-memory-journal'],
   'closing': 'Un pequeño favor: cuéntanos cuál será tu primer libro de 2027. Solo responde a este correo; lo lee una persona de verdad y los leemos todos.'}}}
 
@@ -117,6 +129,12 @@ def draft(lang, period, unsubscribe_url='', products=None):
         extra['austen'] = {'title': ed['austen_title'], 'text': ed['austen_text'], 'cta': ed['austen_cta'], 'url': base_url,
                            'cta2': ed['austen_cta2'], 'url2': base_url + '_plan#signupTitle'}
         pre_text += [ed['austen_title'] + '\n' + ed['austen_text'] + '\n' + base_url + '\n' + ed['austen_cta2'] + ': ' + base_url + '_plan#signupTitle']
+        if ed.get('gifts_title'):
+            utm = '?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_' + period + '_gifts'
+            g1, g2 = PUBLIC_BASE + ed['gifts_path'] + utm, PUBLIC_BASE + ed['gifts_path2'] + utm
+            extra['gifts'] = {'title': ed['gifts_title'], 'text': ed['gifts_text'], 'cta': ed['gifts_cta'], 'url': g1,
+                              'cta2': ed['gifts_cta2'], 'url2': g2}
+            pre_text += [ed['gifts_title'] + '\n' + ed['gifts_text'] + '\n' + ed['gifts_cta'] + ': ' + g1 + '\n' + ed['gifts_cta2'] + ': ' + g2]
         post_text=[ed['closing']]
     resource=PUBLIC_BASE+('/reto-de-lectura-2027/' if es else '/reading-challenge-2027/')+'?utm_source=newsletter&utm_medium=email&utm_campaign=monthly_'+period
     context={'lang':lang,'subject':subject,'heading':heading,'intro':intro,'month':f'{name} {year}','tip':TIPS[lang][month-1],'items':items,'resource':resource,'unsubscribe_url':unsubscribe_url,'base':PUBLIC_BASE,**extra}

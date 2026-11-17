@@ -164,11 +164,16 @@ class MonthlyTests(Fixture):
    self.assertIn('/products/reading-challenge-journal-2027?',dec['text']);self.assertIn('$24.99',dec['html']);self.assertIn('a-literary-year-2027-wall-calendar',dec['html']);self.assertIn('readers-memory-journal',dec['html'])
    self.assertIn('2027',dec['subject']);self.assertIn('https://example.com/u',dec['html'])
    self.assertIn('/guides/'+('pride-and-prejudice-netflix-series' if lang=='en' else 'orgullo-y-prejuicio-serie-netflix')+'/?utm_source=newsletter',dec['html']);self.assertIn('#signupTitle',dec['text'])
+   gift_guide='/guides/gifts-for-book-lovers/' if lang=='en' else '/guides/regalos-pequenos-para-lectores/'
+   self.assertIn(gift_guide+'?utm_source=newsletter',dec['html']);self.assertIn(gift_guide,dec['text'])
+   self.assertIn(('/es' if lang=='es' else '')+'/products/readers-memory-journal?utm_source=newsletter',dec['html'])
+   self.assertIn('monthly_2026-12_gifts',dec['html'])
   # Without the product the letter still renders (no feature block), and other months keep the rotating shelf.
   self.assertNotIn('$24.99',monthly.draft('en','2026-12','',[prod('reading-passport-printed',19.99)])['html'])
   jan=monthly.draft('en','2027-01','',shelf)
   self.assertIn('January reading letter',jan['subject']);self.assertNotIn('ten-minute rituals',jan['html'])
   self.assertNotIn('pride-and-prejudice-netflix-series',jan['html'])
+  self.assertNotIn('monthly_2027-01_gifts',jan['html']);self.assertNotIn('Last-minute gifts',jan['html'])
 
  def test_first_issue_and_dry_run_never_send_mail(self):
   self.add_sub('reader@example.com')
