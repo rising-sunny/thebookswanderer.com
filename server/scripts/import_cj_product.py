@@ -250,6 +250,7 @@ def main() -> None:
             else _round99(pricing_service.retail_from_cost(cost) + ship_allowance)
         )
         name = (v.get("variantKey") or "").strip()
+        name = (getattr(args, "variant_names", None) or {}).get(name, name)
         if not name:
             vname = (v.get("variantNameEn") or "").strip()
             base_en = (details.get("productNameEn") or "").strip()
