@@ -551,7 +551,7 @@ def render_product_page(
     </div>
     </div>
 </footer>
-<script src="/track.js?v=7" defer></script>
+<script src="/track.js?v=8" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
 <script src="/product.js?v=seo-title-20261113" defer></script>
 </body>
@@ -804,7 +804,7 @@ def render_collection_page(
   {faq_html}
 </main>
 {_site_footer(note=name)}
-<script src="/track.js?v=7" defer></script>
+<script src="/track.js?v=8" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
 </body>
 </html>
@@ -949,7 +949,7 @@ def render_catalog_page(
   </section>
 </main>
 {_site_footer(note="Shop")}
-<script src="/track.js?v=7" defer></script>
+<script src="/track.js?v=8" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
 </body>
 </html>
@@ -1047,7 +1047,7 @@ def render_collections_index(
   </section>
 </main>
 {_site_footer()}
-<script src="/track.js?v=7" defer></script>
+<script src="/track.js?v=8" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
 </body>
 </html>

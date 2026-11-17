@@ -177,6 +177,8 @@
             payment_redirect: "AddPaymentInfo",
             purchase_return: "Purchase",
             purchase: "Purchase", // Compatibility with cached checkout scripts.
+            // A new e-mail sign-up (free printable, quiz gift, challenge): lets a campaign optimise for leads.
+            challenge_request: "Lead",
         };
 
         function fireMeta(type, data) {
@@ -184,6 +186,8 @@
                 if (consent() !== "granted") return;
                 var name = META_EVENTS[type];
                 if (!name || !window.fbq) return;
+                // Somebody who was already on the list is not a new lead.
+                if (type === "challenge_request" && data && data.extra && data.extra.already) return;
                 var params = {};
                 if (data) {
                     if (data.value != null) {
@@ -196,6 +200,9 @@
                     }
                     if (data.extra && data.extra.lines != null) {
                         params.num_items = data.extra.lines;
+                    }
+                    if (type === "challenge_request" && data.extra && data.extra.source) {
+                        params.content_name = String(data.extra.source).slice(0, 40);
                     }
                 }
                 // Purchase goes out twice: from here without an amount (the return
