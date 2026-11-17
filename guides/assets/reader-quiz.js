@@ -55,6 +55,7 @@
         if (box) {
             box.hidden = false;
             box.querySelector("form").setAttribute("data-source", block.getAttribute("data-source"));
+            box.querySelector("form").setAttribute("data-gift", block.getAttribute("data-gift-file"));
             box.querySelector(".rq-gift-title").textContent = block.getAttribute("data-gift-title");
             box.querySelector(".rq-gift-text").textContent = block.getAttribute("data-gift-text");
         }
