@@ -32,6 +32,7 @@ BASE = "https://thebookswanderer.com/assets/products/kerstnacht-poster"
 FILES = {"2x3": 2 / 3, "3x4": 3 / 4, "4x5": 4 / 5}
 # The scan is 2607 px wide and sits upscaled in the file: up to 18 x 24 in stays near 160 dpi of real detail.
 SIZES = {(11, 14), (12, 16), (12, 18), (16, 20), (16, 24), (18, 24)}
+TAGS = ["poster", "christmas", "owl", "holly", "vintage print", "winter"]
 TITLE = "Christmas Eve (Kerstnacht) Poster, Van Hoytema 1894 Lithograph, Matte Print"
 DESCRIPTION = (
     "Two snowy owls, a flight of geese and a star over a frozen holly wood: \"Christmas Eve\" (Kerstnacht), "
@@ -83,7 +84,7 @@ async def main(apply: bool) -> int:
         return 0
     uploaded = {}
     for key in sorted({p[2] for p in plan}):
-        up = await printify._request("POST", "/uploads/images.json", {"file_name": f"kerstnacht-{key}.jpg", "url": f"{BASE}/print-{key}.jpg"})
+        up = await printify._request("POST", "/uploads/images.json", {"file_name": f"{BASE.rsplit('/', 1)[-1]}-{key}.jpg", "url": f"{BASE}/print-{key}.jpg"})
         uploaded[key] = up["id"]
         print(f"uploaded print-{key}.jpg -> {up['id']} ({up.get('width')}x{up.get('height')})")
     # twin_payload copies variants and placement; then point each area at its own file
@@ -99,7 +100,7 @@ async def main(apply: bool) -> int:
                         for ph in area["placeholders"] if ph.get("images")]
         areas.append({"variant_ids": ids, "placeholders": placeholders})
     payload["print_areas"] = areas
-    payload["tags"] = ["poster", "christmas", "owl", "holly", "vintage print", "winter"]
+    payload["tags"] = TAGS
     made = await printify._request("POST", f"/shops/{shop}/products.json", payload)
     print(f"created Printify product {made['id']} (not published). Enabled sizes: {len(enabled)}")
     return 0
