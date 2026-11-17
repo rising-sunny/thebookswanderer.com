@@ -1,4 +1,6 @@
 """The quiz campaign script only builds calls the owner's gate accepts: PAUSED objects under the budget cap."""
+import argparse
+import asyncio
 import importlib.util
 import io
 import os
@@ -6,7 +8,7 @@ import sys
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -55,6 +57,23 @@ class MetaQuizCampaignTests(unittest.TestCase):
     def test_the_ad_images_exist_in_the_repository(self):
         for ad in script.ADS.values():
             self.assertTrue((ROOT.parent / "assets" / "ads" / ad["image"]).is_file(), ad["image"])
+
+    def test_apply_creates_each_object_exactly_once_and_the_ads_use_the_new_ad_set(self):
+        calls = []
+
+        async def fake_call(supplier, method, path, body=None):
+            calls.append((method, path.rsplit("/", 1)[-1], body))
+            return {"status": 200, "data": {"id": f"id{len(calls)}"}}
+
+        with patch.object(supplier_api, "call", fake_call), \
+                patch.object(script, "images_are_public", AsyncMock(return_value=[])), redirect_stdout(io.StringIO()):
+            self.assertEqual(asyncio.run(script.apply(argparse.Namespace(**ARGS))), 0)
+        self.assertEqual([kind for _, kind, _ in calls],
+                         ["campaigns", "adsets", "adcreatives", "adcreatives", "ads", "ads"])
+        self.assertTrue(all(method == "POST" for method, _, _ in calls))
+        for _, kind, body in calls:
+            if kind == "ads":
+                self.assertEqual(body["adset_id"], "id2")
 
     def test_dry_run_prints_and_sends_nothing(self):
         out = io.StringIO()
