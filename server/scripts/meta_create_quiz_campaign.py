@@ -140,7 +140,7 @@ async def apply(args) -> int:
     final = build(args.account, args.page, args.pixel, args.countries, args.budget, args.start, args.end,
                   campaign_id=campaign, adset_id=adset, creative_ids=creatives)
     for step in final:
-        if step[0].startswith("ad "):
+        if step[0] in {f"ad {key}" for key in ADS}:   # not "ad set": startswith("ad ") would create it twice
             await post(*step)
     print("\nAll objects are PAUSED. Review them in Ads Manager and turn them on there.")
     return 0
