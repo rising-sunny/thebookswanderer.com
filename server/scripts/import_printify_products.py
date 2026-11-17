@@ -282,6 +282,74 @@ PRODUCTS = [
         "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99, "12\u2033 x 18\u2033": 27.99,
                    "16\u2033 x 20\u2033": 29.99, "16\u2033 x 24\u2033": 31.99, "18\u2033 x 24\u2033": 31.99},
     },
+    {
+        # created by scripts/create_printify_austen_posters.py (copy of the annotated poster); stays a draft until activated
+        "slug": 'austen-poster-she-is-tolerable',
+        "printify_id": '6afcb82c9616c4068d0362ad',
+        "title": 'Pride and Prejudice Poster, "She Is Tolerable" Darcy Quote, Hugh Thomson 1894 Illustration, Matte Print',
+        "category": "decor",
+        "description": (
+            'The line that starts it all: "She is tolerable; but not handsome enough to tempt me." Mr. Darcy at the Meryton ball, overheard by Elizabeth Bennet, drawn by Hugh Thomson. Illustration by Hugh Thomson from the 1894 George Allen edition, in the public domain (scan from the New York Public Library). Museum-style matte paper on a warm paper tone; sizes from 11 x 14 to 18 x 24 in; frame not included. Printed to order in the US; check your destination for delivery availability and the total.'
+        ),
+        "draft": True,
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # 18 x 24, same blueprint as the annotated poster
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "18\u2033 x 24\u2033": 31.99},
+    },
+    {
+        # created by scripts/create_printify_austen_posters.py (copy of the annotated poster); stays a draft until activated
+        "slug": 'austen-poster-noble-mien',
+        "printify_id": '6afcb831082535873f0e1d79',
+        "title": 'Pride and Prejudice Poster, Mr. Darcy Enters the Ball, Hugh Thomson 1894 Illustration, Matte Print',
+        "category": "decor",
+        "description": (
+            '"Mr. Darcy soon drew the attention of the room by his fine, tall person, handsome features, noble mien." Darcy arrives at the Meryton assembly, in Hugh Thomson\'s pen drawing. Illustration by Hugh Thomson from the 1894 George Allen edition, in the public domain (scan from the New York Public Library). Museum-style matte paper on a warm paper tone; sizes from 11 x 14 to 18 x 24 in; frame not included. Printed to order in the US; check your destination for delivery availability and the total.'
+        ),
+        "draft": True,
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # 18 x 24, same blueprint as the annotated poster
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "18\u2033 x 24\u2033": 31.99},
+    },
+    {
+        # created by scripts/create_printify_austen_posters.py (copy of the annotated poster); stays a draft until activated
+        "slug": 'austen-poster-never-knew-myself',
+        "printify_id": '6afcb8362571ac9a440fcdd0',
+        "title": 'Pride and Prejudice Poster, "Till This Moment I Never Knew Myself" Elizabeth Quote, Thomson 1894, Matte Print',
+        "category": "decor",
+        "description": (
+            '"Till this moment I never knew myself." Elizabeth Bennet, after reading Darcy\'s letter: Hugh Thomson\'s sword and scales from the head of chapter 36. Illustration by Hugh Thomson from the 1894 George Allen edition, in the public domain (scan from the New York Public Library). Museum-style matte paper on a warm paper tone; sizes from 11 x 14 to 18 x 24 in; frame not included. Printed to order in the US; check your destination for delivery availability and the total.'
+        ),
+        "draft": True,
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # 18 x 24, same blueprint as the annotated poster
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "18\u2033 x 24\u2033": 31.99},
+    },
+    {
+        # created by scripts/create_printify_austen_posters.py (copy of the annotated poster); stays a draft until activated
+        "slug": 'austen-poster-first-page',
+        "printify_id": '6afcb83a5822f6882300d674',
+        "title": 'Pride and Prejudice Poster, "It Is a Truth Universally Acknowledged" Opening Page, Thomson 1894, Matte Print',
+        "category": "decor",
+        "description": (
+            'The first page of Pride and Prejudice as Hugh Thomson dressed it in 1894: a peacock, the hand-lettered title and the most famous opening sentence in English. Illustration by Hugh Thomson from the 1894 George Allen edition, in the public domain (scan from the New York Public Library). Museum-style matte paper on a warm paper tone; sizes from 11 x 14 to 18 x 24 in; frame not included. Printed to order in the US; check your destination for delivery availability and the total.'
+        ),
+        "draft": True,
+        "local": [],
+        "skip_mockup_camera": set(),
+        "mockup_variant": 43144,                  # 18 x 24, same blueprint as the annotated poster
+        "hero_mockup_camera": "95153",
+        "prices": {"11\u2033 x 14\u2033": 21.99, "12\" x 16\"": 27.99,
+                   "16\u2033 x 20\u2033": 29.99, "18\u2033 x 24\u2033": 31.99},
+    },
 ]
 
 
@@ -358,7 +426,7 @@ def write(spec: dict, info: dict, retail: float, pin: bool = True) -> None:
     product.from_country = "US"
     product.video_url = ""
     product.video_poster = ""
-    product.active = True
+    product.active = not spec.get("draft", False)
     db.flush()
     for old in list(product.variants or []):
         db.delete(old)
@@ -383,7 +451,7 @@ def write(spec: dict, info: dict, retail: float, pin: bool = True) -> None:
     db.commit()
     db.refresh(product)
     print(f"  OK product {product.id} {product.slug}")
-    if not pin:
+    if not pin or not product.active:
         db.close()
         return
     try:
