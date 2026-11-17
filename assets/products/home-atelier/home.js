@@ -77,9 +77,14 @@ form.addEventListener('submit', async event => {
     });
     if (!response.ok) throw new Error('subscribe failed');
     const data = await response.json();
-    status.textContent = data.already
+    status.textContent = (data.already
       ? message('You were already on the list — the challenge is on its way to your inbox.', 'Ya estabas en la lista: el reto va camino de tu correo.')
-      : message('Done! Check your inbox for the 2027 Reading Challenge.', '¡Listo! Revisa tu correo para recibir el Reto de Lectura 2027.');
+      : message('Done! Check your inbox for the 2027 Reading Challenge.', '¡Listo! Revisa tu correo para recibir el Reto de Lectura 2027.')) + ' ';
+    const download = document.createElement('a');
+    download.href = isSpanish ? '/assets/downloads/reto-de-lectura-2027.pdf' : '/assets/downloads/2027-reading-challenge.pdf';
+    download.textContent = message('Download the PDF now', 'Descargar el PDF ahora');
+    download.setAttribute('download', '');
+    status.appendChild(download);
     form.reset();
   } catch (_) {
     status.textContent = message("That didn't go through. Try again, or email hello@thebookswanderer.com.", 'No se pudo completar. Inténtalo de nuevo o escribe a hello@thebookswanderer.com.');

@@ -622,6 +622,9 @@
           .then(function (d) {
               if (d.ok !== true) throw new Error();
               status.textContent = d.email_status === "queued" ? "Solicitud recibida. Intentaremos enviarte el reto por correo. Si no llega, escribe a hello@thebookswanderer.com." : "No se ha programado un nuevo correo. Si necesitas el reto, escribe a hello@thebookswanderer.com.";
+              var dl = document.createElement("a");
+              dl.href = "/assets/downloads/reto-de-lectura-2027.pdf"; dl.textContent = "Descargar el PDF ahora"; dl.setAttribute("download", "");
+              status.appendChild(document.createTextNode(" ")); status.appendChild(dl);
               form.reset();
               try {
                   if (window.tbwTrack) window.tbwTrack("challenge_request", {extra: {

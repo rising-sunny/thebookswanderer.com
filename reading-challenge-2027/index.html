@@ -623,6 +623,9 @@
           .then(function (d) {
               if (d.ok !== true) throw new Error();
               status.textContent = d.email_status === "queued" ? "Request received. We will try to send the challenge by email. If it does not arrive, contact hello@thebookswanderer.com." : "No new email was scheduled. If you need the challenge, contact hello@thebookswanderer.com.";
+              var dl = document.createElement("a");
+              dl.href = "/assets/downloads/2027-reading-challenge.pdf"; dl.textContent = "Download the PDF now"; dl.setAttribute("download", "");
+              status.appendChild(document.createTextNode(" ")); status.appendChild(dl);
               form.reset();
               try {
                   if (window.tbwTrack) window.tbwTrack("challenge_request", {extra: {

@@ -5,14 +5,28 @@
         en: {
             ok: "Request received. We will try to send the PDF by email. If it does not arrive, contact hello@thebookswanderer.com.",
             none: "No new email was scheduled. If you need the PDF, contact hello@thebookswanderer.com.",
-            err: "That didn't go through. Try again, or email hello@thebookswanderer.com."
+            err: "That didn't go through. Try again, or email hello@thebookswanderer.com.",
+            dl: "Download the PDF now"
         },
         es: {
             ok: "Solicitud recibida. Intentaremos enviarte el PDF por correo. Si no llega, escribe a hello@thebookswanderer.com.",
             none: "No se programó ningún correo nuevo. Si necesitas el PDF, escribe a hello@thebookswanderer.com.",
-            err: "No se pudo enviar. Inténtalo de nuevo o escribe a hello@thebookswanderer.com."
+            err: "No se pudo enviar. Inténtalo de nuevo o escribe a hello@thebookswanderer.com.",
+            dl: "Descargar el PDF ahora"
         }
     };
+    /* The free PDFs are public files, so the confirmation also links to the right one: a mail filter (a school
+       or a company, for example) must not leave anybody without it. A form can name its own file with data-gift. */
+    var GIFT = {
+        challenge: {en: "/assets/downloads/2027-reading-challenge.pdf", es: "/assets/downloads/reto-de-lectura-2027.pdf"},
+        austen: {en: "/assets/downloads/jane-austen-reading-plan-2027.pdf", es: "/assets/downloads/plan-de-lectura-jane-austen-2027.pdf"}
+    };
+    function giftFor(form, lang) {
+        var own = form.getAttribute("data-gift");
+        if (own) return own;
+        var src = form.getAttribute("data-source") || "";
+        return GIFT[src.indexOf("austen") === 0 ? "austen" : "challenge"][lang];
+    }
     [].forEach.call(document.querySelectorAll("form[data-guide-signup]"), function (form) {
         var lang = form.getAttribute("data-lang") === "es" ? "es" : "en", m = MSG[lang];
         var email = form.querySelector("input[type=email]"), btn = form.querySelector("button");
@@ -28,7 +42,10 @@
               .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
               .then(function (d) {
                   if (d.ok !== true) throw new Error();
-                  status.textContent = d.email_status === "queued" ? m.ok : m.none;
+                  status.textContent = (d.email_status === "queued" ? m.ok : m.none) + " ";
+                  var link = document.createElement("a");
+                  link.href = giftFor(form, lang); link.textContent = m.dl; link.setAttribute("download", "");
+                  status.appendChild(link);
                   form.reset();
                   try {
                       if (window.tbwTrack) window.tbwTrack("challenge_request", {extra: {
