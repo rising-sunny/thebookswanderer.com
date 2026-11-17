@@ -50,6 +50,7 @@
                   try {
                       if (window.tbwTrack) window.tbwTrack("challenge_request", {extra: {
                           lang: lang, already: d.already === true,
+                          source: form.getAttribute("data-source") || "guide",
                           email_status: d.email_status === "queued" ? "queued" : "not_queued"
                       }});
                   } catch (_) { /* Analytics must not change the form result. */ }
