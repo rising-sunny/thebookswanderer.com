@@ -72,6 +72,8 @@ VALID_EVENTS = {
     "purchase_return",
     "challenge_request",
     "challenge_product_click",
+    "tracker_sample_view",
+    "tracker_sample_click",
     "quiz_complete",
     "cart_open",
     "cart_load_error",
@@ -437,13 +439,13 @@ def _build_snapshot(db: Session) -> dict:
         func.max(LiveEvent.ts).label("last_ts"),
     ).filter(
         LiveEvent.ts >= funnel_cutoff,
-        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click", "quiz_complete")),
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click", "tracker_sample_view", "tracker_sample_click", "quiz_complete")),
     ).group_by(LiveEvent.session_id).subquery()
 
     funnel_rows = db.query(LiveEvent).join(
         sub, (LiveEvent.session_id == sub.c.session_id) & (LiveEvent.ts == sub.c.last_ts)
     ).filter(
-        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click", "quiz_complete")),
+        LiveEvent.event_type.notin_(("cart_open", "cart_load_error", "challenge_request", "challenge_product_click", "tracker_sample_view", "tracker_sample_click", "quiz_complete")),
     ).all()
 
     active_carts = 0

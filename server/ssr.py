@@ -449,7 +449,7 @@ def render_product_page(
     <p>{_esc_text(_about_paragraph(title, detail.get("supplier"), cat_slug))}</p>
     <ul>
       <li>Category: {_esc_text(category)}</li>
-      <li>{"Digital download (PDF) — the link arrives by email right after payment" if digital else _SHIP_LINES.get(detail.get("supplier") or "", _SHIP_LINES["cj"])}</li>
+      <li>{"Digital download — the link arrives by email right after payment" if digital else _SHIP_LINES.get(detail.get("supplier") or "", _SHIP_LINES["cj"])}</li>
       <li>Faulty or wrong items refunded in full within 30 days</li>
       <li>Secure checkout{"" if digital else " · shipping calculated by destination at cart"}</li>
     </ul>
@@ -553,7 +553,7 @@ def render_product_page(
 </footer>
 <script src="/track.js?v=8" defer></script>
 <script src="/cart.js?v=cart-feedback-20261031" defer></script>
-<script src="/product.js?v=seo-title-20261113" defer></script>
+<script src="/product.js?v=tracker-20261119" defer></script>
 </body>
 </html>
 """
