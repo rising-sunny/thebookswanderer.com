@@ -28,6 +28,7 @@ instagram_content_publish) and ffmpeg. Products come from the public API.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import io
 import json
 import os
@@ -137,7 +138,11 @@ def load_state() -> list[dict]:
 
 def save_state(entries: list[dict]) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps(entries[-500:], indent=1))
+    with tempfile.NamedTemporaryFile("w", dir=STATE.parent, delete=False) as output:
+        os.fchmod(output.fileno(), STATE.stat().st_mode & 0o777 if STATE.exists() else 0o644)
+        json.dump(entries[-500:], output, indent=1)
+        tmp = output.name
+    os.replace(tmp, STATE)
 
 
 def pick_product(client: httpx.Client, state: list[dict], slug: str | None) -> dict:
@@ -566,9 +571,26 @@ def main() -> None:
                     help="post a content reel instead of a product (any day; SLUG picks which)")
     ap.add_argument("--editorial", action="store_true", help="render a reading prompt, illustration reveal, or product detail story")
     ap.add_argument("--pin-preview", type=Path, help="also save the companion still for the separate Pinterest calendar")
+    ap.add_argument("--preview-date", metavar="YYYY-MM-DD", help="dry-run the scheduled post for a New York date")
     args = ap.parse_args()
+    if args.preview_date and not args.dry_run:
+        ap.error("--preview-date requires --dry-run")
+    if args.dry_run:
+        run(args)
+        return
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    with STATE.with_suffix(".lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("social publisher already running")
+            return
+        run(args)
 
-    now_ny = datetime.now(NY)
+
+def run(args):
+
+    now_ny = datetime.fromisoformat(args.preview_date).replace(tzinfo=NY) if args.preview_date else datetime.now(NY)
     if args.at_hour is not None and now_ny.hour != args.at_hour:
         return
     if (os.getenv("SOCIAL_POST_ENABLED", "1") or "").strip() == "0" and not args.dry_run:
@@ -589,6 +611,16 @@ def main() -> None:
         args.slug = retry["slug"]
         args.editorial = retry.get("creative") == "editorial"
 
+    trial = {}
+    if (args.preview_date or args.at_hour is not None or retry) and (not args.slug or retry) and args.content is None:
+        schedule = Path(__file__).with_name("reader_stories_trial.json")
+        trial = json.loads(schedule.read_text()).get(today, {})
+        if trial and (not retry or trial["slug"] == retry["slug"]):
+            args.slug = trial["slug"]
+            args.editorial = True
+        else:
+            trial = {}
+
     client = httpx.Client(timeout=40, headers={"User-Agent": "TheBooksWanderer social bot"})
     if args.slug and args.slug.startswith("content/"):
         args.content = args.slug
@@ -600,6 +632,8 @@ def main() -> None:
     else:
         p = pick_product(client, state, args.slug)
         images = product_images(client, p)
+    if trial:
+        p = {**p, "trial": trial, "trial_date": today}
     fb_text, ig_text = captions(p)
     if args.editorial or args.pin_preview:
         import reader_stories
@@ -636,21 +670,37 @@ def main() -> None:
         entry = {"date": today, "slug": p["slug"], "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         if args.editorial:
             entry["creative"] = "editorial"
+        if trial:
+            entry = next((e for e in reversed(state) if e["date"] == today and e["slug"] == p["slug"]), entry)
+            if entry not in state:
+                state.append(entry)
+            entry["trial"] = "reader_stories_14d"
         for name, fn, text in (("facebook", meta.facebook, fb_text), ("instagram", meta.instagram, ig_text)):
+            if entry.get(name):
+                continue
             try:
                 entry[name] = fn(video, text)
+                entry.pop(f"{name}_error", None)
                 print(f"  {name}: posted {entry[name]}")
             except Exception as exc:  # noqa: BLE001
                 entry[f"{name}_error"] = str(exc)[:300]
                 print(f"  {name}: FAILED {exc}")
+            if trial:
+                save_state(state)
         try:
-            entry["pinterest"] = pinterest_content(p, video) if p.get("caption") else pinterest_round(p["slug"], video)
+            if trial:
+                entry["pinterest"] = {"scheduled_separately": True}
+            elif p.get("caption"):
+                entry["pinterest"] = pinterest_content(p, video)
+            else:
+                entry["pinterest"] = pinterest_round(p["slug"], video)
             print(f"  pinterest: {entry['pinterest']}")
         except Exception as exc:  # noqa: BLE001
             entry["pinterest"] = {"error": str(exc)[:300]}
             print(f"  pinterest: FAILED {exc}")
         entry["ok"] = bool(entry.get("facebook") and entry.get("instagram"))
-        state.append(entry)
+        if not trial:
+            state.append(entry)
         save_state(state)
         if not entry["ok"]:
             raise SystemExit(1)

@@ -104,7 +104,17 @@ def spines(im, y, t):
         d.ellipse((x + 78, y0 + 155, x + 96, y0 + 173), outline=PAPER, width=2)
 
 
-def challenge(t):
+def palette(p):
+    prompts = p.get("trial", {}).get("prompts")
+    if not prompts:
+        return PALETTE
+    return [
+        (color, name, *prompt)
+        for (color, name, *_), prompt in zip(PALETTE, prompts, strict=True)
+    ]
+
+
+def challenge(t, choices):
     im = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(im)
     top(d)
@@ -128,7 +138,7 @@ def challenge(t):
     elif t < end:
         i = min(2, int((t - start) / (4 * beat)))
         local = (t - start) - i * 4 * beat
-        clr, name, one, two = PALETTE[i]
+        clr, name, one, two = choices[i]
         d.rectangle((0, 0, W, H), fill=clr)
         top(d, PAPER)
         word(d, (54, 238), "You picked " + name + ".", 39, PAPER, "italic")
@@ -141,7 +151,7 @@ def challenge(t):
         footer(d, "One prompt for your next book", PAPER)
     else:
         word(d, (50, 226), "Your next read", 65, INK, "serif")
-        for i, (clr, name, a, b) in enumerate(PALETTE):
+        for i, (clr, name, a, b) in enumerate(choices):
             y = 413 + i * 126
             d.rounded_rectangle((52, y, 72, y + 68), radius=4, fill=clr)
             word(d, (97, y + 1), name, 23, MUTED, "bold")
@@ -150,23 +160,42 @@ def challenge(t):
     return im
 
 
-def wonderland(t, art):
+def wonderland(t, art, hatter):
     im = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(im)
     top(d)
     beat = 60 / 84
     if t < 6 * beat:
-        word(d, (51, 216), "Know that grin?", 69, INK, "serif")
+        word(
+            d,
+            (51, 216),
+            "Whose hat is that?" if hatter else "Know that grin?",
+            65,
+            INK,
+            "serif",
+        )
         word(d, (54, 326), "One clue from Wonderland.", 33, OX, "italic")
         # The mouth is at (0.49, 0.31) of the original Tenniel plate.
         im.paste(
-            panel(art, (624, 402), 4.7 - 0.75 * smooth(t / (6 * beat)), (0.49, 0.32)),
+            panel(
+                art,
+                (624, 402),
+                4.7 - 0.75 * smooth(t / (6 * beat)),
+                (0.43, 0.22) if hatter else (0.49, 0.32),
+            ),
             (48, 486),
         )
         ImageDraw.Draw(im).rectangle((48, 486, 671, 887), outline=INK, width=2)
         footer(d, "Look closely before the reveal")
     elif t < 15 * beat:
-        word(d, (52, 200), "The Cheshire Cat.", 62, INK, "serif")
+        word(
+            d,
+            (52, 200),
+            "The Mad Hatter." if hatter else "The Cheshire Cat.",
+            62,
+            INK,
+            "serif",
+        )
         y = 338
         im.paste(
             panel(
@@ -189,6 +218,8 @@ def wonderland(t, art):
 
 
 def product_info(p):
+    if p.get("trial", {}).get("shots"):
+        return p["trial"]["shots"]
     if p["slug"] == HOLDER:
         return [
             "One hand for coffee?",
@@ -244,12 +275,20 @@ def edition(p):
     }.get(p["slug"], "object")
 
 
-def render(story, p, images, out):
-    art = (
-        Image.open(S / "content/free-literary-coloring-pages-1.jpg").convert("RGB")
-        if story == "wonderland"
-        else None
+def illustration(hatter):
+    name = (
+        "free-literary-coloring-pages-3.jpg"
+        if hatter
+        else "free-literary-coloring-pages-1.jpg"
     )
+    with Image.open(S / "content" / name) as source:
+        return source.convert("RGB")
+
+
+def render(story, p, images, out):
+    hatter = p.get("trial", {}).get("illustration") == "hatter"
+    choices = palette(p)
+    art = illustration(hatter) if story == "wonderland" else None
     track = S / "story-music" / (TRACKS[story] + ".m4a")
     cmd = [
         "ffmpeg",
@@ -296,9 +335,9 @@ def render(story, p, images, out):
             for i in range(round(FPS * DURATION[story])):
                 t = i / FPS
                 if story == "challenge":
-                    frame = challenge(t)
+                    frame = challenge(t, choices)
                 elif story == "wonderland":
-                    frame = wonderland(t, art)
+                    frame = wonderland(t, art, hatter)
                 else:
                     frame = object_frame(t, p, images)
                 ff.stdin.write(frame.tobytes())
@@ -321,7 +360,7 @@ def pin(story, p, images, out):
     if story == "challenge":
         word(d, (65, 209), "Three ways to pick", 73, INK, "serif")
         word(d, (65, 313), "your next read", 80, GREEN, "italic")
-        for i, (clr, n, a, b) in enumerate(PALETTE):
+        for i, (clr, n, a, b) in enumerate(palette(p)):
             y = 548 + i * 206
             d.rounded_rectangle((67, y, 153, y + 151), radius=8, fill=clr)
             d.line((79, y + 18, 141, y + 18), fill=PAPER, width=2)
@@ -333,7 +372,8 @@ def pin(story, p, images, out):
         im.paste(OX, (0, 0, w, h))
         d = ImageDraw.Draw(im)
         word(d, (64, 72), "THE BOOKS WANDERER", 26, PAPER, "bold")
-        a = Image.open(S / "content/free-literary-coloring-pages-1.jpg").convert("RGB")
+        hatter = p.get("trial", {}).get("illustration") == "hatter"
+        a = illustration(hatter)
         plate = a.crop((94, 94, 911, 1097))
         art = ImageOps.contain(plate, (764, 805))
         x = (w - art.width) // 2
@@ -343,7 +383,14 @@ def pin(story, p, images, out):
         )
         im.paste(art, (x, y))
         word(d, (66, 1026), "Colour the", 62, PAPER, "serif")
-        word(d, (65, 1106), "Cheshire Cat", 89, PAPER, "italic")
+        word(
+            d,
+            (65, 1106),
+            "Mad Hatter" if hatter else "Cheshire Cat",
+            89,
+            PAPER,
+            "italic",
+        )
         d.line((68, 1289, 924, 1289), fill="#D7AC87", width=2)
         word(
             d,
@@ -366,7 +413,7 @@ def pin(story, p, images, out):
         detail = (
             "Slide your thumb through and rest the wings across the pages."
             if p["slug"] == HOLDER
-            else "Find this piece in our shop."
+            else product_info(p)[1]
         )
         lines(d, (63, end + 35), detail, 856, 37, PAPER, "sans", 2)
         d.line((65, 1360, 930, 1360), fill="#ABBAA3", width=2)
@@ -380,7 +427,13 @@ def pin(story, p, images, out):
 
 
 def captions(story, p, base):
-    if story == "challenge":
+    if p.get("trial", {}).get("illustration") == "hatter":
+        opening = "Can you name the guest at the tea party just from his hat? Find John Tenniel’s illustration in our free printable set."
+        action = "Get the printable pages"
+    elif p.get("trial", {}).get("prompts"):
+        opening = "A winter setting, a book in letters, or a second-hand find. Which reading prompt would you pick?"
+        action = "Find all 52 prompts"
+    elif story == "challenge":
         opening = "Rose, fern or ink? Pick a spine before the prompts appear. Which book would you put beside yours?"
         action = "Find all 52 prompts"
     elif story == "wonderland":
@@ -400,6 +453,8 @@ def captions(story, p, base):
         + "?utm_source=facebook&utm_medium=social&utm_campaign=reader_stories&utm_content="
         + story
     )
+    if p.get("trial_date"):
+        link = f"{base}{path}?utm_source=facebook&utm_medium=social&utm_campaign=reader_stories_14d&utm_content={p['trial_date']}-{story}"
     return (
         opening + "\n\n" + action + " → " + link,
         opening + "\n\n" + action + " via the link in our bio. #Bookstagram",
