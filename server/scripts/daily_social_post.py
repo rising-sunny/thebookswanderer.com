@@ -564,6 +564,8 @@ def main() -> None:
                     help="retry Facebook for today's entry (same product and reel), leave Instagram/Pinterest alone")
     ap.add_argument("--content", nargs="?", const="", metavar="SLUG",
                     help="post a content reel instead of a product (any day; SLUG picks which)")
+    ap.add_argument("--editorial", action="store_true", help="render a reading prompt, illustration reveal, or product detail story")
+    ap.add_argument("--pin-preview", type=Path, help="also save the companion still for the separate Pinterest calendar")
     args = ap.parse_args()
 
     now_ny = datetime.now(NY)
@@ -585,6 +587,7 @@ def main() -> None:
             print(f"{today}: nothing to retry on Facebook")
             return
         args.slug = retry["slug"]
+        args.editorial = retry.get("creative") == "editorial"
 
     client = httpx.Client(timeout=40, headers={"User-Agent": "TheBooksWanderer social bot"})
     if args.slug and args.slug.startswith("content/"):
@@ -598,10 +601,20 @@ def main() -> None:
         p = pick_product(client, state, args.slug)
         images = product_images(client, p)
     fb_text, ig_text = captions(p)
+    if args.editorial or args.pin_preview:
+        import reader_stories
+        story = reader_stories.edition(p)
+        if args.editorial:
+            fb_text, ig_text = reader_stories.captions(story, p, BASE)
+        if args.pin_preview:
+            reader_stories.pin(story, p, images, args.pin_preview)
     seed = int(now_ny.strftime("%Y%m%d")) + p["id"]
     with tempfile.TemporaryDirectory() as tmp:
         video = Path(args.out) if args.out else Path(tmp) / "reel.mp4"
-        render(p, images, video, seed)
+        if args.editorial:
+            reader_stories.render(story, p, images, video)
+        else:
+            render(p, images, video, seed)
         print(f"{today} {p['slug']}: rendered {video.stat().st_size // 1024} KB")
         if args.dry_run:
             print("── Facebook ──\n" + fb_text + "\n── Instagram ──\n" + ig_text)
@@ -621,6 +634,8 @@ def main() -> None:
                 raise SystemExit(1)
             return
         entry = {"date": today, "slug": p["slug"], "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        if args.editorial:
+            entry["creative"] = "editorial"
         for name, fn, text in (("facebook", meta.facebook, fb_text), ("instagram", meta.instagram, ig_text)):
             try:
                 entry[name] = fn(video, text)
