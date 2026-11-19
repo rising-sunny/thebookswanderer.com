@@ -262,6 +262,23 @@
         // Auto pageview (skip pure success shells that re-track purchase below)
         window.tbwTrack("pageview");
 
+        var sample = document.getElementById("tracker-sample-download");
+        if (sample) {
+            var tracker = { product_slug: "reading-challenge-spreadsheet-2027" };
+            sample.addEventListener("click", function () {
+                window.tbwTrack("tracker_sample_click", tracker);
+            });
+            if ("IntersectionObserver" in window) {
+                var observer = new IntersectionObserver(function (entries) {
+                    if (entries.some(function (entry) { return entry.isIntersecting; })) {
+                        observer.disconnect();
+                        window.tbwTrack("tracker_sample_view", tracker);
+                    }
+                });
+                observer.observe(sample);
+            }
+        }
+
         // Only challenge product links; no email or link query strings enter analytics.
         if (/^\/(reading-challenge-2027|reto-de-lectura-2027)\/$/.test(location.pathname)) {
             document.addEventListener("click", function (event) {

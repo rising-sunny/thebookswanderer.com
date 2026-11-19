@@ -61,5 +61,6 @@
   {"id": "christmas-time-journal-variant", "script": "digital_products.py", "args": ["--apply", "christmas-time-journal"]},
   {"id": "christmas-time-journal-reactivate", "script": "install_print_bundle.py", "args": ["christmas-time-journal", "--activate"]},
   {"id": "reading-challenge-journal-variant", "script": "digital_products.py", "args": ["--apply", "reading-challenge-journal-2027"]},
-  {"id": "reading-challenge-journal-reactivate", "script": "install_print_bundle.py", "args": ["reading-challenge-journal-2027", "--activate"]}
+  {"id": "reading-challenge-journal-reactivate", "script": "install_print_bundle.py", "args": ["reading-challenge-journal-2027", "--activate"]},
+  {"id": "reading-spreadsheet-2027-create", "script": "digital_products.py", "args": ["--apply", "reading-challenge-spreadsheet-2027"]}
 ]
