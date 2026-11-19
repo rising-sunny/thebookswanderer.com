@@ -13,5 +13,5 @@ if __name__=='__main__':
     with (store.data_dir()/'reader-pipeline.lock').open('a') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:print(json.dumps({'status':'already_running'}));sys.exit(0)
-        result={'discovery':discover(),'collection':collect(limit=20),'campaign':outreach.run('store-invitation',[],send=args.send,automatic=True)}
+        result={'discovery':discover(),'collection':collect(limit=20),'campaign':outreach.run('literary-partnerships',[],send=args.send,automatic=True)}
         print(json.dumps(result,ensure_ascii=False));sys.exit(1 if result['campaign'].get('totals',{}).get('uncertain') else 0)
