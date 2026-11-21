@@ -563,7 +563,7 @@
   <h1>${escapeHtml(title)}</h1>
   <p class="pdp__price"><strong id="pdpPrice">$${price}</strong> <small>USD</small></p>
   <p class="pdp__shipnote">${isDigital()
-        ? "Instant download — PDF, no shipping"
+        ? "Instant digital download — no shipping"
         : product.supplier === "prodigi" ? "Printed to order · unframed · standard US shipping included" : "Standard US shipping included · other destinations quoted below"}</p>
   ${desc ? `<div class="pdp__lead">${desc}</div>` : ""}
   ${variantPicker}
@@ -574,7 +574,7 @@
   ${shippingBlockHtml()}
   <ul class="pdp__meta">
     ${isDigital()
-        ? `<li>Instant download — PDF, no shipping</li>
+        ? `<li>Instant digital download — no shipping</li>
     <li>Secure checkout with PayPal</li>
     <li>Problem with a file? We send a fresh link or refund you</li>`
         : isPrinted()

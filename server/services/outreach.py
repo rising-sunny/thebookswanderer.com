@@ -17,7 +17,7 @@ from email_validator import validate_email
 
 from services import collaborators_store as store
 from services import email as mail
-from services.invitation import draft, SENDER
+from services.invitation import draft, partnership_draft, SENDER
 from services.collaborators import site_host
 from urls import PUBLIC_BASE
 
@@ -131,7 +131,8 @@ def prepare(campaign_id: str, rows: list[dict]) -> int:
         if row["email"].strip().lower() in store.sample_addresses():
             continue
         state = "opted_out" if locally_suppressed(row["email"]) else global_contact_state(row["email"])
-        content = draft(row["lang"], unsubscribe_url(row["email"], row["lang"]))
+        builder = partnership_draft if campaign_id == "literary-partnerships" else draft
+        content = builder(row["lang"], unsubscribe_url(row["email"], row["lang"]))
         prepared.append((row, state, content))
     with store.connect() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -158,7 +159,10 @@ def deliver(campaign_id: str, pause_seconds: float = 3) -> dict:
     with store.connect() as db:
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
         attempted = db.execute("SELECT count(*) FROM outreach_deliveries WHERE attempted_at>=?", (cutoff,)).fetchone()[0]
-        remaining = max(0, 10 - attempted)
+        daily_limit = int(os.getenv("OUTREACH_DAILY_LIMIT", "10"))
+        if not 0 <= daily_limit <= 10:
+            raise ValueError("OUTREACH_DAILY_LIMIT must be between 0 and 10")
+        remaining = max(0, daily_limit - attempted)
         rows = [dict(r) for r in db.execute("SELECT * FROM outreach_deliveries WHERE campaign_id=? AND status='queued' ORDER BY id LIMIT ?", (campaign_id, remaining))]
     for index, row in enumerate(rows):
         state = "opted_out" if locally_suppressed(row["email"]) else global_contact_state(row["email"])
@@ -196,7 +200,7 @@ def deliver(campaign_id: str, pause_seconds: float = 3) -> dict:
 def auto_candidates(limit: int = 10) -> list[int]:
     with store.connect() as db:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat(timespec="seconds")
-        rows = [dict(r) for r in db.execute("SELECT c.id,c.email,c.source_id,c.purpose,s.url,s.lang FROM candidates c JOIN sources s ON s.id=c.source_id WHERE s.active=1 AND c.status IN ('pending','approved') AND c.evidence!='' AND c.last_seen_at>=? ORDER BY c.id", (cutoff,))]
+        rows = [dict(r) for r in db.execute("SELECT c.id,c.email,c.source_id,c.purpose,s.url,s.lang FROM candidates c JOIN sources s ON s.id=c.source_id WHERE s.active=1 AND c.status IN ('pending','approved') AND c.evidence!='' AND c.purpose='Colaboraciones / publicidad' AND c.last_seen_at>=? ORDER BY c.id", (cutoff,))]
         contacted_emails = {r[0] for r in db.execute("SELECT email FROM outreach_deliveries")}
         contacted_sites = {r[0] for r in db.execute("SELECT site_key FROM outreach_deliveries")}
     contacted_emails.update(store.sample_addresses())

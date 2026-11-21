@@ -1,0 +1,113 @@
+{
+  "2026-11-20": {
+    "slug": "wooden-finger-book-holder"
+  },
+  "2026-11-21": {
+    "slug": "reading-log-bookmarks",
+    "shots": [
+      "What was your last read?",
+      "Write its title on the bookmark.",
+      "Give it a star rating before you start the next one.",
+      "Reading log bookmarks"
+    ]
+  },
+  "2026-11-22": {
+    "slug": "content/reading-challenge-2027"
+  },
+  "2026-11-23": {
+    "slug": "usb-clip-reading-light",
+    "shots": [
+      "One more chapter after dark?",
+      "Clip the light onto your book.",
+      "Tilt the head towards the page.",
+      "USB clip-on reading light"
+    ]
+  },
+  "2026-11-24": {
+    "slug": "content/free-literary-coloring-pages"
+  },
+  "2026-11-25": {
+    "slug": "bedside-book-rest",
+    "shots": [
+      "Bedtime, mid-chapter?",
+      "Rest the open book on the wooden peak.",
+      "The round recess leaves room for your mug.",
+      "The bedside book rest"
+    ]
+  },
+  "2026-11-26": {
+    "slug": "japanese-a5-book-cover",
+    "shots": [
+      "Keep the notebook. Change the cover.",
+      "Slip its covers inside the two flaps.",
+      "Gold blossoms sit against navy fabric.",
+      "Japanese A5 notebook cover"
+    ]
+  },
+  "2026-11-27": {
+    "slug": "content/reading-challenge-2027",
+    "prompts": [
+      [
+        "A winter",
+        "setting"
+      ],
+      [
+        "A book",
+        "in letters"
+      ],
+      [
+        "A book from",
+        "a used shop"
+      ]
+    ]
+  },
+  "2026-11-28": {
+    "slug": "reading-passport-printed",
+    "shots": [
+      "A boarding pass for a book?",
+      "Log your finished read like a trip.",
+      "Give a favourite book its own visa stamp.",
+      "The reading passport"
+    ]
+  },
+  "2026-11-29": {
+    "slug": "content/free-literary-coloring-pages",
+    "illustration": "hatter"
+  },
+  "2026-11-30": {
+    "slug": "kindle-page-turner-remote",
+    "shots": [
+      "Keep your hands under the blanket.",
+      "Clip the page turner to the screen edge.",
+      "Press the remote to turn the page.",
+      "Clip-on page turner"
+    ]
+  },
+  "2026-12-01": {
+    "slug": "adjustable-reading-stand",
+    "shots": [
+      "Reading at the kitchen table?",
+      "Open the stand and choose an angle.",
+      "Eight locking positions support an open book.",
+      "Adjustable reading stand"
+    ]
+  },
+  "2026-12-02": {
+    "slug": "christmas-magnetic-bookmarks",
+    "shots": [
+      "Where did you leave off?",
+      "Fold the two magnetic sides over a page.",
+      "Tuck a second marker into a holiday card.",
+      "Christmas magnetic bookmarks"
+    ]
+  },
+  "2026-12-03": {
+    "slug": "twilight-library-book-nook-kit",
+    "shots": [
+      "A library inside your bookshelf?",
+      "Build the tiny shelves and fireplace.",
+      "Slide the finished library between two books.",
+      "Twilight Library book nook"
+    ]
+  }
+}

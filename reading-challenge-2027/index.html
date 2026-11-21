@@ -50,6 +50,10 @@
         .kit-card {display:flex;gap:1rem;align-items:center;margin:1rem 0 1.5rem;padding:.9rem 1rem;border:1px solid rgba(43,82,64,.18);border-radius:14px;background:#fff}
         .kit-card > a:first-child {flex:0 0 5rem;display:block}
         .kit-card img {width:100%;height:auto;display:block;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+        #spreadsheet {scroll-margin-top:5rem}
+        #spreadsheet > img {width:clamp(8rem,25%,15rem);height:auto;flex:none}
+        #spreadsheet h2 {margin:0}
+        @media (max-width:600px) {#spreadsheet {align-items:flex-start;flex-direction:column} #spreadsheet > img {width:9rem}}
         .kit-card strong {display:block;font-size:1.02rem;line-height:1.3}
         .kit-card span {display:block;margin-top:.2rem;font-size:.9rem;line-height:1.4;color:var(--ink-muted)}
         .page-reading-challenge .kit-card .btn {margin-top:.5rem;color:var(--btn-fg);text-decoration:none}
@@ -446,6 +450,7 @@
         <nav class="challenge-nav" aria-label="On this page">
             <a href="#prompts">The 52 prompts</a>
             <a href="#printable">Free printable</a>
+            <a href="#spreadsheet">Free spreadsheet</a>
             <a href="#pace">Pick your pace</a>
             <a href="#how-to">How to use them</a>
             <a href="#track-progress">Track your reading</a>
@@ -463,6 +468,15 @@
                 </form>
                 <p class="form-status" id="challengeStatus" role="status" aria-live="polite"></p>
                 <small>One letter a month afterwards, at most. One click to leave.</small>
+            </div>
+        </section>
+        <section id="spreadsheet" class="kit-card" aria-labelledby="spreadsheet-title">
+            <img src="/assets/products/reading-challenge-spreadsheet-2027/january.jpg" alt="January spreadsheet with two books finished toward a goal of four" width="900" height="900" loading="lazy">
+            <div>
+                <h2 id="spreadsheet-title">Try the January reading tracker</h2>
+                <p>Record a title and its finish date to see your month fill in. The free English sample has six reading prompts and space for 12 books. Open it in Excel, or upload it to Drive and open it with Google Sheets.</p>
+                <p><a class="btn btn--sm" id="tracker-sample-download" href="/assets/downloads/january-reading-tracker-sample.xlsx" download>Download the free January spreadsheet</a></p>
+                <p><a href="/products/reading-challenge-spreadsheet-2027">Get the full-year tracker · $7.99 USD</a></p>
             </div>
         </section>
         <aside class="kit-card">
@@ -655,7 +669,7 @@
     </div>
 </footer>
 
-<script src="/track.js?v=8" defer></script>
+<script src="/track.js?v=tracker-20261119" defer></script>
 <script src="/cart.js?v=3" defer></script>
 </body>
 </html>

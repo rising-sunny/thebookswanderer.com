@@ -25,7 +25,7 @@ from services import collaborators_store as store
 from services.collaborators import Fetcher, ResearchError, normalize_url, parse_page, site_host
 import httpx
 
-LITERARY = ("libro", "literar", "lectur", "book", "reader", "reading", "bibliotec", "novel", "poes", "poet", "reseñ", "review")
+LITERARY = ("libro", "literar", "lectur", "book", "reader", "reading", "bibliotec", "novel", "poes", "poet", "reseñ", "review", "journal", "magazine", "revista", "escritor", "writer")
 PLATFORMS = ("facebook.com", "instagram.com", "twitter.com", "x.com", "youtube.com", "pinterest.com", "amazon.com", "amazon.es", "goodreads.com", "google.com", "blogger.com", "wordpress.com", "wordpress.org", "wikipedia.org", "bookshop.org", "linktr.ee", "tiktok.com", "thebookswanderer.com", "feedburner.com", "substack.com")
 
 
@@ -40,12 +40,12 @@ def literary_profile(html: str) -> dict | None:
         return None
     text = " ".join(page.parts)[:40_000].lower()
     score = sum(word in text for word in LITERARY)
-    community = any(word in text for word in ("blog", "reseña", "review", "club de lectura", "book club"))
+    community = any(word in text for word in ("blog", "reseña", "review", "club de lectura", "book club", "literary magazine", "literary journal", "revista literaria", "literary festival", "festival literario", "writers festival", "book podcast"))
     if score < 3 or not community:
         return None
     es = len(re.findall(r"\b(libros?|lectura|reseñas?|escritor|autores|novelas?|literatura|contacto)\b", text))
     en = len(re.findall(r"\b(books?|reading|readers?|reviews?|authors?|novels?|literature|contact)\b", text))
-    return {"lang": "es" if es > en else "en", "reason": "Página pública con referencias a libros, reseñas y una comunidad lectora.", "category": "Blog / comunidad de lectura"}
+    return {"lang": "es" if es > en else "en", "reason": "Página pública con referencias a libros, reseñas y una comunidad lectora.", "category": "Medio / comunidad literaria"}
 
 
 def candidate_links(html: str, url: str) -> list[str]:
@@ -97,7 +97,7 @@ def run() -> dict:
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=23)).isoformat(timespec="seconds")
         hubs = json.loads(Path(__file__).with_name('literary_discovery_hubs.json').read_text())
         with store.connect() as db:
-            db.executemany('INSERT OR IGNORE INTO discovery_hubs(url) VALUES(?)', [(root_url(url),) for url in hubs])
+            db.executemany('INSERT OR IGNORE INTO discovery_hubs(url) VALUES(?)', [(normalize_url(url),) for url in hubs])
             existing = {site_host(r['url']) for r in db.execute('SELECT url FROM sources')}
             parents = [dict(r) for r in db.execute("SELECT id,url FROM sources WHERE active=1 AND (discovery_checked_at IS NULL OR discovery_checked_at<?) ORDER BY discovery_checked_at IS NOT NULL,discovery_checked_at,id LIMIT 4", (cutoff,))]
             boot = [dict(r) for r in db.execute("SELECT url FROM discovery_hubs WHERE checked_at IS NULL OR checked_at<? ORDER BY checked_at IS NOT NULL,checked_at,url LIMIT 6", (cutoff,))]
@@ -117,7 +117,7 @@ def run() -> dict:
         for parent in boot + parents:
             if time.monotonic() >= deadline or totals['checked'] >= 20 or totals['added'] >= 12:
                 break
-            url = root_url(parent['url'])
+            url = root_url(parent['url']) if 'id' in parent else normalize_url(parent['url'])
             fetcher = Fetcher(url, max_seconds=45)
             links = []
             status = 'verified'

@@ -224,6 +224,19 @@ cat > /etc/cron.d/tbw-scheduled-pins <<CRON
 CRON
 chmod 644 /etc/cron.d/tbw-scheduled-pins
 
+# Take the baseline and final snapshot at the same local hour, before the daily reel.
+if [[ $(date -u +%F) < 2026-12-05 ]]; then
+  install -d -o www-data -g www-data -m 750 /var/lib/tbw-reader-stories
+  cat > /etc/cron.d/tbw-reader-stories-report <<CRON
+0,30 15 20 11 * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/reader_stories_report.py
+0,30 15 4 12 * www-data cd $REMOTE_PATH/server && .venv/bin/python scripts/reader_stories_report.py
+CRON
+  chmod 644 /etc/cron.d/tbw-reader-stories-report
+else
+  rm -f /etc/cron.d/tbw-reader-stories-report
+fi
+
+
 # Supplier legs (CJ, Printify, Lulu, Prodigi): tracking email to the buyer when a leg
 # ships, one inbox alert when a leg is stuck (server/scripts/sync_order_tracking.py).
 rm -f /etc/cron.d/tbw-lulu-tracking

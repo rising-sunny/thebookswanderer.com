@@ -427,5 +427,20 @@
       }
     ],
     "active": true
+  },
+  {
+    "slug": "reading-challenge-spreadsheet-2027",
+    "title": "2027 Reading Challenge Spreadsheet for Excel and Google Sheets",
+    "title_es": "Plantilla en inglés para el reto de lectura 2027 en Excel y Google Sheets",
+    "price_usd": 7.99,
+    "category": "printables",
+    "description": "Choose a goal of 12, 26 or 52 books and keep your reading year in one place. Enter each title once, mark a finish date and watch your monthly totals update. Follow our 52 original prompts alongside up to two other challenges of your choice.\n\nIncludes an English XLSX workbook with space for 200 books, a monthly dashboard, a prompt checklist and a worked example in the Start here tab. Unzip your download and open the file in Excel, or upload it to Drive and open it with Google Sheets.",
+    "description_es": "Elige una meta de 12, 26 o 52 libros. Anota cada título una vez y la fecha en que lo terminaste para actualizar tus totales mensuales. Puedes seguir nuestras 52 consignas y otros dos retos de tu elección.\n\nLa descarga es un archivo ZIP con una plantilla XLSX en inglés. Incluye espacio para 200 libros, resumen mensual, lista de consignas y un ejemplo. Descomprime el archivo y ábrelo en Excel o súbelo a Drive para abrirlo con Google Sheets.",
+    "image_url": "/assets/products/reading-challenge-spreadsheet-2027/main.jpg",
+    "gallery": [
+      "/assets/products/reading-challenge-spreadsheet-2027/log.jpg",
+      "/assets/products/reading-challenge-spreadsheet-2027/january.jpg"
+    ],
+    "active": true
   }
 ]
